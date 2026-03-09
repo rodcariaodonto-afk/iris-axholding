@@ -619,14 +619,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       case 1:
         return (
           <StepWhatsApp
-            accessToken={accessToken}
-            phoneNumberId={phoneNumberId}
-            businessAccountId={businessAccountId}
-            verifyToken={verifyToken}
-            onAccessTokenChange={setAccessToken}
-            onPhoneNumberIdChange={setPhoneNumberId}
-            onBusinessAccountIdChange={setBusinessAccountId}
-            onVerifyTokenChange={setVerifyToken}
+            evolutionApiUrl={evolutionApiUrl}
+            evolutionApiKey={evolutionApiKey}
+            evolutionInstanceName={evolutionInstanceName}
+            onEvolutionApiUrlChange={setEvolutionApiUrl}
+            onEvolutionApiKeyChange={setEvolutionApiKey}
+            onEvolutionInstanceNameChange={setEvolutionInstanceName}
             webhookUrl={webhookUrl}
           />
         );
