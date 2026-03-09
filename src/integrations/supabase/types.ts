@@ -638,6 +638,9 @@ export type Database = {
           elevenlabs_stability: number
           elevenlabs_style: number
           elevenlabs_voice_id: string
+          evolution_api_key: string | null
+          evolution_api_url: string | null
+          evolution_instance_name: string | null
           id: string
           is_active: boolean
           message_breaking_enabled: boolean
@@ -654,6 +657,7 @@ export type Database = {
           whatsapp_access_token: string | null
           whatsapp_business_account_id: string | null
           whatsapp_phone_number_id: string | null
+          whatsapp_provider: string
           whatsapp_verify_token: string | null
         }
         Insert: {
@@ -676,6 +680,9 @@ export type Database = {
           elevenlabs_stability?: number
           elevenlabs_style?: number
           elevenlabs_voice_id?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          evolution_instance_name?: string | null
           id?: string
           is_active?: boolean
           message_breaking_enabled?: boolean
@@ -692,6 +699,7 @@ export type Database = {
           whatsapp_access_token?: string | null
           whatsapp_business_account_id?: string | null
           whatsapp_phone_number_id?: string | null
+          whatsapp_provider?: string
           whatsapp_verify_token?: string | null
         }
         Update: {
@@ -714,6 +722,9 @@ export type Database = {
           elevenlabs_stability?: number
           elevenlabs_style?: number
           elevenlabs_voice_id?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          evolution_instance_name?: string | null
           id?: string
           is_active?: boolean
           message_breaking_enabled?: boolean
@@ -730,6 +741,7 @@ export type Database = {
           whatsapp_access_token?: string | null
           whatsapp_business_account_id?: string | null
           whatsapp_phone_number_id?: string | null
+          whatsapp_provider?: string
           whatsapp_verify_token?: string | null
         }
         Relationships: []
