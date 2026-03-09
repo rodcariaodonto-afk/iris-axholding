@@ -508,11 +508,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         if (settings.company_name && !verifyData?.company_name) {
           console.error('[OnboardingWizard] ❌ CRITICAL: company_name not persisted!');
         }
-        if (settings.whatsapp_phone_number_id && !verifyData?.whatsapp_phone_number_id) {
-          console.error('[OnboardingWizard] ❌ CRITICAL: whatsapp_phone_number_id not persisted!');
+        if (settings.evolution_api_url && !(verifyData as any)?.evolution_api_url) {
+          console.error('[OnboardingWizard] ❌ CRITICAL: evolution_api_url not persisted!');
         }
-        if (settings.whatsapp_access_token && !verifyData?.whatsapp_access_token) {
-          console.error('[OnboardingWizard] ❌ CRITICAL: whatsapp_access_token not persisted!');
+        if (settings.evolution_instance_name && !(verifyData as any)?.evolution_instance_name) {
+          console.error('[OnboardingWizard] ❌ CRITICAL: evolution_instance_name not persisted!');
         }
       }
       
