@@ -398,11 +398,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         company_name: companyName?.trim() || null,
         sdr_name: sdrName?.trim() || null,
         
-        // WhatsApp - trim whitespace
-        whatsapp_access_token: accessToken?.trim() || null,
-        whatsapp_phone_number_id: phoneNumberId?.trim() || null,
-        whatsapp_business_account_id: businessAccountId?.trim() || null,
-        whatsapp_verify_token: verifyToken?.trim() || null,
+        // WhatsApp - Evolution API
+        whatsapp_provider: 'evolution',
+        evolution_api_url: evolutionApiUrl?.trim() || null,
+        evolution_api_key: evolutionApiKey?.trim() || null,
+        evolution_instance_name: evolutionInstanceName?.trim() || null,
         
         // Agent - use default prompt if empty
         system_prompt_override: systemPrompt?.trim() || DEFAULT_NINA_PROMPT,
