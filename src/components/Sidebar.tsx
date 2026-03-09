@@ -7,7 +7,7 @@ import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/s
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import viaIcon from '@/assets/icon-via.png';
+import axhubIcon from '@/assets/icon-axhub.png';
 import axhubLogo from '@/assets/logo-axhub.png';
 
 const menuItems = [
@@ -26,7 +26,7 @@ const Logo = ({ companyName }: { companyName: string }) => {
       <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
         <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
         <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 p-1.5">
-          <img src={viaIcon} alt="Logo" className="w-full h-full object-contain" />
+          <img src={axhubIcon} alt="Logo" className="w-full h-full object-contain" />
         </div>
       </div>
       <motion.div
@@ -48,7 +48,7 @@ const LogoIcon = () => {
       <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
         <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
         <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 p-1.5">
-          <img src={viaIcon} alt="Logo" className="w-full h-full object-contain" />
+          <img src={axhubIcon} alt="Logo" className="w-full h-full object-contain" />
         </div>
       </div>
     </Link>
