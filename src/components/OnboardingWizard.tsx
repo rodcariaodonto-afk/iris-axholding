@@ -488,7 +488,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       console.log('[OnboardingWizard] Step 5: Verifying saved data...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('nina_settings')
-        .select('company_name, sdr_name, whatsapp_phone_number_id, whatsapp_access_token, system_prompt_override, is_active')
+        .select('company_name, sdr_name, evolution_api_url, evolution_api_key, evolution_instance_name, system_prompt_override, is_active')
         .eq('id', result.data.id)
         .maybeSingle();
 
