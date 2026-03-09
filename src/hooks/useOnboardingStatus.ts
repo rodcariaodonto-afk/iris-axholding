@@ -40,7 +40,7 @@ export function useOnboardingStatus(): OnboardingStatus {
     {
       id: 'whatsapp',
       title: 'WhatsApp',
-      description: 'Configure a API do WhatsApp Cloud',
+      description: 'Configure a Evolution API',
       isComplete: false,
       isRequired: true,
     },
