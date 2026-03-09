@@ -430,8 +430,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       console.log('[OnboardingWizard] Step 2: Settings object built:', {
         company_name: settings.company_name,
         sdr_name: settings.sdr_name,
-        whatsapp_phone_number_id: settings.whatsapp_phone_number_id ? '✓ SET' : '✗ EMPTY',
-        whatsapp_access_token: settings.whatsapp_access_token ? '✓ SET' : '✗ EMPTY',
+        evolution_api_url: settings.evolution_api_url ? '✓ SET' : '✗ EMPTY',
+        evolution_api_key: settings.evolution_api_key ? '✓ SET' : '✗ EMPTY',
+        evolution_instance_name: settings.evolution_instance_name ? '✓ SET' : '✗ EMPTY',
         system_prompt_override: settings.system_prompt_override ? '✓ SET' : '✗ EMPTY',
         elevenlabs_api_key: settings.elevenlabs_api_key ? '✓ SET' : '✗ EMPTY',
         is_active: settings.is_active,
