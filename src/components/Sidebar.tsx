@@ -123,7 +123,7 @@ const SidebarContent = () => {
           <img 
             src={axhubLogo} 
             alt="AXHUB" 
-            className="h-8 opacity-60 hover:opacity-100 transition-opacity"
+            className="h-12 opacity-60 hover:opacity-100 transition-opacity"
           />
         </motion.div>
       )}
