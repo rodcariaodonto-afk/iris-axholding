@@ -164,6 +164,13 @@ serve(async (req) => {
         );
       }
       
+      if (elevenLabsResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Sua conta ElevenLabs não tem créditos suficientes. Verifique seu plano em elevenlabs.io.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (elevenLabsResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' }),
