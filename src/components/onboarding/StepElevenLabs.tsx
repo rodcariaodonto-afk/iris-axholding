@@ -113,7 +113,13 @@ export const StepElevenLabs: React.FC<StepElevenLabsProps> = ({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Try to extract error message from the response
+        const errorMsg = (error as any)?.context?.body ? 
+          JSON.parse(new TextDecoder().decode((error as any).context.body))?.error : 
+          error.message;
+        throw new Error(errorMsg || error.message);
+      }
 
       if (data?.success && data?.audioBase64) {
         // Create audio from base64
