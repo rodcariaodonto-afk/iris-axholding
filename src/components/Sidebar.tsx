@@ -106,21 +106,6 @@ const SidebarContent = () => {
         </nav>
       </div>
 
-      {/* VIA Logo - Footer */}
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="py-4 flex justify-center"
-        >
-          <img 
-            src={axhubLogo} 
-            alt="AXHUB" 
-            className="w-48 h-auto opacity-60 hover:opacity-100 transition-opacity"
-          />
-        </motion.div>
-      )}
 
       {/* User Footer */}
       <div className="border-t border-border/50 pt-4">
