@@ -1,1 +1,49 @@
 project_id = "ggrgqvnmuptwinxsobkz"
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.message-grouper]
+verify_jwt = false
+
+[functions.nina-orchestrator]
+verify_jwt = false
+
+[functions.whatsapp-sender]
+verify_jwt = false
+
+[functions.initialize-system]
+verify_jwt = false
+
+[functions.validate-setup]
+verify_jwt = false
+
+[functions.simulate-webhook]
+verify_jwt = false
+
+[functions.simulate-audio-webhook]
+verify_jwt = false
+
+[functions.test-whatsapp-message]
+verify_jwt = false
+
+[functions.test-elevenlabs-tts]
+verify_jwt = false
+
+[functions.generate-prompt]
+verify_jwt = false
+
+[functions.analyze-conversation]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.seed-appointments]
+verify_jwt = false
+
+[functions.trigger-nina-orchestrator]
+verify_jwt = false
+
+[functions.trigger-whatsapp-sender]
+verify_jwt = false
