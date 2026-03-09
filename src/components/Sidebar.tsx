@@ -121,9 +121,9 @@ const SidebarContent = () => {
           className="py-4 flex justify-center"
         >
           <img 
-            src={viaLogoWhite} 
-            alt="VIA" 
-            className="h-6 opacity-60 hover:opacity-100 transition-opacity"
+            src={axhubLogo} 
+            alt="AXHUB" 
+            className="h-8 opacity-60 hover:opacity-100 transition-opacity"
           />
         </motion.div>
       )}
