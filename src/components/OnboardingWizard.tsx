@@ -198,11 +198,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
   const [companyName, setCompanyName] = useState('');
   const [sdrName, setSdrName] = useState('');
   
-  // Form state - WhatsApp
-  const [accessToken, setAccessToken] = useState('');
-  const [phoneNumberId, setPhoneNumberId] = useState('');
-  const [businessAccountId, setBusinessAccountId] = useState('');
-  const [verifyToken, setVerifyToken] = useState('');
+  // Form state - WhatsApp (Evolution API)
+  const [evolutionApiUrl, setEvolutionApiUrl] = useState('');
+  const [evolutionApiKey, setEvolutionApiKey] = useState('');
+  const [evolutionInstanceName, setEvolutionInstanceName] = useState('');
   
   // Form state - Agent
   const [systemPrompt, setSystemPrompt] = useState('');
