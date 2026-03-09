@@ -206,18 +206,14 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (settings.whatsapp_phone_number_id && !/^\d+$/.test(settings.whatsapp_phone_number_id)) {
-        toast.error('Phone Number ID deve conter apenas números');
-        return;
-      }
-
-      // Update global settings (no user_id filter - RLS handles admin check)
+      // Update global settings
       const { error } = await supabase
         .from('nina_settings')
         .update({
-          whatsapp_access_token: settings.whatsapp_access_token,
-          whatsapp_phone_number_id: settings.whatsapp_phone_number_id,
-          whatsapp_verify_token: settings.whatsapp_verify_token,
+          whatsapp_provider: settings.whatsapp_provider,
+          evolution_api_url: settings.evolution_api_url,
+          evolution_api_key: settings.evolution_api_key,
+          evolution_instance_name: settings.evolution_instance_name,
           elevenlabs_api_key: settings.elevenlabs_api_key,
           elevenlabs_voice_id: settings.elevenlabs_voice_id,
           elevenlabs_model: settings.elevenlabs_model,
@@ -228,11 +224,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           elevenlabs_speaker_boost: settings.elevenlabs_speaker_boost,
           audio_response_enabled: settings.audio_response_enabled,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', settings.id!);
 
       if (error) throw error;
-
       toast.success('Configurações de APIs salvas com sucesso!');
     } catch (error) {
       console.error('Error saving settings:', error);
