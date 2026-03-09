@@ -330,7 +330,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
     }
     
     return { valid: issues.length === 0, issues };
-  }, [companyName, sdrName, accessToken, phoneNumberId, businessAccountId, verifyToken, 
+  }, [companyName, sdrName, evolutionApiUrl, evolutionApiKey, evolutionInstanceName, 
       systemPrompt, aiModelMode, elevenLabsApiKey, audioResponseEnabled,
       timezone, businessHoursStart, businessHoursEnd, businessDays]);
 
