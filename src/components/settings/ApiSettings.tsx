@@ -305,8 +305,8 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   };
 
   const handleTestMessage = async () => {
-    if (!settings.whatsapp_access_token || !settings.whatsapp_phone_number_id) {
-      toast.error('⚠️ Preencha e SALVE as credenciais do WhatsApp primeiro!', {
+    if (!settings.evolution_api_url || !settings.evolution_api_key || !settings.evolution_instance_name) {
+      toast.error('⚠️ Preencha e SALVE as credenciais da Evolution API primeiro!', {
         description: 'Clique em "Salvar Alterações" no topo da página antes de testar.'
       });
       return;
