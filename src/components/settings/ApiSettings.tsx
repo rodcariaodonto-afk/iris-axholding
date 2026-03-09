@@ -181,9 +181,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
       const uniqueToken = data.whatsapp_verify_token || generateUniqueToken();
       setSettings({
         id: data.id,
-        whatsapp_access_token: data.whatsapp_access_token,
-        whatsapp_phone_number_id: data.whatsapp_phone_number_id,
-        whatsapp_verify_token: uniqueToken,
+        whatsapp_provider: (data as any).whatsapp_provider || 'evolution',
+        evolution_api_url: (data as any).evolution_api_url,
+        evolution_api_key: (data as any).evolution_api_key,
+        evolution_instance_name: (data as any).evolution_instance_name,
         elevenlabs_api_key: data.elevenlabs_api_key,
         elevenlabs_voice_id: data.elevenlabs_voice_id,
         elevenlabs_model: data.elevenlabs_model,
