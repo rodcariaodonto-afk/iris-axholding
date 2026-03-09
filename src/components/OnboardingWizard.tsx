@@ -293,15 +293,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         if (!companyName?.trim()) issues.push('Nome da empresa está vazio');
         if (!sdrName?.trim()) issues.push('Nome do SDR está vazio');
         break;
-      case 1: // WhatsApp
+      case 1: // WhatsApp (Evolution API)
         console.log('[OnboardingWizard] Step 1 (WhatsApp) values:', { 
-          accessToken: accessToken ? `${accessToken.substring(0, 10)}...` : 'EMPTY',
-          phoneNumberId: phoneNumberId || 'EMPTY',
-          businessAccountId: businessAccountId || 'EMPTY',
-          verifyToken: verifyToken || 'EMPTY'
+          evolutionApiUrl: evolutionApiUrl || 'EMPTY',
+          evolutionApiKey: evolutionApiKey ? '***' : 'EMPTY',
+          evolutionInstanceName: evolutionInstanceName || 'EMPTY'
         });
-        if (!accessToken?.trim()) issues.push('Access Token está vazio');
-        if (!phoneNumberId?.trim()) issues.push('Phone Number ID está vazio');
+        if (!evolutionApiUrl?.trim()) issues.push('URL do servidor está vazia');
+        if (!evolutionApiKey?.trim()) issues.push('API Key está vazia');
+        if (!evolutionInstanceName?.trim()) issues.push('Nome da instância está vazio');
         break;
       case 2: // Agent
         console.log('[OnboardingWizard] Step 2 (Agent) values:', { 
