@@ -107,36 +107,58 @@ Deno.serve(async (req) => {
         message: 'Configurações não encontradas. Execute o onboarding.',
       });
     } else {
-      // Check WhatsApp configuration
-      const whatsappConfigured = !!(
-        settings.whatsapp_access_token &&
-        settings.whatsapp_phone_number_id
-      );
+      // Check WhatsApp configuration based on provider
+      const provider = (settings as any).whatsapp_provider || 'evolution';
 
-      if (whatsappConfigured) {
-        results.push({
-          component: 'whatsapp',
-          status: 'ok',
-          message: 'WhatsApp está configurado',
-          details: {
-            hasAccessToken: !!settings.whatsapp_access_token,
-            hasPhoneNumberId: !!settings.whatsapp_phone_number_id,
-            hasBusinessAccountId: !!settings.whatsapp_business_account_id,
-            hasVerifyToken: !!settings.whatsapp_verify_token,
-          },
-        });
+      if (provider === 'evolution') {
+        const evolutionConfigured = !!(
+          (settings as any).evolution_api_url &&
+          (settings as any).evolution_api_key &&
+          (settings as any).evolution_instance_name
+        );
+
+        if (evolutionConfigured) {
+          results.push({
+            component: 'whatsapp',
+            status: 'ok',
+            message: 'Evolution API configurada',
+            details: {
+              hasApiUrl: !!(settings as any).evolution_api_url,
+              hasApiKey: !!(settings as any).evolution_api_key,
+              hasInstanceName: !!(settings as any).evolution_instance_name,
+            },
+          });
+        } else {
+          results.push({
+            component: 'whatsapp',
+            status: 'warning',
+            message: 'Evolution API não está totalmente configurada',
+            details: {
+              hasApiUrl: !!(settings as any).evolution_api_url,
+              hasApiKey: !!(settings as any).evolution_api_key,
+              hasInstanceName: !!(settings as any).evolution_instance_name,
+            },
+          });
+        }
       } else {
-        results.push({
-          component: 'whatsapp',
-          status: 'warning',
-          message: 'WhatsApp não está totalmente configurado',
-          details: {
-            hasAccessToken: !!settings.whatsapp_access_token,
-            hasPhoneNumberId: !!settings.whatsapp_phone_number_id,
-            hasBusinessAccountId: !!settings.whatsapp_business_account_id,
-            hasVerifyToken: !!settings.whatsapp_verify_token,
-          },
-        });
+        const whatsappConfigured = !!(
+          settings.whatsapp_access_token &&
+          settings.whatsapp_phone_number_id
+        );
+
+        if (whatsappConfigured) {
+          results.push({
+            component: 'whatsapp',
+            status: 'ok',
+            message: 'WhatsApp Cloud API configurada',
+          });
+        } else {
+          results.push({
+            component: 'whatsapp',
+            status: 'warning',
+            message: 'WhatsApp Cloud API não configurada',
+          });
+        }
       }
 
       // Check company identity

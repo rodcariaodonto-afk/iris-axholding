@@ -9,9 +9,10 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface NinaSettings {
   id?: string;
-  whatsapp_access_token: string | null;
-  whatsapp_phone_number_id: string | null;
-  whatsapp_verify_token: string | null;
+  whatsapp_provider: string;
+  evolution_api_url: string | null;
+  evolution_api_key: string | null;
+  evolution_instance_name: string | null;
   elevenlabs_api_key: string | null;
   elevenlabs_voice_id: string;
   elevenlabs_model: string | null;
@@ -101,9 +102,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const generateUniqueToken = () => `verify-${crypto.randomUUID().slice(0, 8)}`;
   
   const [settings, setSettings] = useState<NinaSettings>({
-    whatsapp_access_token: null,
-    whatsapp_phone_number_id: null,
-    whatsapp_verify_token: generateUniqueToken(),
+    whatsapp_provider: 'evolution',
+    evolution_api_url: null,
+    evolution_api_key: null,
+    evolution_instance_name: null,
     elevenlabs_api_key: null,
     elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
     elevenlabs_model: 'eleven_turbo_v2_5',
@@ -179,9 +181,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
       const uniqueToken = data.whatsapp_verify_token || generateUniqueToken();
       setSettings({
         id: data.id,
-        whatsapp_access_token: data.whatsapp_access_token,
-        whatsapp_phone_number_id: data.whatsapp_phone_number_id,
-        whatsapp_verify_token: uniqueToken,
+        whatsapp_provider: (data as any).whatsapp_provider || 'evolution',
+        evolution_api_url: (data as any).evolution_api_url,
+        evolution_api_key: (data as any).evolution_api_key,
+        evolution_instance_name: (data as any).evolution_instance_name,
         elevenlabs_api_key: data.elevenlabs_api_key,
         elevenlabs_voice_id: data.elevenlabs_voice_id,
         elevenlabs_model: data.elevenlabs_model,
@@ -203,18 +206,14 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (settings.whatsapp_phone_number_id && !/^\d+$/.test(settings.whatsapp_phone_number_id)) {
-        toast.error('Phone Number ID deve conter apenas números');
-        return;
-      }
-
-      // Update global settings (no user_id filter - RLS handles admin check)
+      // Update global settings
       const { error } = await supabase
         .from('nina_settings')
         .update({
-          whatsapp_access_token: settings.whatsapp_access_token,
-          whatsapp_phone_number_id: settings.whatsapp_phone_number_id,
-          whatsapp_verify_token: settings.whatsapp_verify_token,
+          whatsapp_provider: settings.whatsapp_provider,
+          evolution_api_url: settings.evolution_api_url,
+          evolution_api_key: settings.evolution_api_key,
+          evolution_instance_name: settings.evolution_instance_name,
           elevenlabs_api_key: settings.elevenlabs_api_key,
           elevenlabs_voice_id: settings.elevenlabs_voice_id,
           elevenlabs_model: settings.elevenlabs_model,
@@ -225,11 +224,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           elevenlabs_speaker_boost: settings.elevenlabs_speaker_boost,
           audio_response_enabled: settings.audio_response_enabled,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', settings.id!);
 
       if (error) throw error;
-
       toast.success('Configurações de APIs salvas com sucesso!');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -307,8 +305,8 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   };
 
   const handleTestMessage = async () => {
-    if (!settings.whatsapp_access_token || !settings.whatsapp_phone_number_id) {
-      toast.error('⚠️ Preencha e SALVE as credenciais do WhatsApp primeiro!', {
+    if (!settings.evolution_api_url || !settings.evolution_api_key || !settings.evolution_instance_name) {
+      toast.error('⚠️ Preencha e SALVE as credenciais da Evolution API primeiro!', {
         description: 'Clique em "Salvar Alterações" no topo da página antes de testar.'
       });
       return;
@@ -447,7 +445,7 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
     }
   };
 
-  const whatsappConfigured = settings.whatsapp_access_token && settings.whatsapp_phone_number_id;
+  const whatsappConfigured = settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name;
   const elevenlabsConfigured = settings.elevenlabs_api_key;
 
   if (loading) {
@@ -460,12 +458,12 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   return (
     <div className="space-y-6">
-      {/* WhatsApp Cloud API + Webhook */}
+      {/* Evolution API */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-cyan-400" />
-            <h3 className="font-semibold text-white">WhatsApp Cloud API</h3>
+            <h3 className="font-semibold text-white">Evolution API</h3>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
             whatsappConfigured 
@@ -477,44 +475,56 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           </div>
         </div>
 
-        {/* Mini-guia de configuração */}
         <details className="mb-4">
           <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300 flex items-center gap-2 py-2">
             <HelpCircle className="w-4 h-4" />
-            Como obter as credenciais do WhatsApp?
+            Como configurar a Evolution API?
           </summary>
           <div className="mt-2 p-4 rounded-lg bg-slate-950 border border-slate-800 text-xs space-y-3">
             <div className="space-y-2">
               <p className="text-white font-medium">📋 Passo a passo:</p>
               <ol className="list-decimal list-inside space-y-1.5 text-slate-400">
-                <li>Acesse o <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Meta for Developers</a></li>
-                <li>Crie ou selecione um App do tipo "Business"</li>
-                <li>Adicione o produto "WhatsApp" ao app</li>
-                <li>Na seção "API Setup", copie o <strong className="text-white">Access Token</strong> temporário (ou gere um permanente)</li>
-                <li>Copie também o <strong className="text-white">Phone Number ID</strong> (número de identificação)</li>
-                <li>Em "Configuration" → "Webhook", cole a URL e o Verify Token abaixo</li>
+                <li>Instale a Evolution API no seu servidor ou use um serviço cloud</li>
+                <li>Copie a <strong className="text-white">URL do servidor</strong> (ex: https://sua-evolution.com)</li>
+                <li>Copie a <strong className="text-white">API Key global</strong> gerada na instalação</li>
+                <li>Crie uma instância e copie o <strong className="text-white">nome da instância</strong></li>
+                <li>Escaneie o QR Code para conectar ao WhatsApp</li>
+                <li>Configure o webhook da instância com a URL abaixo</li>
               </ol>
             </div>
             <div className="pt-2 border-t border-slate-700">
               <p className="text-slate-500">
-                📚 <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação oficial do WhatsApp Cloud API</a>
+                📚 <a href="https://doc.evolution-api.com/v2/pt/get-started/introduction" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação da Evolution API</a>
               </p>
             </div>
           </div>
         </details>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="lg:col-span-2">
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+              URL do Servidor <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={settings.evolution_api_url || ''}
+              onChange={(e) => setSettings({ ...settings, evolution_api_url: e.target.value })}
+              placeholder="https://sua-evolution.com"
+              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+            />
+          </div>
+
           <div>
             <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              Access Token <span className="text-red-400">*</span>
+              API Key <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <input
                 type={showWhatsAppToken ? "text" : "password"}
-                value={settings.whatsapp_access_token || ''}
-                onChange={(e) => setSettings({ ...settings, whatsapp_access_token: e.target.value })}
-                placeholder="EAAxxxxxxxxxxxxxxx..."
-                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                value={settings.evolution_api_key || ''}
+                onChange={(e) => setSettings({ ...settings, evolution_api_key: e.target.value })}
+                placeholder="Sua API Key"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
               />
               <button
                 type="button"
@@ -528,27 +538,27 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
           <div>
             <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              Phone Number ID <span className="text-red-400">*</span>
+              Nome da Instância <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              value={settings.whatsapp_phone_number_id || ''}
-              onChange={(e) => setSettings({ ...settings, whatsapp_phone_number_id: e.target.value })}
-              placeholder="123456789012345"
-              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              value={settings.evolution_instance_name || ''}
+              onChange={(e) => setSettings({ ...settings, evolution_instance_name: e.target.value })}
+              placeholder="minha-instancia"
+              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
             />
           </div>
         </div>
 
-        {/* Webhook Collapsible */}
+        {/* Webhook URL */}
         <Collapsible.Root open={webhookOpen} onOpenChange={setWebhookOpen}>
           <Collapsible.Trigger className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-300 transition-colors">
             <ChevronDown className={`w-4 h-4 transition-transform ${webhookOpen ? 'rotate-180' : ''}`} />
-            Configuração de Webhook
+            Webhook URL
           </Collapsible.Trigger>
           <Collapsible.Content className="mt-3 space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Callback URL</label>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Callback URL (cole na Evolution API)</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -565,15 +575,9 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
                   {copiedWebhook ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Verify Token</label>
-              <input
-                type="text"
-                value={settings.whatsapp_verify_token || ''}
-                onChange={(e) => setSettings({ ...settings, whatsapp_verify_token: e.target.value })}
-                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-              />
+              <p className="text-xs text-slate-500 mt-1">
+                Ative os eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE
+              </p>
             </div>
           </Collapsible.Content>
         </Collapsible.Root>
