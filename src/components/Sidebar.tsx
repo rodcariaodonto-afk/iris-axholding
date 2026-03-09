@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import viaIcon from '@/assets/icon-via.png';
-import viaLogoWhite from '@/assets/logo-via-white.png';
+import axhubLogo from '@/assets/logo-axhub.png';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
