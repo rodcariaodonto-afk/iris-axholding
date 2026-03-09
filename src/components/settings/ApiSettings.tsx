@@ -102,9 +102,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const generateUniqueToken = () => `verify-${crypto.randomUUID().slice(0, 8)}`;
   
   const [settings, setSettings] = useState<NinaSettings>({
-    whatsapp_access_token: null,
-    whatsapp_phone_number_id: null,
-    whatsapp_verify_token: generateUniqueToken(),
+    whatsapp_provider: 'evolution',
+    evolution_api_url: null,
+    evolution_api_key: null,
+    evolution_instance_name: null,
     elevenlabs_api_key: null,
     elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
     elevenlabs_model: 'eleven_turbo_v2_5',
