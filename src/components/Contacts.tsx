@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter, MoreHorizontal, UserPlus, MessageSquare, Loader2, Mail, Phone, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { api } from '../services/api';
@@ -55,9 +56,8 @@ const Contacts: React.FC = () => {
           <p className="text-sm text-slate-400 mt-1">Gerencie sua base de leads e clientes com inteligência.</p>
         </div>
         <Button 
-          className="shadow-lg shadow-cyan-500/20 opacity-50 cursor-not-allowed"
-          disabled
-          title="Em breve: Adicionar contato"
+          className="shadow-lg shadow-cyan-500/20"
+          onClick={() => toast.info('Funcionalidade de novo contato em desenvolvimento')}
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Novo Contato
