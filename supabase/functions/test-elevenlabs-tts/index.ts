@@ -157,16 +157,29 @@ serve(async (req) => {
       const errorText = await elevenLabsResponse.text();
       console.error('[test-elevenlabs-tts] ElevenLabs API error:', elevenLabsResponse.status, errorText);
       
+      // Try to extract detailed message from ElevenLabs response
+      let detailMessage = '';
+      try {
+        const parsed = JSON.parse(errorText);
+        detailMessage = parsed?.detail?.message || parsed?.detail || '';
+      } catch {}
+
       if (elevenLabsResponse.status === 401) {
+        const msg = detailMessage 
+          ? `Erro de autenticação ElevenLabs: ${detailMessage}`
+          : 'API Key da ElevenLabs inválida. Verifique sua chave em elevenlabs.io.';
         return new Response(
-          JSON.stringify({ error: 'API Key da ElevenLabs inválida' }),
+          JSON.stringify({ error: msg }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (elevenLabsResponse.status === 402) {
+        const msg = detailMessage
+          ? `Plano insuficiente: ${detailMessage}`
+          : 'Sua conta ElevenLabs não tem créditos suficientes. Verifique seu plano em elevenlabs.io.';
         return new Response(
-          JSON.stringify({ error: 'Sua conta ElevenLabs não tem créditos suficientes. Verifique seu plano em elevenlabs.io.' }),
+          JSON.stringify({ error: msg }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -179,7 +192,7 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: `Erro na API ElevenLabs: ${elevenLabsResponse.status}` }),
+        JSON.stringify({ error: detailMessage || `Erro na API ElevenLabs: ${elevenLabsResponse.status}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
