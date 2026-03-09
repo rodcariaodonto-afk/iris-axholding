@@ -351,11 +351,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       // Identity
       companyName: companyName || '(empty)',
       sdrName: sdrName || '(empty)',
-      // WhatsApp
-      accessToken: accessToken ? `${accessToken.substring(0, 15)}...` : '(empty)',
-      phoneNumberId: phoneNumberId || '(empty)',
-      businessAccountId: businessAccountId || '(empty)',
-      verifyToken: verifyToken || '(empty)',
+      // WhatsApp (Evolution API)
+      evolutionApiUrl: evolutionApiUrl || '(empty)',
+      evolutionApiKey: evolutionApiKey ? '***' : '(empty)',
+      evolutionInstanceName: evolutionInstanceName || '(empty)',
       // Agent
       systemPrompt: systemPrompt ? `${systemPrompt.substring(0, 50)}...` : '(empty)',
       aiModelMode,
