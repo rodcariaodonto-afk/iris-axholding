@@ -458,12 +458,12 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   return (
     <div className="space-y-6">
-      {/* WhatsApp Cloud API + Webhook */}
+      {/* Evolution API */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-cyan-400" />
-            <h3 className="font-semibold text-white">WhatsApp Cloud API</h3>
+            <h3 className="font-semibold text-white">Evolution API</h3>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
             whatsappConfigured 
@@ -475,44 +475,56 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           </div>
         </div>
 
-        {/* Mini-guia de configuração */}
         <details className="mb-4">
           <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300 flex items-center gap-2 py-2">
             <HelpCircle className="w-4 h-4" />
-            Como obter as credenciais do WhatsApp?
+            Como configurar a Evolution API?
           </summary>
           <div className="mt-2 p-4 rounded-lg bg-slate-950 border border-slate-800 text-xs space-y-3">
             <div className="space-y-2">
               <p className="text-white font-medium">📋 Passo a passo:</p>
               <ol className="list-decimal list-inside space-y-1.5 text-slate-400">
-                <li>Acesse o <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Meta for Developers</a></li>
-                <li>Crie ou selecione um App do tipo "Business"</li>
-                <li>Adicione o produto "WhatsApp" ao app</li>
-                <li>Na seção "API Setup", copie o <strong className="text-white">Access Token</strong> temporário (ou gere um permanente)</li>
-                <li>Copie também o <strong className="text-white">Phone Number ID</strong> (número de identificação)</li>
-                <li>Em "Configuration" → "Webhook", cole a URL e o Verify Token abaixo</li>
+                <li>Instale a Evolution API no seu servidor ou use um serviço cloud</li>
+                <li>Copie a <strong className="text-white">URL do servidor</strong> (ex: https://sua-evolution.com)</li>
+                <li>Copie a <strong className="text-white">API Key global</strong> gerada na instalação</li>
+                <li>Crie uma instância e copie o <strong className="text-white">nome da instância</strong></li>
+                <li>Escaneie o QR Code para conectar ao WhatsApp</li>
+                <li>Configure o webhook da instância com a URL abaixo</li>
               </ol>
             </div>
             <div className="pt-2 border-t border-slate-700">
               <p className="text-slate-500">
-                📚 <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação oficial do WhatsApp Cloud API</a>
+                📚 <a href="https://doc.evolution-api.com/v2/pt/get-started/introduction" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação da Evolution API</a>
               </p>
             </div>
           </div>
         </details>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="lg:col-span-2">
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+              URL do Servidor <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={settings.evolution_api_url || ''}
+              onChange={(e) => setSettings({ ...settings, evolution_api_url: e.target.value })}
+              placeholder="https://sua-evolution.com"
+              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+            />
+          </div>
+
           <div>
             <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              Access Token <span className="text-red-400">*</span>
+              API Key <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <input
                 type={showWhatsAppToken ? "text" : "password"}
-                value={settings.whatsapp_access_token || ''}
-                onChange={(e) => setSettings({ ...settings, whatsapp_access_token: e.target.value })}
-                placeholder="EAAxxxxxxxxxxxxxxx..."
-                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                value={settings.evolution_api_key || ''}
+                onChange={(e) => setSettings({ ...settings, evolution_api_key: e.target.value })}
+                placeholder="Sua API Key"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
               />
               <button
                 type="button"
@@ -526,27 +538,27 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
           <div>
             <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              Phone Number ID <span className="text-red-400">*</span>
+              Nome da Instância <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              value={settings.whatsapp_phone_number_id || ''}
-              onChange={(e) => setSettings({ ...settings, whatsapp_phone_number_id: e.target.value })}
-              placeholder="123456789012345"
-              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              value={settings.evolution_instance_name || ''}
+              onChange={(e) => setSettings({ ...settings, evolution_instance_name: e.target.value })}
+              placeholder="minha-instancia"
+              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
             />
           </div>
         </div>
 
-        {/* Webhook Collapsible */}
+        {/* Webhook URL */}
         <Collapsible.Root open={webhookOpen} onOpenChange={setWebhookOpen}>
           <Collapsible.Trigger className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-300 transition-colors">
             <ChevronDown className={`w-4 h-4 transition-transform ${webhookOpen ? 'rotate-180' : ''}`} />
-            Configuração de Webhook
+            Webhook URL
           </Collapsible.Trigger>
           <Collapsible.Content className="mt-3 space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Callback URL</label>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Callback URL (cole na Evolution API)</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -563,15 +575,9 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
                   {copiedWebhook ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Verify Token</label>
-              <input
-                type="text"
-                value={settings.whatsapp_verify_token || ''}
-                onChange={(e) => setSettings({ ...settings, whatsapp_verify_token: e.target.value })}
-                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-              />
+              <p className="text-xs text-slate-500 mt-1">
+                Ative os eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE
+              </p>
             </div>
           </Collapsible.Content>
         </Collapsible.Root>
