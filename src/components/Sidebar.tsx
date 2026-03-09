@@ -23,11 +23,8 @@ const menuItems = [
 const Logo = ({ companyName }: { companyName: string }) => {
   return (
     <Link to="/dashboard" className="flex items-center space-x-3 py-1">
-      <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-        <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
-        <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 p-1.5">
-          <img src={axhubIcon} alt="Logo" className="w-full h-full object-contain" />
-        </div>
+      <div className="relative flex items-center justify-center flex-shrink-0">
+        <img src={axhubIcon} alt="AXHUB" className="h-10 w-auto object-contain rounded-lg" />
       </div>
       <motion.div
         initial={{ opacity: 0 }}
@@ -45,11 +42,8 @@ const Logo = ({ companyName }: { companyName: string }) => {
 const LogoIcon = () => {
   return (
     <Link to="/dashboard" className="flex items-center py-1">
-      <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-        <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
-        <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 p-1.5">
-          <img src={axhubIcon} alt="Logo" className="w-full h-full object-contain" />
-        </div>
+      <div className="relative flex items-center justify-center flex-shrink-0">
+        <img src={axhubIcon} alt="AXHUB" className="h-10 w-auto object-contain rounded-lg" />
       </div>
     </Link>
   );
