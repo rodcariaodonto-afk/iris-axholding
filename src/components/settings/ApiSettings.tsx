@@ -445,7 +445,7 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
     }
   };
 
-  const whatsappConfigured = settings.whatsapp_access_token && settings.whatsapp_phone_number_id;
+  const whatsappConfigured = settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name;
   const elevenlabsConfigured = settings.elevenlabs_api_key;
 
   if (loading) {
