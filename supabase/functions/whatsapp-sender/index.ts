@@ -20,21 +20,16 @@ serve(async (req) => {
   try {
     console.log('[Sender] Starting send process...');
 
-    const MAX_EXECUTION_TIME = 25000; // 25 seconds
+    const MAX_EXECUTION_TIME = 25000;
     const startTime = Date.now();
     let totalSent = 0;
     let iterations = 0;
 
-    console.log('[Sender] Starting polling loop');
-
-    // Cache de settings por user_id para evitar múltiplas queries
     const settingsCache: Record<string, any> = {};
 
     while (Date.now() - startTime < MAX_EXECUTION_TIME) {
       iterations++;
-      console.log(`[Sender] Iteration ${iterations}, elapsed: ${Date.now() - startTime}ms`);
 
-      // Claim batch of messages to send
       const { data: queueItems, error: claimError } = await supabase
         .rpc('claim_send_queue_batch', { p_limit: 10 });
 
@@ -44,10 +39,7 @@ serve(async (req) => {
       }
 
       if (!queueItems || queueItems.length === 0) {
-        console.log('[Sender] No messages ready to send, checking for scheduled messages...');
-        
-        // Check for messages scheduled in the next 5 seconds
-        const { data: upcoming, error: upcomingError } = await supabase
+        const { data: upcoming } = await supabase
           .from('send_queue')
           .select('id, scheduled_at')
           .eq('status', 'pending')
@@ -56,119 +48,56 @@ serve(async (req) => {
           .order('scheduled_at', { ascending: true })
           .limit(1);
 
-        if (upcomingError) {
-          console.error('[Sender] Error checking upcoming messages:', upcomingError);
-        }
-
         if (upcoming && upcoming.length > 0) {
-          const scheduledAt = new Date(upcoming[0].scheduled_at).getTime();
-          const now = Date.now();
           const waitTime = Math.min(
-            Math.max(scheduledAt - now + 100, 0),
+            Math.max(new Date(upcoming[0].scheduled_at).getTime() - Date.now() + 100, 0),
             5000
           );
-          
           if (waitTime > 0 && (Date.now() - startTime + waitTime) < MAX_EXECUTION_TIME) {
-            console.log(`[Sender] Waiting ${waitTime}ms for scheduled message at ${upcoming[0].scheduled_at}`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           }
         }
-        
-        // No more messages to process
-        console.log('[Sender] No more messages to process, exiting loop');
         break;
       }
 
-      console.log(`[Sender] Processing batch of ${queueItems.length} messages`);
-
       for (const item of queueItems) {
         try {
-          // Buscar user_id da conversation para multi-tenancy
-          const { data: conversation, error: convError } = await supabase
-            .from('conversations')
-            .select('user_id')
-            .eq('id', item.conversation_id)
-            .single();
+          // Get settings with triple fallback
+          const { data: conversation } = await supabase
+            .from('conversations').select('user_id').eq('id', item.conversation_id).single();
 
-          if (convError || !conversation) {
-            console.error(`[Sender] Error fetching conversation ${item.conversation_id}:`, convError);
-            throw new Error('Conversation not found');
-          }
+          if (!conversation) throw new Error('Conversation not found');
 
           const userId = conversation.user_id;
-          
-          // Buscar settings do cache ou do banco com fallback triplo
           const cacheKey = userId || 'global';
           let settings = settingsCache[cacheKey];
+          
           if (!settings) {
-            let settingsData = null;
-
-            // 1. Tentar por user_id da conversa
-            if (userId) {
-              const { data } = await supabase
-                .from('nina_settings')
-                .select('whatsapp_access_token, whatsapp_phone_number_id')
-                .eq('user_id', userId)
-                .maybeSingle();
-              settingsData = data;
-            }
-
-            // 2. Fallback: buscar global (user_id IS NULL)
-            if (!settingsData) {
-              console.log('[Sender] No user-specific settings, trying global...');
-              const { data } = await supabase
-                .from('nina_settings')
-                .select('whatsapp_access_token, whatsapp_phone_number_id')
-                .is('user_id', null)
-                .maybeSingle();
-              settingsData = data;
-            }
-
-            // 3. Último fallback: qualquer settings com WhatsApp configurado
-            if (!settingsData) {
-              console.log('[Sender] No global settings, fetching any with WhatsApp...');
-              const { data } = await supabase
-                .from('nina_settings')
-                .select('whatsapp_access_token, whatsapp_phone_number_id')
-                .not('whatsapp_phone_number_id', 'is', null)
-                .limit(1)
-                .maybeSingle();
-              settingsData = data;
-            }
-
-            if (!settingsData) {
-              console.error('[Sender] No settings found with any fallback');
-              throw new Error('Settings not found');
-            }
-
-            if (!settingsData.whatsapp_access_token || !settingsData.whatsapp_phone_number_id) {
-              console.error('[Sender] WhatsApp not configured in settings');
-              throw new Error('WhatsApp not configured');
-            }
-
-            settings = settingsData;
+            settings = await getSettings(supabase, userId);
+            if (!settings) throw new Error('Settings not found');
             settingsCache[cacheKey] = settings;
           }
 
-          await sendMessage(supabase, settings, item);
+          const provider = settings.whatsapp_provider || 'evolution';
+
+          if (provider === 'evolution') {
+            await sendMessageEvolution(supabase, settings, item);
+          } else {
+            await sendMessageCloudAPI(supabase, settings, item);
+          }
           
-          // Mark as completed
           await supabase
             .from('send_queue')
-            .update({ 
-              status: 'completed', 
-              sent_at: new Date().toISOString() 
-            })
+            .update({ status: 'completed', sent_at: new Date().toISOString() })
             .eq('id', item.id);
           
           totalSent++;
-          console.log(`[Sender] Successfully sent message ${item.id} (${totalSent} total)`);
+          console.log(`[Sender] Sent message ${item.id} (${totalSent} total)`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`[Sender] Error sending item ${item.id}:`, error);
+          console.error(`[Sender] Error sending ${item.id}:`, error);
           
-          // Mark as failed with retry
           const newRetryCount = (item.retry_count || 0) + 1;
           const shouldRetry = newRetryCount < 3;
           
@@ -178,159 +107,155 @@ serve(async (req) => {
               status: shouldRetry ? 'pending' : 'failed',
               retry_count: newRetryCount,
               error_message: errorMessage,
-              scheduled_at: shouldRetry 
-                ? new Date(Date.now() + newRetryCount * 60000).toISOString() 
-                : null
+              scheduled_at: shouldRetry ? new Date(Date.now() + newRetryCount * 60000).toISOString() : null
             })
             .eq('id', item.id);
         }
       }
     }
 
-    const executionTime = Date.now() - startTime;
-    console.log(`[Sender] Completed: sent ${totalSent} messages in ${iterations} iterations (${executionTime}ms)`);
-
-    return new Response(JSON.stringify({ 
-      sent: totalSent, 
-      iterations,
-      executionTime 
-    }), {
+    return new Response(JSON.stringify({ sent: totalSent, iterations, executionTime: Date.now() - startTime }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
     console.error('[Sender] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
 
-async function sendMessage(supabase: any, settings: any, queueItem: any) {
-  console.log(`[Sender] Sending message: ${queueItem.id}`);
-
-  // Get contact phone number
-  const { data: contact } = await supabase
-    .from('contacts')
-    .select('phone_number, whatsapp_id')
-    .eq('id', queueItem.contact_id)
-    .maybeSingle();
-
-  if (!contact) {
-    throw new Error('Contact not found');
+async function getSettings(supabase: any, userId: string | null) {
+  const selectFields = 'whatsapp_provider, whatsapp_access_token, whatsapp_phone_number_id, evolution_api_url, evolution_api_key, evolution_instance_name';
+  
+  if (userId) {
+    const { data } = await supabase.from('nina_settings').select(selectFields).eq('user_id', userId).maybeSingle();
+    if (data) return data;
   }
 
-  const recipient = contact.whatsapp_id || contact.phone_number;
+  const { data: global } = await supabase.from('nina_settings').select(selectFields).is('user_id', null).maybeSingle();
+  if (global) return global;
 
-  // Build WhatsApp API payload
-  let payload: any = {
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: recipient
-  };
+  const { data: any } = await supabase.from('nina_settings').select(selectFields).limit(1).maybeSingle();
+  return any;
+}
+
+// =============================================
+// Evolution API Sender
+// =============================================
+async function sendMessageEvolution(supabase: any, settings: any, queueItem: any) {
+  if (!settings.evolution_api_url || !settings.evolution_api_key || !settings.evolution_instance_name) {
+    throw new Error('Evolution API not configured');
+  }
+
+  const { data: contact } = await supabase
+    .from('contacts').select('phone_number, whatsapp_id').eq('id', queueItem.contact_id).maybeSingle();
+  if (!contact) throw new Error('Contact not found');
+
+  const recipient = contact.whatsapp_id || contact.phone_number;
+  const baseUrl = settings.evolution_api_url.replace(/\/$/, '');
+  const instance = settings.evolution_instance_name;
+  const headers = { 'Content-Type': 'application/json', 'apikey': settings.evolution_api_key };
+
+  let endpoint = '';
+  let body: any = {};
 
   switch (queueItem.message_type) {
     case 'text':
-      payload.type = 'text';
-      payload.text = { body: queueItem.content };
+      endpoint = `/message/sendText/${instance}`;
+      body = { number: recipient, text: queueItem.content };
       break;
-    
     case 'image':
-      payload.type = 'image';
-      payload.image = { 
-        link: queueItem.media_url,
-        caption: queueItem.content || undefined
-      };
+      endpoint = `/message/sendMedia/${instance}`;
+      body = { number: recipient, mediatype: 'image', media: queueItem.media_url, caption: queueItem.content || '' };
       break;
-    
     case 'audio':
-      payload.type = 'audio';
-      payload.audio = { link: queueItem.media_url };
+      endpoint = `/message/sendWhatsAppAudio/${instance}`;
+      body = { number: recipient, audio: queueItem.media_url };
       break;
-    
     case 'document':
-      payload.type = 'document';
-      payload.document = { 
-        link: queueItem.media_url,
-        filename: queueItem.content || 'document'
-      };
+      endpoint = `/message/sendMedia/${instance}`;
+      body = { number: recipient, mediatype: 'document', media: queueItem.media_url, fileName: queueItem.content || 'document' };
       break;
-    
     default:
-      payload.type = 'text';
-      payload.text = { body: queueItem.content };
+      endpoint = `/message/sendText/${instance}`;
+      body = { number: recipient, text: queueItem.content };
   }
 
-  console.log('[Sender] WhatsApp API payload:', JSON.stringify(payload, null, 2));
+  console.log('[Sender:Evolution] Sending to:', `${baseUrl}${endpoint}`);
 
-  // Send via WhatsApp Cloud API
-  const response = await fetch(
-    `${WHATSAPP_API_URL}/${settings.whatsapp_phone_number_id}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${settings.whatsapp_access_token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    }
-  );
+  const response = await fetch(`${baseUrl}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
 
   const responseData = await response.json();
 
   if (!response.ok) {
-    console.error('[Sender] WhatsApp API error:', responseData);
-    throw new Error(responseData.error?.message || 'WhatsApp API error');
+    console.error('[Sender:Evolution] API error:', responseData);
+    throw new Error(responseData.message || responseData.error || 'Evolution API error');
   }
+
+  const whatsappMessageId = responseData.key?.id || responseData.id || null;
+  console.log('[Sender:Evolution] Sent, ID:', whatsappMessageId);
+
+  await updateMessageRecord(supabase, queueItem, whatsappMessageId);
+}
+
+// =============================================
+// Cloud API Sender (legacy)
+// =============================================
+async function sendMessageCloudAPI(supabase: any, settings: any, queueItem: any) {
+  if (!settings.whatsapp_access_token || !settings.whatsapp_phone_number_id) {
+    throw new Error('WhatsApp Cloud API not configured');
+  }
+
+  const { data: contact } = await supabase
+    .from('contacts').select('phone_number, whatsapp_id').eq('id', queueItem.contact_id).maybeSingle();
+  if (!contact) throw new Error('Contact not found');
+
+  const recipient = contact.whatsapp_id || contact.phone_number;
+  let payload: any = { messaging_product: 'whatsapp', recipient_type: 'individual', to: recipient };
+
+  switch (queueItem.message_type) {
+    case 'text': payload.type = 'text'; payload.text = { body: queueItem.content }; break;
+    case 'image': payload.type = 'image'; payload.image = { link: queueItem.media_url, caption: queueItem.content || undefined }; break;
+    case 'audio': payload.type = 'audio'; payload.audio = { link: queueItem.media_url }; break;
+    case 'document': payload.type = 'document'; payload.document = { link: queueItem.media_url, filename: queueItem.content || 'document' }; break;
+    default: payload.type = 'text'; payload.text = { body: queueItem.content };
+  }
+
+  const response = await fetch(`${WHATSAPP_API_URL}/${settings.whatsapp_phone_number_id}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${settings.whatsapp_access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) throw new Error(responseData.error?.message || 'WhatsApp API error');
 
   const whatsappMessageId = responseData.messages?.[0]?.id;
-  console.log('[Sender] Message sent, WA ID:', whatsappMessageId);
+  await updateMessageRecord(supabase, queueItem, whatsappMessageId);
+}
 
-  // Update or create message record in database
+async function updateMessageRecord(supabase: any, queueItem: any, whatsappMessageId: string | null) {
   if (queueItem.message_id) {
-    // UPDATE existing message (for human messages)
-    console.log('[Sender] Updating existing message:', queueItem.message_id);
-    const { error: msgError } = await supabase
-      .from('messages')
-      .update({
-        whatsapp_message_id: whatsappMessageId,
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      })
-      .eq('id', queueItem.message_id);
-
-    if (msgError) {
-      console.error('[Sender] Error updating message record:', msgError);
-      // Don't throw - message was sent successfully
-    }
+    await supabase.from('messages').update({
+      whatsapp_message_id: whatsappMessageId, status: 'sent', sent_at: new Date().toISOString()
+    }).eq('id', queueItem.message_id);
   } else {
-    // INSERT new message (for Nina messages)
-    console.log('[Sender] Creating new message record');
-    const { error: msgError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: queueItem.conversation_id,
-        whatsapp_message_id: whatsappMessageId,
-        content: queueItem.content,
-        type: queueItem.message_type,
-        from_type: queueItem.from_type,
-        status: 'sent',
-        media_url: queueItem.media_url || null,
-        sent_at: new Date().toISOString(),
-        metadata: queueItem.metadata || {}
-      });
-
-    if (msgError) {
-      console.error('[Sender] Error creating message record:', msgError);
-      // Don't throw - message was sent successfully
-    }
+    await supabase.from('messages').insert({
+      conversation_id: queueItem.conversation_id, whatsapp_message_id: whatsappMessageId,
+      content: queueItem.content, type: queueItem.message_type, from_type: queueItem.from_type,
+      status: 'sent', media_url: queueItem.media_url || null,
+      sent_at: new Date().toISOString(), metadata: queueItem.metadata || {}
+    });
   }
 
-  // Update conversation last_message_at
-  await supabase
-    .from('conversations')
+  await supabase.from('conversations')
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', queueItem.conversation_id);
 }

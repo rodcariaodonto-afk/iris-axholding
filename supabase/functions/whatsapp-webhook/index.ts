@@ -13,7 +13,6 @@ const corsHeaders = {
 const GROUPING_DELAY_MS = 10000; // 10 seconds
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,14 +22,13 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    // GET request = Webhook verification from WhatsApp
+    // GET request = Webhook verification (Meta Cloud API format - kept for backwards compat)
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const mode = url.searchParams.get('hub.mode');
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      // Get verify token from settings (get the first one that has a token)
       const { data: settings } = await supabase
         .from('nina_settings')
         .select('whatsapp_verify_token')
@@ -49,293 +47,19 @@ serve(async (req) => {
       }
     }
 
-    // POST request = Incoming message from WhatsApp
+    // POST request = Incoming message
     if (req.method === 'POST') {
       const body = await req.json();
       console.log('[Webhook] Received payload:', JSON.stringify(body, null, 2));
 
-      // Extract message data from WhatsApp Cloud API format
-      const entry = body.entry?.[0];
-      const changes = entry?.changes?.[0];
-      const value = changes?.value;
+      // Detect provider format
+      const isEvolutionAPI = body.event || body.instance;
       
-      if (!value) {
-        console.log('[Webhook] No value in payload, ignoring');
-        return new Response(JSON.stringify({ status: 'ignored' }), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-
-      const messages = value.messages;
-      const contacts = value.contacts;
-      const phoneNumberId = value.metadata?.phone_number_id;
-
-      // Find the user who owns this phone number ID
-      const { data: ownerSettings } = await supabase
-        .from('nina_settings')
-        .select('user_id, whatsapp_access_token')
-        .eq('whatsapp_phone_number_id', phoneNumberId)
-        .maybeSingle();
-
-      let ownerId = ownerSettings?.user_id || null;
-      
-      // Se não encontrou owner específico ou user_id é null, buscar o admin do sistema
-      if (!ownerId) {
-        console.log('[Webhook] No owner in settings, looking for system admin...');
-        const { data: adminRole } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'admin')
-          .limit(1)
-          .maybeSingle();
-        
-        ownerId = adminRole?.user_id || null;
-        
-        if (ownerId) {
-          console.log('[Webhook] Using admin as owner:', ownerId);
-        } else {
-          console.warn('[Webhook] No admin found in system - contacts will have null user_id');
-        }
+      if (isEvolutionAPI) {
+        return await handleEvolutionWebhook(supabase, body, supabaseUrl, supabaseServiceKey);
       } else {
-        console.log('[Webhook] Found owner user_id:', ownerId);
+        return await handleCloudAPIWebhook(supabase, body, supabaseUrl, supabaseServiceKey);
       }
-
-      // Handle status updates (delivered, read, etc)
-      if (value.statuses) {
-        for (const status of value.statuses) {
-          console.log('[Webhook] Status update:', status);
-          
-          // Update message status in database
-          if (status.id) {
-            const statusMap: Record<string, string> = {
-              'sent': 'sent',
-              'delivered': 'delivered',
-              'read': 'read',
-              'failed': 'failed'
-            };
-            
-            const newStatus = statusMap[status.status];
-            if (newStatus) {
-              await supabase
-                .from('messages')
-                .update({ 
-                  status: newStatus,
-                  ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() }),
-                  ...(newStatus === 'read' && { read_at: new Date().toISOString() })
-                })
-                .eq('whatsapp_message_id', status.id);
-            }
-          }
-        }
-        
-        return new Response(JSON.stringify({ status: 'processed_statuses' }), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-
-      // Process incoming messages - CREATE RECORDS IMMEDIATELY
-      if (messages && messages.length > 0) {
-        const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
-
-        for (const message of messages) {
-          const contactInfo = contacts?.find((c: any) => c.wa_id === message.from);
-          const phoneNumber = message.from;
-          const whatsappId = contactInfo?.wa_id || phoneNumber;
-          const contactName = contactInfo?.profile?.name || null;
-
-          // 1. Get or create contact IMMEDIATELY
-          let { data: contact } = await supabase
-            .from('contacts')
-            .select('*')
-            .eq('phone_number', phoneNumber)
-            .maybeSingle();
-
-          if (!contact) {
-            const { data: newContact, error: contactError } = await supabase
-              .from('contacts')
-              .insert({
-                phone_number: phoneNumber,
-                whatsapp_id: whatsappId,
-                name: contactName,
-                call_name: contactName?.split(' ')[0] || null,
-                user_id: null
-              })
-              .select()
-              .single();
-
-            if (contactError) {
-              console.error('[Webhook] Error creating contact:', contactError);
-              continue;
-            }
-            contact = newContact;
-            console.log('[Webhook] Created new contact:', contact.id);
-          } else {
-            // Update contact activity
-            const updates: any = { last_activity: new Date().toISOString() };
-            if (contactName && !contact.name) {
-              updates.name = contactName;
-              updates.call_name = contactName.split(' ')[0];
-            }
-            // Removed user_id update to maintain single-tenant null pattern
-            
-            await supabase
-              .from('contacts')
-              .update(updates)
-              .eq('id', contact.id);
-          }
-
-          // 2. Get or create conversation IMMEDIATELY
-          let { data: conversation } = await supabase
-            .from('conversations')
-            .select('*')
-            .eq('contact_id', contact.id)
-            .eq('is_active', true)
-            .maybeSingle();
-
-          if (!conversation) {
-            const { data: newConversation, error: convError } = await supabase
-              .from('conversations')
-              .insert({
-                contact_id: contact.id,
-                status: 'nina',
-                is_active: true,
-                user_id: null
-              })
-              .select()
-              .single();
-
-            if (convError) {
-              console.error('[Webhook] Error creating conversation:', convError);
-              continue;
-            }
-            conversation = newConversation;
-            console.log('[Webhook] Created new conversation:', conversation.id);
-          }
-          // Removed user_id update to maintain single-tenant null pattern
-
-          // 3. Determine message content and type
-          let messageContent = '';
-          let messageType = 'text';
-          let mediaType = null;
-
-          switch (message.type) {
-            case 'text':
-              messageContent = message.text?.body || '';
-              messageType = 'text';
-              break;
-            case 'image':
-              messageContent = message.image?.caption || '[imagem recebida]';
-              messageType = 'image';
-              mediaType = 'image';
-              break;
-            case 'audio':
-              // Audio will be transcribed by message-grouper
-              messageContent = '[áudio - processando transcrição...]';
-              messageType = 'audio';
-              mediaType = 'audio';
-              break;
-            case 'video':
-              messageContent = message.video?.caption || '[vídeo recebido]';
-              messageType = 'video';
-              mediaType = 'video';
-              break;
-            case 'document':
-              messageContent = message.document?.filename || '[documento recebido]';
-              messageType = 'document';
-              mediaType = 'document';
-              break;
-            default:
-              messageContent = `[${message.type}]`;
-          }
-
-          // 4. Create message IMMEDIATELY (for realtime updates)
-          const { data: dbMessage, error: msgError } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: conversation.id,
-              whatsapp_message_id: message.id,
-              content: messageContent,
-              type: messageType,
-              from_type: 'user',
-              status: 'sent',
-              media_type: mediaType,
-              sent_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
-              metadata: { 
-                original_type: message.type,
-                media_id: message.audio?.id || message.image?.id || message.video?.id || message.document?.id || null
-              }
-            })
-            .select()
-            .single();
-
-          if (msgError) {
-            // If duplicate key error, message was already processed
-            if (msgError.code === '23505') {
-              console.log('[Webhook] Duplicate message ignored:', message.id);
-              continue;
-            }
-            console.error('[Webhook] Error creating message:', msgError);
-            continue;
-          }
-
-          console.log('[Webhook] Created message:', dbMessage.id, 'for conversation:', conversation.id);
-
-          // 5. Update conversation last_message_at
-          await supabase
-            .from('conversations')
-            .update({ last_message_at: new Date().toISOString() })
-            .eq('id', conversation.id);
-
-          // 6. FIRST reset timer for all pending messages from same phone, THEN insert new queue entry
-          await supabase
-            .from('message_grouping_queue')
-            .update({ process_after: processAfter })
-            .eq('processed', false)
-            .eq('phone_number_id', phoneNumberId)
-            .filter('message_data->>from', 'eq', phoneNumber);
-
-          // 7. Insert into message_grouping_queue with message_id reference
-          const { error: queueError } = await supabase
-            .from('message_grouping_queue')
-            .insert({
-              whatsapp_message_id: message.id,
-              phone_number_id: phoneNumberId,
-              message_id: dbMessage.id,
-              message_data: message,
-              contacts_data: contactInfo || null,
-              process_after: processAfter
-            });
-
-          if (queueError) {
-            if (queueError.code === '23505') {
-              console.log('[Webhook] Duplicate queue entry ignored:', message.id);
-            } else {
-              console.error('[Webhook] Queue insert error:', queueError);
-            }
-          } else {
-            console.log('[Webhook] Message queued:', message.id, 'process_after:', processAfter);
-          }
-        }
-
-        // Trigger message-grouper in background (non-blocking)
-        EdgeRuntime.waitUntil(
-          fetch(`${supabaseUrl}/functions/v1/message-grouper`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`
-            },
-            body: JSON.stringify({ triggered_by: 'whatsapp-webhook' })
-          }).catch(err => console.error('[Webhook] Error triggering message-grouper:', err))
-        );
-      }
-
-      return new Response(JSON.stringify({ status: 'processed' }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
     }
 
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
@@ -349,3 +73,463 @@ serve(async (req) => {
     });
   }
 });
+
+// =============================================
+// Evolution API Handler
+// =============================================
+async function handleEvolutionWebhook(
+  supabase: any, 
+  body: any, 
+  supabaseUrl: string, 
+  supabaseServiceKey: string
+) {
+  const event = body.event;
+  const instanceName = body.instance;
+
+  console.log('[Webhook:Evolution] Event:', event, 'Instance:', instanceName);
+
+  // Handle connection status events
+  if (event === 'connection.update') {
+    console.log('[Webhook:Evolution] Connection update:', body.data?.state);
+    return new Response(JSON.stringify({ status: 'connection_update' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Handle message status updates
+  if (event === 'messages.update') {
+    const data = body.data;
+    if (data?.key?.id && data?.update?.status) {
+      const statusMap: Record<number, string> = {
+        2: 'sent',
+        3: 'delivered', 
+        4: 'read',
+        5: 'read',
+      };
+      const newStatus = statusMap[data.update.status];
+      if (newStatus) {
+        await supabase
+          .from('messages')
+          .update({
+            status: newStatus,
+            ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() }),
+            ...(newStatus === 'read' && { read_at: new Date().toISOString() })
+          })
+          .eq('whatsapp_message_id', data.key.id);
+      }
+    }
+    return new Response(JSON.stringify({ status: 'processed_status' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Only process incoming messages
+  if (event !== 'messages.upsert') {
+    console.log('[Webhook:Evolution] Ignoring event:', event);
+    return new Response(JSON.stringify({ status: 'ignored' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const data = body.data;
+  if (!data) {
+    console.log('[Webhook:Evolution] No data in payload');
+    return new Response(JSON.stringify({ status: 'no_data' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Skip messages sent by us
+  if (data.key?.fromMe) {
+    console.log('[Webhook:Evolution] Skipping own message');
+    return new Response(JSON.stringify({ status: 'own_message' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Extract phone number from remoteJid (format: 5511999999999@s.whatsapp.net)
+  const remoteJid = data.key?.remoteJid || '';
+  const phoneNumber = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+  
+  // Skip group messages
+  if (remoteJid.endsWith('@g.us')) {
+    console.log('[Webhook:Evolution] Skipping group message');
+    return new Response(JSON.stringify({ status: 'group_message' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const messageId = data.key?.id;
+  const contactName = data.pushName || null;
+  const timestamp = data.messageTimestamp || Math.floor(Date.now() / 1000);
+
+  // Find owner - look for settings with this instance name
+  const { data: ownerSettings } = await supabase
+    .from('nina_settings')
+    .select('user_id')
+    .eq('evolution_instance_name', instanceName)
+    .maybeSingle();
+
+  let ownerId = ownerSettings?.user_id || null;
+  
+  if (!ownerId) {
+    const { data: adminRole } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin')
+      .limit(1)
+      .maybeSingle();
+    ownerId = adminRole?.user_id || null;
+  }
+
+  // Get or create contact
+  let { data: contact } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('phone_number', phoneNumber)
+    .maybeSingle();
+
+  if (!contact) {
+    const { data: newContact, error: contactError } = await supabase
+      .from('contacts')
+      .insert({
+        phone_number: phoneNumber,
+        whatsapp_id: phoneNumber,
+        name: contactName,
+        call_name: contactName?.split(' ')[0] || null,
+        user_id: null
+      })
+      .select()
+      .single();
+
+    if (contactError) {
+      console.error('[Webhook:Evolution] Error creating contact:', contactError);
+      return new Response(JSON.stringify({ status: 'error', error: contactError.message }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    contact = newContact;
+    console.log('[Webhook:Evolution] Created contact:', contact.id);
+  } else {
+    const updates: any = { last_activity: new Date().toISOString() };
+    if (contactName && !contact.name) {
+      updates.name = contactName;
+      updates.call_name = contactName.split(' ')[0];
+    }
+    await supabase.from('contacts').update(updates).eq('id', contact.id);
+  }
+
+  // Get or create conversation
+  let { data: conversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('contact_id', contact.id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!conversation) {
+    const { data: newConv, error: convError } = await supabase
+      .from('conversations')
+      .insert({
+        contact_id: contact.id,
+        status: 'nina',
+        is_active: true,
+        user_id: null
+      })
+      .select()
+      .single();
+
+    if (convError) {
+      console.error('[Webhook:Evolution] Error creating conversation:', convError);
+      return new Response(JSON.stringify({ status: 'error' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    conversation = newConv;
+    console.log('[Webhook:Evolution] Created conversation:', conversation.id);
+  }
+
+  // Determine message content and type
+  let messageContent = '';
+  let messageType = 'text';
+  let mediaType = null;
+  let mediaId = null;
+  const msg = data.message;
+
+  if (msg?.conversation) {
+    messageContent = msg.conversation;
+  } else if (msg?.extendedTextMessage?.text) {
+    messageContent = msg.extendedTextMessage.text;
+  } else if (msg?.imageMessage) {
+    messageContent = msg.imageMessage.caption || '[imagem recebida]';
+    messageType = 'image';
+    mediaType = 'image';
+    mediaId = messageId;
+  } else if (msg?.audioMessage) {
+    messageContent = '[áudio - processando transcrição...]';
+    messageType = 'audio';
+    mediaType = 'audio';
+    mediaId = messageId;
+  } else if (msg?.videoMessage) {
+    messageContent = msg.videoMessage.caption || '[vídeo recebido]';
+    messageType = 'video';
+    mediaType = 'video';
+    mediaId = messageId;
+  } else if (msg?.documentMessage) {
+    messageContent = msg.documentMessage.fileName || '[documento recebido]';
+    messageType = 'document';
+    mediaType = 'document';
+    mediaId = messageId;
+  } else {
+    messageContent = '[mensagem não suportada]';
+  }
+
+  // Create message
+  const { data: dbMessage, error: msgError } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversation.id,
+      whatsapp_message_id: messageId,
+      content: messageContent,
+      type: messageType,
+      from_type: 'user',
+      status: 'sent',
+      media_type: mediaType,
+      sent_at: new Date(parseInt(timestamp) * 1000).toISOString(),
+      metadata: {
+        provider: 'evolution',
+        instance: instanceName,
+        media_id: mediaId,
+        original_message: msg
+      }
+    })
+    .select()
+    .single();
+
+  if (msgError) {
+    if (msgError.code === '23505') {
+      console.log('[Webhook:Evolution] Duplicate message ignored:', messageId);
+      return new Response(JSON.stringify({ status: 'duplicate' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    console.error('[Webhook:Evolution] Error creating message:', msgError);
+    return new Response(JSON.stringify({ status: 'error' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  console.log('[Webhook:Evolution] Created message:', dbMessage.id);
+
+  // Update conversation
+  await supabase
+    .from('conversations')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', conversation.id);
+
+  // Queue for grouping
+  const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
+  
+  // Reset timer for pending messages from same phone
+  await supabase
+    .from('message_grouping_queue')
+    .update({ process_after: processAfter })
+    .eq('processed', false)
+    .eq('phone_number_id', instanceName)
+    .filter('message_data->>from', 'eq', phoneNumber);
+
+  await supabase
+    .from('message_grouping_queue')
+    .insert({
+      whatsapp_message_id: messageId,
+      phone_number_id: instanceName,
+      message_id: dbMessage.id,
+      message_data: { from: phoneNumber, type: messageType, ...msg },
+      contacts_data: { wa_id: phoneNumber, profile: { name: contactName } },
+      process_after: processAfter
+    });
+
+  // Trigger message-grouper
+  EdgeRuntime.waitUntil(
+    fetch(`${supabaseUrl}/functions/v1/message-grouper`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`
+      },
+      body: JSON.stringify({ triggered_by: 'whatsapp-webhook-evolution' })
+    }).catch(err => console.error('[Webhook:Evolution] Error triggering message-grouper:', err))
+  );
+
+  return new Response(JSON.stringify({ status: 'processed' }), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+// =============================================
+// Cloud API Handler (legacy - kept for backward compat)
+// =============================================
+async function handleCloudAPIWebhook(
+  supabase: any, 
+  body: any, 
+  supabaseUrl: string, 
+  supabaseServiceKey: string
+) {
+  const entry = body.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const value = changes?.value;
+  
+  if (!value) {
+    console.log('[Webhook:CloudAPI] No value in payload, ignoring');
+    return new Response(JSON.stringify({ status: 'ignored' }), { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
+  }
+
+  const messages = value.messages;
+  const contacts = value.contacts;
+  const phoneNumberId = value.metadata?.phone_number_id;
+
+  const { data: ownerSettings } = await supabase
+    .from('nina_settings')
+    .select('user_id, whatsapp_access_token')
+    .eq('whatsapp_phone_number_id', phoneNumberId)
+    .maybeSingle();
+
+  let ownerId = ownerSettings?.user_id || null;
+  
+  if (!ownerId) {
+    const { data: adminRole } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin')
+      .limit(1)
+      .maybeSingle();
+    ownerId = adminRole?.user_id || null;
+  }
+
+  // Handle status updates
+  if (value.statuses) {
+    for (const status of value.statuses) {
+      if (status.id) {
+        const statusMap: Record<string, string> = {
+          'sent': 'sent', 'delivered': 'delivered', 'read': 'read', 'failed': 'failed'
+        };
+        const newStatus = statusMap[status.status];
+        if (newStatus) {
+          await supabase
+            .from('messages')
+            .update({ 
+              status: newStatus,
+              ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() }),
+              ...(newStatus === 'read' && { read_at: new Date().toISOString() })
+            })
+            .eq('whatsapp_message_id', status.id);
+        }
+      }
+    }
+    return new Response(JSON.stringify({ status: 'processed_statuses' }), { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
+  }
+
+  if (messages && messages.length > 0) {
+    const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
+
+    for (const message of messages) {
+      const contactInfo = contacts?.find((c: any) => c.wa_id === message.from);
+      const phoneNumber = message.from;
+      const whatsappId = contactInfo?.wa_id || phoneNumber;
+      const contactName = contactInfo?.profile?.name || null;
+
+      let { data: contact } = await supabase
+        .from('contacts').select('*').eq('phone_number', phoneNumber).maybeSingle();
+
+      if (!contact) {
+        const { data: newContact, error: contactError } = await supabase
+          .from('contacts')
+          .insert({ phone_number: phoneNumber, whatsapp_id: whatsappId, name: contactName, call_name: contactName?.split(' ')[0] || null, user_id: null })
+          .select().single();
+        if (contactError) { console.error('[Webhook:CloudAPI] Error creating contact:', contactError); continue; }
+        contact = newContact;
+      } else {
+        const updates: any = { last_activity: new Date().toISOString() };
+        if (contactName && !contact.name) { updates.name = contactName; updates.call_name = contactName.split(' ')[0]; }
+        await supabase.from('contacts').update(updates).eq('id', contact.id);
+      }
+
+      let { data: conversation } = await supabase
+        .from('conversations').select('*').eq('contact_id', contact.id).eq('is_active', true).maybeSingle();
+
+      if (!conversation) {
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({ contact_id: contact.id, status: 'nina', is_active: true, user_id: null })
+          .select().single();
+        if (convError) { console.error('[Webhook:CloudAPI] Error creating conversation:', convError); continue; }
+        conversation = newConv;
+      }
+
+      let messageContent = '', messageType = 'text', mediaType = null;
+      switch (message.type) {
+        case 'text': messageContent = message.text?.body || ''; break;
+        case 'image': messageContent = message.image?.caption || '[imagem recebida]'; messageType = 'image'; mediaType = 'image'; break;
+        case 'audio': messageContent = '[áudio - processando transcrição...]'; messageType = 'audio'; mediaType = 'audio'; break;
+        case 'video': messageContent = message.video?.caption || '[vídeo recebido]'; messageType = 'video'; mediaType = 'video'; break;
+        case 'document': messageContent = message.document?.filename || '[documento recebido]'; messageType = 'document'; mediaType = 'document'; break;
+        default: messageContent = `[${message.type}]`;
+      }
+
+      const { data: dbMessage, error: msgError } = await supabase.from('messages').insert({
+        conversation_id: conversation.id, whatsapp_message_id: message.id, content: messageContent,
+        type: messageType, from_type: 'user', status: 'sent', media_type: mediaType,
+        sent_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+        metadata: { provider: 'cloud_api', original_type: message.type, media_id: message.audio?.id || message.image?.id || message.video?.id || message.document?.id || null }
+      }).select().single();
+
+      if (msgError) {
+        if (msgError.code === '23505') { console.log('[Webhook:CloudAPI] Duplicate:', message.id); continue; }
+        console.error('[Webhook:CloudAPI] Error:', msgError); continue;
+      }
+
+      await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversation.id);
+
+      await supabase.from('message_grouping_queue')
+        .update({ process_after: processAfter })
+        .eq('processed', false).eq('phone_number_id', phoneNumberId)
+        .filter('message_data->>from', 'eq', phoneNumber);
+
+      await supabase.from('message_grouping_queue').insert({
+        whatsapp_message_id: message.id, phone_number_id: phoneNumberId,
+        message_id: dbMessage.id, message_data: message,
+        contacts_data: contactInfo || null, process_after: processAfter
+      });
+    }
+
+    EdgeRuntime.waitUntil(
+      fetch(`${supabaseUrl}/functions/v1/message-grouper`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+        body: JSON.stringify({ triggered_by: 'whatsapp-webhook-cloudapi' })
+      }).catch(err => console.error('[Webhook:CloudAPI] Error triggering message-grouper:', err))
+    );
+  }
+
+  return new Response(JSON.stringify({ status: 'processed' }), { 
+    status: 200, 
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+  });
+}
