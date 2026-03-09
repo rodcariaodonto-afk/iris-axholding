@@ -530,7 +530,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       setIsSaving(false);
     }
   }, [
-    user, activeStep, companyName, sdrName, accessToken, phoneNumberId, businessAccountId, verifyToken, 
+    user, activeStep, companyName, sdrName, evolutionApiUrl, evolutionApiKey, evolutionInstanceName, 
     systemPrompt, aiModelMode, elevenLabsApiKey, elevenLabsVoiceId, elevenLabsModel,
     audioResponseEnabled, elevenLabsStability, elevenLabsSimilarityBoost, elevenLabsSpeed,
     timezone, businessHoursStart, businessHoursEnd, businessDays, refetch
