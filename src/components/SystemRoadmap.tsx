@@ -2722,6 +2722,72 @@ verify_jwt = false`}</pre>
         </div>
       ),
     },
+    {
+      id: 'post-remix',
+      title: '🔄 Checklist Pós-Remix (IMPORTANTE)',
+      icon: Settings,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-lg p-6">
+            <p className="text-slate-300 mb-4">
+              Após remixar o projeto, as seguintes configurações manuais são necessárias para o funcionamento completo:
+            </p>
+          </div>
+
+          {/* Edge Functions verify_jwt */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
+            <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+              <Key className="w-5 h-5 text-amber-400" />
+              1. Configurar verify_jwt = false nas Edge Functions
+            </h4>
+            <p className="text-slate-400 text-sm mb-4">
+              As Edge Functions que recebem webhooks externos ou são chamadas sem autenticação precisam ter <code className="text-amber-400">verify_jwt = false</code> no Lovable Cloud.
+            </p>
+            <div className="bg-slate-950 border border-slate-700 rounded-lg p-4">
+              <p className="text-xs text-slate-400 mb-2">Edge Functions que precisam de verify_jwt = false:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'whatsapp-webhook', 'message-grouper', 'nina-orchestrator', 'whatsapp-sender',
+                  'initialize-system', 'validate-setup', 'simulate-webhook', 'simulate-audio-webhook',
+                  'test-whatsapp-message', 'test-elevenlabs-tts', 'generate-prompt', 'analyze-conversation',
+                  'health-check', 'seed-appointments', 'trigger-nina-orchestrator', 'trigger-whatsapp-sender'
+                ].map(fn => (
+                  <span key={fn} className="px-2 py-1 bg-slate-800 rounded text-xs text-emerald-400 font-mono">{fn}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Webhook Meta */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
+            <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-cyan-400" />
+              2. Configurar Webhook no Meta for Developers
+            </h4>
+            <p className="text-slate-400 text-sm">
+              Após o remix, a URL do webhook mudou. Atualize no Meta for Developers → WhatsApp → Configuration → Webhook URL com a nova URL do projeto.
+            </p>
+          </div>
+
+          {/* ElevenLabs */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
+            <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-purple-400" />
+              3. ElevenLabs API Key (Opcional)
+            </h4>
+            <p className="text-slate-400 text-sm">
+              Se você usa respostas em áudio, reconfigure a API key da ElevenLabs na aba APIs das Configurações.
+            </p>
+          </div>
+
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
+            <p className="text-emerald-300 text-sm">
+              ✅ As seguintes configurações já foram aplicadas automaticamente neste remix: Realtime, Triggers de banco, RLS policies e Polling fallback.
+            </p>
+          </div>
+        </div>
+      ),
+    },
   ];
 
   return (
