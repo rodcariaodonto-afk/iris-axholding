@@ -106,7 +106,6 @@ const Auth: React.FC = () => {
 
   return (
     <>
-    <RemixOverlay />
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Effects */}
       <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[128px] pointer-events-none -translate-x-1/2 -translate-y-1/2 z-0" />
