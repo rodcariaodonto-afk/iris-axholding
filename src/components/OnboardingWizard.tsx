@@ -244,11 +244,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
           setCompanyName(data.company_name || '');
           setSdrName(data.sdr_name || '');
           
-          // WhatsApp
-          setAccessToken(data.whatsapp_access_token || '');
-          setPhoneNumberId(data.whatsapp_phone_number_id || '');
-          setBusinessAccountId((data as any).whatsapp_business_account_id || '');
-          setVerifyToken(data.whatsapp_verify_token || '');
+          // WhatsApp (Evolution API)
+          setEvolutionApiUrl((data as any).evolution_api_url || '');
+          setEvolutionApiKey((data as any).evolution_api_key || '');
+          setEvolutionInstanceName((data as any).evolution_instance_name || '');
           
           // Agent - usar prompt padrão se vazio
           setSystemPrompt(data.system_prompt_override || DEFAULT_NINA_PROMPT);
