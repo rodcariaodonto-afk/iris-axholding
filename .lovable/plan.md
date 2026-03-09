@@ -1,15 +1,20 @@
 
 
-## Plano: Copiar RemixOverlay do projeto Nina Evolution
+# Plano: Ativar botão "Novo Contato" e trocar logo do sidebar
 
-### Alterações
+## Alterações
 
-1. **Criar `src/components/RemixOverlay.tsx`** - Copiar o componente completo do projeto de origem (overlay animado com 3 cards instrucionais: abrir menu, remix, ativar toggle)
+### 1. Ativar botão "Novo Contato" (Contacts.tsx)
+- Remover `disabled`, `opacity-50`, `cursor-not-allowed` do botão "Novo Contato"
+- Adicionar lógica para abrir um modal ou formulário de criação de contato (inicialmente pode ser um placeholder com toast)
 
-2. **Modificar `src/pages/Auth.tsx`** - Importar e renderizar `<RemixOverlay />` antes do div principal
+### 2. Trocar logo "VIVER DE IA" pela logo AXHUB (Sidebar.tsx)
+- Copiar a imagem AXHUB (`user-uploads://06bab71e-...jpeg`) para `src/assets/logo-axhub.png`
+- No footer do sidebar (linhas 115-129), substituir `viaLogoWhite` pela nova logo AXHUB
+- Atualizar o alt text
 
-### Detalhes Técnicos
-- O componente usa `framer-motion` (já instalado) e `lucide-react` (já instalado)
-- Overlay fixo com `z-[9999]` que cobre toda a tela com instruções visuais de como remixar o projeto
-- Será exibido na página de autenticação como no projeto original
+### Arquivos modificados
+- `src/assets/logo-axhub.png` — nova imagem
+- `src/components/Sidebar.tsx` — trocar logo no footer
+- `src/components/Contacts.tsx` — ativar botão "Novo Contato"
 
