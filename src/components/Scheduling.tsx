@@ -796,7 +796,7 @@ const Scheduling: React.FC = () => {
                  </div>
 
                  {/* Body */}
-                 <div className="p-6 space-y-6 flex-1">
+                 <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                      {selectedAppointment.description && (
                          <div className="space-y-2">
                              <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider">Descrição</h4>
