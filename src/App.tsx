@@ -9,6 +9,7 @@ import Team from './components/Team';
 import Scheduling from './components/Scheduling';
 import Kanban from './components/Kanban';
 import Auth from './pages/Auth';
+import MeetingRoom from './pages/MeetingRoom';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
