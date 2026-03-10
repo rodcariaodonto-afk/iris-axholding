@@ -697,6 +697,16 @@ export const api = {
       throw error;
     }
 
+    // Auto-generate meeting_url with Jitsi if not provided
+    if (!data.meeting_url) {
+      const autoMeetingUrl = `https://meet.jit.si/axhub-${data.id.slice(0, 8)}`;
+      await supabase
+        .from('appointments')
+        .update({ meeting_url: autoMeetingUrl })
+        .eq('id', data.id);
+      data.meeting_url = autoMeetingUrl;
+    }
+
     return {
       id: data.id,
       title: data.title,
