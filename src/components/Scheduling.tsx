@@ -1,22 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from './Button';
 import { Appointment, Contact } from '../types';
 import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 type ViewMode = 'month' | 'week' | 'day';
 
 const Scheduling: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, refreshConnection } = useGoogleCalendar();
   
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,6 +49,22 @@ const Scheduling: React.FC = () => {
     attendees: ''
   });
   const [editContactId, setEditContactId] = useState<string | null>(null);
+
+  // Handle Google Calendar callback params
+  useEffect(() => {
+    if (searchParams.get('gcal_connected') === 'true') {
+      toast.success('Google Agenda conectado com sucesso!');
+      refreshConnection();
+      searchParams.delete('gcal_connected');
+      setSearchParams(searchParams, { replace: true });
+    }
+    const gcalError = searchParams.get('gcal_error');
+    if (gcalError) {
+      toast.error(`Erro ao conectar Google Agenda: ${gcalError}`);
+      searchParams.delete('gcal_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -164,7 +183,7 @@ const Scheduling: React.FC = () => {
       const attendeesInput = (document.querySelector('[name="attendees"]') as HTMLInputElement)?.value || '';
       const attendeesArray = attendeesInput.split(',').map(a => a.trim()).filter(Boolean);
 
-      await api.createAppointment({
+      const created = await api.createAppointment({
         title: formData.title,
         description: formData.description,
         date: selectedDate,
@@ -174,6 +193,18 @@ const Scheduling: React.FC = () => {
         attendees: attendeesArray,
         contact_id: selectedContactId || undefined
       });
+
+      // Sync with Google Calendar if connected
+      if (gcalConnected && created) {
+        syncAppointment('create', {
+          id: created.id,
+          title: formData.title,
+          description: formData.description,
+          date: selectedDate,
+          time: formData.time,
+          duration: formData.duration,
+        });
+      }
 
       toast.success('Agendamento criado com sucesso!');
       setShowCreateModal(false);
@@ -194,6 +225,14 @@ const Scheduling: React.FC = () => {
     }
 
     try {
+      // Find appointment to get google_event_id
+      const app = appointments.find(a => a.id === id);
+      
+      // Sync delete with Google Calendar
+      if (gcalConnected && app) {
+        syncAppointment('delete', { google_event_id: (app as any).google_event_id });
+      }
+
       await api.deleteAppointment(id);
       toast.success('Agendamento excluído com sucesso!');
       setSelectedAppointment(null);
@@ -239,6 +278,19 @@ const Scheduling: React.FC = () => {
         attendees: attendeesArray,
         contact_id: editContactId || undefined
       });
+
+      // Sync with Google Calendar
+      if (gcalConnected) {
+        syncAppointment('update', {
+          id: selectedAppointment.id,
+          google_event_id: (selectedAppointment as any).google_event_id,
+          title: editFormData.title,
+          description: editFormData.description,
+          date: editFormData.date,
+          time: editFormData.time,
+          duration: editFormData.duration,
+        });
+      }
 
       toast.success('Agendamento atualizado com sucesso!');
       setShowEditModal(false);
@@ -511,6 +563,30 @@ const Scheduling: React.FC = () => {
                     <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
+
+            {/* Google Calendar Connection */}
+            {!gcalLoading && (
+              gcalConnected ? (
+                <button
+                  onClick={disconnectGcal}
+                  className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                  title="Google Agenda conectado"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Google Agenda</span>
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                </button>
+              ) : (
+                <button
+                  onClick={connectGcal}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-700 hover:text-white transition-colors"
+                  title="Conectar Google Agenda"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Conectar Google</span>
+                </button>
+              )
+            )}
 
             <Button onClick={() => { setSelectedDate(new Date().toISOString().split('T')[0]); setShowCreateModal(true); }}>
                 <Plus className="w-4 h-4 mr-2" />

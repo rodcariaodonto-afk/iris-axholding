@@ -22,6 +22,7 @@ export type Database = {
           date: string
           description: string | null
           duration: number
+          google_event_id: string | null
           id: string
           meeting_url: string | null
           metadata: Json | null
@@ -39,6 +40,7 @@ export type Database = {
           date: string
           description?: string | null
           duration?: number
+          google_event_id?: string | null
           id?: string
           meeting_url?: string | null
           metadata?: Json | null
@@ -56,6 +58,7 @@ export type Database = {
           date?: string
           description?: string | null
           duration?: number
+          google_event_id?: string | null
           id?: string
           meeting_url?: string | null
           metadata?: Json | null
@@ -404,6 +407,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      google_calendar_connections: {
+        Row: {
+          access_token: string
+          calendar_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          refresh_token: string
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          refresh_token: string
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          refresh_token?: string
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       message_grouping_queue: {
         Row: {
