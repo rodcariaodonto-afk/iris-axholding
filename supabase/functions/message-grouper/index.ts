@@ -79,7 +79,7 @@ serve(async (req) => {
           .eq('whatsapp_phone_number_id', phoneNumberId)
           .maybeSingle();
 
-        // If no settings found by phone_number_id, try global settings (Evolution uses instance name as phone_number_id)
+        // If no settings found by phone_number_id, try global settings
         let settings = ownerSettings;
         if (!settings) {
           const { data: globalSettings } = await supabase
@@ -122,7 +122,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Combine content and handle audio transcription
+        // Combine content and handle audio transcription + media processing
         const combinedContent = await combineAndTranscribeMessages(
           supabase,
           messages,
@@ -228,7 +228,74 @@ serve(async (req) => {
   }
 });
 
-// Combine content from multiple messages and transcribe audio
+// Upload media (image/document/audio) to Supabase Storage
+async function uploadMediaToStorage(
+  supabase: any,
+  buffer: ArrayBuffer,
+  conversationId: string,
+  mediaType: string,
+  mimeType: string
+): Promise<string | null> {
+  try {
+    const ext = getExtensionFromMime(mimeType);
+    const fileName = `${conversationId}/${Date.now()}.${ext}`;
+    
+    const { data, error } = await supabase.storage
+      .from('media-files')
+      .upload(fileName, buffer, {
+        contentType: mimeType,
+        cacheControl: '3600'
+      });
+
+    if (error) {
+      console.error('[MessageGrouper] Error uploading media:', error);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('media-files')
+      .getPublicUrl(fileName);
+
+    console.log('[MessageGrouper] Media uploaded:', urlData.publicUrl);
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('[MessageGrouper] Error uploading media to storage:', error);
+    return null;
+  }
+}
+
+function getExtensionFromMime(mimeType: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'video/mp4': 'mp4',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  };
+  return map[mimeType] || 'bin';
+}
+
+// Detect MIME type from message data
+function detectMimeType(messageData: any, messageType: string): string {
+  if (messageType === 'image') {
+    return messageData.imageMessage?.mimetype || messageData.image?.mime_type || 'image/jpeg';
+  }
+  if (messageType === 'document') {
+    return messageData.documentMessage?.mimetype || messageData.document?.mime_type || 'application/pdf';
+  }
+  if (messageType === 'audio') {
+    return messageData.audioMessage?.mimetype || messageData.audio?.mime_type || 'audio/ogg';
+  }
+  return 'application/octet-stream';
+}
+
+// Combine content from multiple messages and transcribe audio / download media
 async function combineAndTranscribeMessages(
   supabase: any,
   queueMessages: any[],
@@ -246,32 +313,32 @@ async function combineAndTranscribeMessages(
     if (!dbMsg) continue;
 
     let content = dbMsg.content || '';
+    const conversationId = dbMsg.conversation_id;
 
-    // Handle audio transcription - support both Evolution API and Meta Cloud API
+    // Detect message type from both Evolution API and Meta Cloud API formats
     const isAudio = messageData.type === 'audio' || messageData.messageType === 'audioMessage' || messageData.audioMessage;
-    
-    if (isAudio && lovableApiKey) {
-      console.log('[MessageGrouper] Detected audio message, attempting transcription...');
-      
-      let audioBuffer: ArrayBuffer | null = null;
+    const isImage = messageData.type === 'image' || messageData.messageType === 'imageMessage' || messageData.imageMessage;
+    const isDocument = messageData.type === 'document' || messageData.messageType === 'documentMessage' || messageData.documentMessage;
 
-      // Try Evolution API first (audioMessage.url contains direct WhatsApp media URL)
-      const evolutionAudioUrl = messageData.audioMessage?.url;
-      const evolutionBase64 = messageData.audioMessage?.base64;
+    // Handle media download (audio, image, document)
+    if ((isAudio || isImage || isDocument) && lovableApiKey) {
+      const mediaTypeLabel = isAudio ? 'audio' : isImage ? 'image' : 'document';
+      console.log(`[MessageGrouper] Detected ${mediaTypeLabel} message, processing...`);
+      
+      let mediaBuffer: ArrayBuffer | null = null;
+      const mimeType = detectMimeType(messageData, mediaTypeLabel);
+
+      // Try Evolution API first
+      const evolutionMediaObj = messageData.audioMessage || messageData.imageMessage || messageData.documentMessage;
+      const evolutionMediaUrl = evolutionMediaObj?.url;
+      const evolutionBase64 = evolutionMediaObj?.base64;
       
       if (evolutionBase64) {
-        // If base64 is directly available in the message data
-        console.log('[MessageGrouper] Using base64 audio from Evolution message data');
-        const binaryString = atob(evolutionBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let j = 0; j < binaryString.length; j++) {
-          bytes[j] = binaryString.charCodeAt(j);
-        }
-        audioBuffer = bytes.buffer;
-      } else if (evolutionAudioUrl && settings?.evolution_api_url && settings?.evolution_api_key) {
-        // Download via Evolution API's getBase64FromMediaMessage endpoint
-        console.log('[MessageGrouper] Downloading audio via Evolution API');
-        audioBuffer = await downloadEvolutionMedia(
+        console.log(`[MessageGrouper] Using base64 ${mediaTypeLabel} from Evolution message data`);
+        mediaBuffer = base64ToArrayBuffer(evolutionBase64);
+      } else if (evolutionMediaUrl && settings?.evolution_api_url && settings?.evolution_api_key) {
+        console.log(`[MessageGrouper] Downloading ${mediaTypeLabel} via Evolution API`);
+        mediaBuffer = await downloadEvolutionMedia(
           settings.evolution_api_url,
           settings.evolution_api_key,
           settings.evolution_instance_name,
@@ -279,40 +346,70 @@ async function combineAndTranscribeMessages(
         );
       }
       
-      // Fallback: try direct URL if Evolution API failed or not configured
-      if (!audioBuffer && evolutionAudioUrl) {
-        console.log('[MessageGrouper] Fallback: Attempting direct download from WhatsApp CDN URL');
-        audioBuffer = await downloadDirectUrl(evolutionAudioUrl);
+      // Fallback: try direct URL
+      if (!mediaBuffer && evolutionMediaUrl) {
+        console.log(`[MessageGrouper] Fallback: direct download from URL`);
+        mediaBuffer = await downloadDirectUrl(evolutionMediaUrl);
       }
       
       // Fallback to Meta Cloud API
-      if (!audioBuffer && messageData.audio?.id && settings?.whatsapp_access_token) {
-        console.log('[MessageGrouper] Downloading audio via Meta Cloud API');
-        audioBuffer = await downloadWhatsAppMedia(settings, messageData.audio.id);
+      const metaMediaId = messageData.audio?.id || messageData.image?.id || messageData.document?.id;
+      if (!mediaBuffer && metaMediaId && settings?.whatsapp_access_token) {
+        console.log(`[MessageGrouper] Downloading ${mediaTypeLabel} via Meta Cloud API`);
+        mediaBuffer = await downloadWhatsAppMedia(settings, metaMediaId);
       }
 
-      if (audioBuffer) {
-        console.log('[MessageGrouper] Audio downloaded, size:', audioBuffer.byteLength, 'bytes. Transcribing...');
-        const transcription = await transcribeAudio(audioBuffer, lovableApiKey);
-        if (transcription) {
-          content = transcription;
+      if (mediaBuffer) {
+        console.log(`[MessageGrouper] ${mediaTypeLabel} downloaded, size:`, mediaBuffer.byteLength, 'bytes');
+
+        // Upload to storage
+        const publicUrl = await uploadMediaToStorage(supabase, mediaBuffer, conversationId, mediaTypeLabel, mimeType);
+        
+        if (publicUrl) {
+          // Update message with media_url
           await supabase
             .from('messages')
-            .update({ content: transcription })
+            .update({ media_url: publicUrl })
             .eq('id', dbMsg.id);
-          console.log('[MessageGrouper] Audio transcribed successfully:', transcription.substring(0, 100));
-        } else {
-          console.error('[MessageGrouper] Transcription returned empty');
+          console.log(`[MessageGrouper] ${mediaTypeLabel} URL saved to message:`, publicUrl);
+        }
+
+        // Transcribe audio
+        if (isAudio) {
+          const transcription = await transcribeAudio(mediaBuffer, lovableApiKey);
+          if (transcription) {
+            content = transcription;
+            await supabase
+              .from('messages')
+              .update({ content: transcription })
+              .eq('id', dbMsg.id);
+            console.log('[MessageGrouper] Audio transcribed:', transcription.substring(0, 100));
+          }
+        }
+        
+        // For images, set descriptive content with caption if available
+        if (isImage) {
+          const caption = messageData.imageMessage?.caption || messageData.image?.caption || '';
+          content = caption ? `[imagem: ${caption}]` : '[imagem recebida]';
+          // Update content with caption info
+          await supabase
+            .from('messages')
+            .update({ content })
+            .eq('id', dbMsg.id);
+        }
+        
+        // For documents, set content with filename
+        if (isDocument) {
+          const fileName = messageData.documentMessage?.fileName || messageData.document?.filename || 'documento';
+          const caption = messageData.documentMessage?.caption || messageData.document?.caption || '';
+          content = caption ? `[documento: ${fileName} - ${caption}]` : `[documento: ${fileName}]`;
+          await supabase
+            .from('messages')
+            .update({ content })
+            .eq('id', dbMsg.id);
         }
       } else {
-        console.error('[MessageGrouper] Failed to download audio. Settings:', {
-          hasEvolutionUrl: !!settings?.evolution_api_url,
-          hasEvolutionKey: !!settings?.evolution_api_key,
-          hasEvolutionInstance: !!settings?.evolution_instance_name,
-          hasWhatsappToken: !!settings?.whatsapp_access_token,
-          hasAudioMessageUrl: !!evolutionAudioUrl,
-          hasAudioId: !!messageData.audio?.id,
-        });
+        console.error(`[MessageGrouper] Failed to download ${mediaTypeLabel}`);
       }
     }
 
@@ -324,6 +421,15 @@ async function combineAndTranscribeMessages(
   return contentParts.join('\n');
 }
 
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let j = 0; j < binaryString.length; j++) {
+    bytes[j] = binaryString.charCodeAt(j);
+  }
+  return bytes.buffer;
+}
+
 // Download media via Evolution API's getBase64FromMediaMessage endpoint
 async function downloadEvolutionMedia(
   evolutionApiUrl: string,
@@ -332,7 +438,6 @@ async function downloadEvolutionMedia(
   messageData: any
 ): Promise<ArrayBuffer | null> {
   try {
-    // Use the Evolution API endpoint to get base64 from media message
     const endpoint = `${evolutionApiUrl}/chat/getBase64FromMediaMessage/${instanceName}`;
     console.log('[MessageGrouper] Evolution media endpoint:', endpoint);
 
@@ -364,15 +469,7 @@ async function downloadEvolutionMedia(
       return null;
     }
 
-    // Decode base64 to ArrayBuffer
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    console.log('[MessageGrouper] Evolution media downloaded, size:', bytes.buffer.byteLength, 'bytes');
-    return bytes.buffer;
+    return base64ToArrayBuffer(base64Data);
   } catch (error) {
     console.error('[MessageGrouper] Error downloading Evolution media:', error);
     return null;
@@ -447,7 +544,6 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string):
   try {
     console.log('[MessageGrouper] Transcribing audio via Gemini, size:', audioBuffer.byteLength, 'bytes');
 
-    // Convert ArrayBuffer to base64
     const uint8Array = new Uint8Array(audioBuffer);
     let binaryStr = '';
     for (let i = 0; i < uint8Array.length; i++) {

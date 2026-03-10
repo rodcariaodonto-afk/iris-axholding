@@ -688,20 +688,38 @@ async function processQueueItem(
     .order('sent_at', { ascending: false })
     .limit(20);
 
-  // Build conversation history for AI
-  const conversationHistory = (recentMessages || [])
-    .reverse()
-    .map((msg: any) => {
-      let content = msg.content || '[media]';
-      // For audio messages from user, prepend language hint so Nina responds in the same language
-      if (msg.from_type === 'user' && msg.type === 'audio' && content && content !== '[media]') {
-        content = `[Áudio transcrito do cliente]: "${content}"`;
+  // Build conversation history for AI (with multimodal support)
+  const conversationHistory: any[] = [];
+  for (const msg of (recentMessages || []).reverse()) {
+    const role = msg.from_type === 'user' ? 'user' : 'assistant';
+    let content: any = msg.content || '[media]';
+    
+    // For audio messages from user, prepend language hint
+    if (msg.from_type === 'user' && msg.type === 'audio' && content && content !== '[media]') {
+      content = `[Áudio transcrito do cliente]: "${content}"`;
+    }
+    
+    // For image messages with media_url, build multimodal content
+    if (msg.from_type === 'user' && msg.type === 'image' && msg.media_url) {
+      content = [
+        { type: "image_url", image_url: { url: msg.media_url } },
+        { type: "text", text: msg.content || 'O cliente enviou esta imagem. Analise o conteúdo visual e responda de acordo.' }
+      ];
+    }
+    
+    // For document messages with media_url (PDF), build multimodal content
+    if (msg.from_type === 'user' && msg.type === 'document' && msg.media_url) {
+      const isPdf = msg.media_url.endsWith('.pdf') || msg.media_type === 'application/pdf';
+      if (isPdf) {
+        content = [
+          { type: "image_url", image_url: { url: msg.media_url } },
+          { type: "text", text: msg.content || 'O cliente enviou este documento PDF. Analise o conteúdo e responda de acordo.' }
+        ];
       }
-      return {
-        role: msg.from_type === 'user' ? 'user' : 'assistant',
-        content
-      };
-    });
+    }
+    
+    conversationHistory.push({ role, content });
+  }
 
   // Get client memory
   const clientMemory = conversation.contact?.client_memory || {};
