@@ -442,22 +442,43 @@ async function downloadWhatsAppMedia(settings: any, mediaId: string): Promise<Ar
   }
 }
 
-// Transcribe audio using Lovable AI Gateway (Whisper)
+// Transcribe audio using Lovable AI Gateway (Gemini Flash)
 async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string): Promise<string | null> {
   try {
-    console.log('[MessageGrouper] Transcribing audio, size:', audioBuffer.byteLength, 'bytes');
+    console.log('[MessageGrouper] Transcribing audio via Gemini, size:', audioBuffer.byteLength, 'bytes');
 
-    const formData = new FormData();
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
-    formData.append('file', audioBlob, 'audio.ogg');
-    formData.append('model', 'whisper-1');
+    // Convert ArrayBuffer to base64
+    const uint8Array = new Uint8Array(audioBuffer);
+    let binaryStr = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+      binaryStr += String.fromCharCode(uint8Array[i]);
+    }
+    const base64Audio = btoa(binaryStr);
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json'
       },
-      body: formData
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{
+          role: "user",
+          content: [
+            {
+              inline_data: {
+                mime_type: "audio/ogg",
+                data: base64Audio
+              }
+            },
+            {
+              type: "text",
+              text: "Transcribe this audio exactly as spoken. Return ONLY the transcription, nothing else. Detect the language automatically."
+            }
+          ]
+        }]
+      })
     });
 
     if (!response.ok) {
@@ -467,10 +488,10 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string):
     }
 
     const result = await response.json();
-    const transcription = result.text;
+    const transcription = result.choices?.[0]?.message?.content || null;
     
     console.log('[MessageGrouper] Transcription result:', transcription);
-    return transcription || null;
+    return transcription;
   } catch (error) {
     console.error('[MessageGrouper] Error transcribing audio:', error);
     return null;
