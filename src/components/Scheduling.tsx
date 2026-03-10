@@ -183,7 +183,7 @@ const Scheduling: React.FC = () => {
       const attendeesInput = (document.querySelector('[name="attendees"]') as HTMLInputElement)?.value || '';
       const attendeesArray = attendeesInput.split(',').map(a => a.trim()).filter(Boolean);
 
-      await api.createAppointment({
+      const created = await api.createAppointment({
         title: formData.title,
         description: formData.description,
         date: selectedDate,
@@ -193,6 +193,18 @@ const Scheduling: React.FC = () => {
         attendees: attendeesArray,
         contact_id: selectedContactId || undefined
       });
+
+      // Sync with Google Calendar if connected
+      if (gcalConnected && created) {
+        syncAppointment('create', {
+          id: created.id,
+          title: formData.title,
+          description: formData.description,
+          date: selectedDate,
+          time: formData.time,
+          duration: formData.duration,
+        });
+      }
 
       toast.success('Agendamento criado com sucesso!');
       setShowCreateModal(false);
@@ -213,6 +225,14 @@ const Scheduling: React.FC = () => {
     }
 
     try {
+      // Find appointment to get google_event_id
+      const app = appointments.find(a => a.id === id);
+      
+      // Sync delete with Google Calendar
+      if (gcalConnected && app) {
+        syncAppointment('delete', { google_event_id: (app as any).google_event_id });
+      }
+
       await api.deleteAppointment(id);
       toast.success('Agendamento excluído com sucesso!');
       setSelectedAppointment(null);
