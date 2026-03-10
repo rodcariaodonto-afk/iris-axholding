@@ -102,9 +102,15 @@ Deno.serve(async (req) => {
     let result: any = null;
 
     if (action === 'create') {
-      const startDateTime = `${appointment.date}T${appointment.time}:00`;
-      const endMinutes = parseInt(appointment.time.split(':')[0]) * 60 + parseInt(appointment.time.split(':')[1]) + (appointment.duration || 60);
-      const endHours = Math.floor(endMinutes / 60);
+      // Normalize time to HH:MM format (database may send HH:MM:SS)
+      const timeParts = appointment.time.split(':');
+      const normalizedTime = `${timeParts[0]}:${timeParts[1]}`;
+      
+      const startDateTime = `${appointment.date}T${normalizedTime}:00`;
+      const startHour = parseInt(timeParts[0]);
+      const startMin = parseInt(timeParts[1]);
+      const endMinutes = startHour * 60 + startMin + (appointment.duration || 60);
+      const endHours = Math.floor(endMinutes / 60) % 24;
       const endMins = endMinutes % 60;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
       const endDateTime = `${appointment.date}T${endTime}:00`;
