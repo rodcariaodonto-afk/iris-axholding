@@ -249,6 +249,9 @@ const ChatInterface: React.FC = () => {
   };
 
   const handleStatusChange = async (status: ConversationStatus) => {
+    if (!activeChat) return;
+    await updateStatus(activeChat.id, status);
+  };
 
   const filteredConversations = conversations.filter(chat => {
     if (!searchQuery) return true;
