@@ -360,6 +360,8 @@ function mapDBMessageType(type: DBMessageType): MessageType {
   switch (type) {
     case 'image': return MessageType.IMAGE;
     case 'audio': return MessageType.AUDIO;
+    case 'document': return MessageType.DOCUMENT;
+    case 'video': return MessageType.VIDEO;
     default: return MessageType.TEXT;
   }
 }
