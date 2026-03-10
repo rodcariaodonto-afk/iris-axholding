@@ -161,10 +161,94 @@ const ChatInterface: React.FC = () => {
     await sendMessage(activeChat.id, content);
   };
 
-  const handleStatusChange = async (status: ConversationStatus) => {
-    if (!activeChat) return;
-    await updateStatus(activeChat.id, status);
+  const handleEmojiSelect = (emoji: string) => {
+    setInputText(prev => prev + emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeChat) return;
+    
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    
+    const maxSize = 16 * 1024 * 1024; // 16MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo: 16MB');
+      return;
+    }
+
+    const isImage = file.type.startsWith('image/');
+    const isDocument = file.type === 'application/pdf' || 
+                       file.type.includes('document') ||
+                       file.type.includes('spreadsheet');
+    
+    if (!isImage && !isDocument) {
+      toast.error('Tipo de arquivo não suportado. Envie imagens ou PDFs.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const filePath = `uploads/${activeChat.contactId}/${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('media-files')
+        .upload(filePath, file, { contentType: file.type });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('media-files')
+        .getPublicUrl(filePath);
+      
+      const mediaUrl = urlData.publicUrl;
+      const messageType = isImage ? 'image' : 'document';
+      const caption = isImage ? '📷 Imagem enviada' : `📎 ${file.name}`;
+      
+      // Insert message directly with media_url
+      const { error: msgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: activeChat.id,
+          content: caption,
+          type: messageType,
+          from_type: 'human',
+          status: 'sent',
+          media_url: mediaUrl,
+          media_type: file.type
+        });
+      
+      if (msgError) throw msgError;
+      
+      // Queue for WhatsApp sending
+      const { error: queueError } = await supabase
+        .from('send_queue')
+        .insert({
+          conversation_id: activeChat.id,
+          contact_id: activeChat.contactId,
+          content: caption,
+          message_type: messageType,
+          from_type: 'human',
+          media_url: mediaUrl,
+          status: 'pending'
+        });
+      
+      if (queueError) console.error('Error queueing for send:', queueError);
+      
+      toast.success(isImage ? 'Imagem enviada!' : 'Documento enviado!');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleStatusChange = async (status: ConversationStatus) => {
 
   const filteredConversations = conversations.filter(chat => {
     if (!searchQuery) return true;
