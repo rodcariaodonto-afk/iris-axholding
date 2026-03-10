@@ -668,30 +668,46 @@ const ChatInterface: React.FC = () => {
             <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur-sm z-10">
               <form onSubmit={handleSendMessage} className="flex items-end gap-3 max-w-4xl mx-auto">
                 <div className="flex items-center gap-1">
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled
-                    title="Em breve: Emoji picker"
-                    className="text-slate-500 rounded-full cursor-not-allowed opacity-50"
-                  >
-                    <Smile className="w-5 h-5" />
-                  </Button>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        title="Emojis"
+                        className="text-slate-400 rounded-full hover:text-cyan-400 hover:bg-slate-800/50"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="start" className="p-0 border-0 bg-transparent shadow-none w-auto">
+                      <EmojiPicker onSelect={handleEmojiSelect} />
+                    </PopoverContent>
+                  </Popover>
+                  
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="icon"
-                    disabled
-                    title="Em breve: Enviar anexos"
-                    className="text-slate-500 rounded-full cursor-not-allowed opacity-50"
+                    title="Enviar anexo"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-slate-400 rounded-full hover:text-cyan-400 hover:bg-slate-800/50"
                   >
-                    <Paperclip className="w-5 h-5" />
+                    {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
                 </div>
                 
                 <div className="flex-1 bg-slate-950 rounded-2xl border border-slate-800 focus-within:ring-2 focus-within:ring-cyan-500/30 focus-within:border-cyan-500/50 transition-all shadow-inner">
                   <textarea
+                    ref={textareaRef}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => {
