@@ -50,6 +50,22 @@ const Scheduling: React.FC = () => {
   });
   const [editContactId, setEditContactId] = useState<string | null>(null);
 
+  // Handle Google Calendar callback params
+  useEffect(() => {
+    if (searchParams.get('gcal_connected') === 'true') {
+      toast.success('Google Agenda conectado com sucesso!');
+      refreshConnection();
+      searchParams.delete('gcal_connected');
+      setSearchParams(searchParams, { replace: true });
+    }
+    const gcalError = searchParams.get('gcal_error');
+    if (gcalError) {
+      toast.error(`Erro ao conectar Google Agenda: ${gcalError}`);
+      searchParams.delete('gcal_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       try {
