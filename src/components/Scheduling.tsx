@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from './Button';
 import { Appointment, Contact } from '../types';
 import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 type ViewMode = 'month' | 'week' | 'day';
 
