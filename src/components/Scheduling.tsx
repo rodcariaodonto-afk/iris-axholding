@@ -279,6 +279,19 @@ const Scheduling: React.FC = () => {
         contact_id: editContactId || undefined
       });
 
+      // Sync with Google Calendar
+      if (gcalConnected) {
+        syncAppointment('update', {
+          id: selectedAppointment.id,
+          google_event_id: (selectedAppointment as any).google_event_id,
+          title: editFormData.title,
+          description: editFormData.description,
+          date: editFormData.date,
+          time: editFormData.time,
+          duration: editFormData.duration,
+        });
+      }
+
       toast.success('Agendamento atualizado com sucesso!');
       setShowEditModal(false);
       setSelectedAppointment(null);
