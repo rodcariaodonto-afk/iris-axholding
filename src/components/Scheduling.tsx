@@ -624,15 +624,15 @@ const Scheduling: React.FC = () => {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
                     <h3 className="text-lg font-bold text-white">Novo Agendamento</h3>
                     <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                     <div className="space-y-2">
                          <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Data Selecionada</label>
                          <div className="flex items-center gap-2 text-white font-medium bg-slate-950 p-3 rounded-lg border border-slate-800">
@@ -758,9 +758,9 @@ const Scheduling: React.FC = () => {
       {/* Appointment Details Modal */}
       {selectedAppointment && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
                  {/* Header */}
-                 <div className={`p-6 border-b border-slate-800 relative overflow-hidden ${getEventTypeColor(selectedAppointment.type).replace('text-', 'bg-').replace('/10', '/5')}`}>
+                 <div className={`p-6 border-b border-slate-800 relative overflow-hidden shrink-0 ${getEventTypeColor(selectedAppointment.type).replace('text-', 'bg-').replace('/10', '/5')}`}>
                      <div className="absolute top-0 right-0 p-4 opacity-5">
                          <CalendarIcon className="w-32 h-32" />
                      </div>
@@ -796,7 +796,7 @@ const Scheduling: React.FC = () => {
                  </div>
 
                  {/* Body */}
-                 <div className="p-6 space-y-6 flex-1">
+                 <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                      {selectedAppointment.description && (
                          <div className="space-y-2">
                              <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider">Descrição</h4>
@@ -886,7 +886,7 @@ const Scheduling: React.FC = () => {
       {/* Edit Appointment Modal */}
       {showEditModal && selectedAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-gradient-to-r from-cyan-950/30 to-slate-900">
               <div className="flex items-center gap-3">
