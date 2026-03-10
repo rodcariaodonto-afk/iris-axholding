@@ -123,13 +123,16 @@ export function useOnboardingStatus(): OnboardingStatus {
                 ...step,
                 isComplete: !!(settings.company_name && settings.sdr_name),
               };
-            case 'whatsapp':
+            case 'whatsapp': {
               const hasEvolution = !!(settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name);
               const hasMeta = !!(settings.whatsapp_access_token && settings.whatsapp_phone_number_id);
+              const whatsappComplete = hasEvolution || hasMeta;
+              console.log('[Onboarding] WhatsApp isComplete:', whatsappComplete, { hasEvolution, hasMeta });
               return {
                 ...step,
-                isComplete: hasEvolution || hasMeta,
+                isComplete: whatsappComplete,
               };
+            }
             case 'agent':
               return {
                 ...step,
