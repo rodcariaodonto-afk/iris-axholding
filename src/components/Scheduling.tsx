@@ -758,9 +758,9 @@ const Scheduling: React.FC = () => {
       {/* Appointment Details Modal */}
       {selectedAppointment && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
                  {/* Header */}
-                 <div className={`p-6 border-b border-slate-800 relative overflow-hidden ${getEventTypeColor(selectedAppointment.type).replace('text-', 'bg-').replace('/10', '/5')}`}>
+                 <div className={`p-6 border-b border-slate-800 relative overflow-hidden shrink-0 ${getEventTypeColor(selectedAppointment.type).replace('text-', 'bg-').replace('/10', '/5')}`}>
                      <div className="absolute top-0 right-0 p-4 opacity-5">
                          <CalendarIcon className="w-32 h-32" />
                      </div>
