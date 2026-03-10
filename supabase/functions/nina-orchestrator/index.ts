@@ -962,8 +962,33 @@ async function processQueueItem(
         }
       } catch (parseError) {
         console.error('[Nina] Error parsing cancel_appointment arguments:', parseError);
+    }
+
+    if (toolCall.function?.name === 'send_file') {
+      try {
+        const args = JSON.parse(toolCall.function.arguments);
+        console.log('[Nina] Processing send_file tool call:', args);
+        
+        const result = await sendFileFromLibrary(
+          supabase,
+          conversation.id,
+          conversation.contact_id,
+          args
+        );
+        
+        if (result.success) {
+          const emoji = result.file_type === 'image' ? '🖼️' : '📄';
+          aiContent = (aiContent || '') + `\n\n${emoji} Enviando: ${result.file_name}`;
+          console.log('[Nina] File send confirmation added');
+        } else if (result.error === 'no_file_found') {
+          console.log('[Nina] No file found for query:', args.search_query);
+          aiContent = (aiContent || '') + '\n\nDesculpe, não encontrei esse arquivo na nossa biblioteca no momento.';
+        }
+      } catch (parseError) {
+        console.error('[Nina] Error parsing send_file arguments:', parseError);
       }
     }
+  }
   }
 
   // If no content and we only got tool calls, generate a default response
