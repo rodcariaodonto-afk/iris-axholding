@@ -27,6 +27,10 @@ const ChatInterface: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [notesValue, setNotesValue] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Audio player state
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
