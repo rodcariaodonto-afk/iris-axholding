@@ -1,15 +1,19 @@
 
 
-## Plano: Copiar RemixOverlay do projeto Nina Evolution
+## Problem
 
-### Alterações
+The published URL (`nina-axhub.lovable.app`) is running an older version of the code that doesn't include the Evolution API check fix. The preview works correctly because it runs the latest code.
 
-1. **Criar `src/components/RemixOverlay.tsx`** - Copiar o componente completo do projeto de origem (overlay animado com 3 cards instrucionais: abrir menu, remix, ativar toggle)
+**Evidence:**
+- Preview (Lovable): WhatsApp ✅ green, 86% complete
+- Published URL: WhatsApp ⊙ yellow/pending, 71% complete
+- Database has Evolution API credentials filled, Meta WhatsApp fields are `null`
 
-2. **Modificar `src/pages/Auth.tsx`** - Importar e renderizar `<RemixOverlay />` antes do div principal
+## Solution
 
-### Detalhes Técnicos
-- O componente usa `framer-motion` (já instalado) e `lucide-react` (já instalado)
-- Overlay fixo com `z-[9999]` que cobre toda a tela com instruções visuais de como remixar o projeto
-- Será exibido na página de autenticação como no projeto original
+1. **Publish again** -- The latest code with the `hasEvolution || hasMeta` fix needs to be deployed. Use the "Share → Publish" button to redeploy.
+
+2. **No code changes needed** -- The current code in `src/hooks/useOnboardingStatus.ts` already has the correct logic. The fix just hasn't reached the live site yet.
+
+If after publishing again the issue persists (browser cache), try opening the published URL in an incognito/private window or doing a hard refresh (Ctrl+Shift+R / Cmd+Shift+R).
 
