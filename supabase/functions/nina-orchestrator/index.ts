@@ -691,10 +691,17 @@ async function processQueueItem(
   // Build conversation history for AI
   const conversationHistory = (recentMessages || [])
     .reverse()
-    .map((msg: any) => ({
-      role: msg.from_type === 'user' ? 'user' : 'assistant',
-      content: msg.content || '[media]'
-    }));
+    .map((msg: any) => {
+      let content = msg.content || '[media]';
+      // For audio messages from user, prepend language hint so Nina responds in the same language
+      if (msg.from_type === 'user' && msg.type === 'audio' && content && content !== '[media]') {
+        content = `[Áudio transcrito do cliente]: "${content}"`;
+      }
+      return {
+        role: msg.from_type === 'user' ? 'user' : 'assistant',
+        content
+      };
+    });
 
   // Get client memory
   const clientMemory = conversation.contact?.client_memory || {};
