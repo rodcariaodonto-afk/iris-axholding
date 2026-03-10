@@ -118,9 +118,11 @@ export function useOnboardingStatus(): OnboardingStatus {
                 isComplete: !!(settings.company_name && settings.sdr_name),
               };
             case 'whatsapp':
+              const hasEvolution = !!(settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name);
+              const hasMeta = !!(settings.whatsapp_access_token && settings.whatsapp_phone_number_id);
               return {
                 ...step,
-                isComplete: !!((settings as any).evolution_api_url && (settings as any).evolution_api_key && (settings as any).evolution_instance_name),
+                isComplete: hasEvolution || hasMeta,
               };
             case 'agent':
               return {
