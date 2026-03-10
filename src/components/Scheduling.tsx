@@ -564,6 +564,30 @@ const Scheduling: React.FC = () => {
                 </button>
             </div>
 
+            {/* Google Calendar Connection */}
+            {!gcalLoading && (
+              gcalConnected ? (
+                <button
+                  onClick={disconnectGcal}
+                  className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                  title="Google Agenda conectado"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Google Agenda</span>
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                </button>
+              ) : (
+                <button
+                  onClick={connectGcal}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-700 hover:text-white transition-colors"
+                  title="Conectar Google Agenda"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Conectar Google</span>
+                </button>
+              )
+            )}
+
             <Button onClick={() => { setSelectedDate(new Date().toISOString().split('T')[0]); setShowCreateModal(true); }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Agendar
