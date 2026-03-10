@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, MoreVertical, Phone, Paperclip, Send, Check, CheckCheck, 
   Smile, Play, Loader2, MessageSquare, Info, X, Mail, 
-  Tag, Bot, User, Pause, Brain, Plus
+  Tag, Bot, User, Pause, Brain, Plus, Image, FileText
 } from 'lucide-react';
 import { MessageDirection, MessageType, UIConversation, UIMessage, ConversationStatus, TagDefinition } from '../types';
 import { Button } from './Button';
@@ -12,6 +12,8 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { api } from '@/services/api';
 import { TagSelector } from './TagSelector';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import EmojiPicker from './EmojiPicker';
+import { supabase } from '@/integrations/supabase/client';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
@@ -25,6 +27,10 @@ const ChatInterface: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [notesValue, setNotesValue] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Audio player state
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -153,6 +159,93 @@ const ChatInterface: React.FC = () => {
     setInputText('');
     
     await sendMessage(activeChat.id, content);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setInputText(prev => prev + emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeChat) return;
+    
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    
+    const maxSize = 16 * 1024 * 1024; // 16MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo: 16MB');
+      return;
+    }
+
+    const isImage = file.type.startsWith('image/');
+    const isDocument = file.type === 'application/pdf' || 
+                       file.type.includes('document') ||
+                       file.type.includes('spreadsheet');
+    
+    if (!isImage && !isDocument) {
+      toast.error('Tipo de arquivo não suportado. Envie imagens ou PDFs.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const filePath = `uploads/${activeChat.contactId}/${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('media-files')
+        .upload(filePath, file, { contentType: file.type });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('media-files')
+        .getPublicUrl(filePath);
+      
+      const mediaUrl = urlData.publicUrl;
+      const messageType = isImage ? 'image' : 'document';
+      const caption = isImage ? '📷 Imagem enviada' : `📎 ${file.name}`;
+      
+      // Insert message directly with media_url
+      const { error: msgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: activeChat.id,
+          content: caption,
+          type: messageType,
+          from_type: 'human',
+          status: 'sent',
+          media_url: mediaUrl,
+          media_type: file.type
+        });
+      
+      if (msgError) throw msgError;
+      
+      // Queue for WhatsApp sending
+      const { error: queueError } = await supabase
+        .from('send_queue')
+        .insert({
+          conversation_id: activeChat.id,
+          contact_id: activeChat.contactId,
+          content: caption,
+          message_type: messageType,
+          from_type: 'human',
+          media_url: mediaUrl,
+          status: 'pending'
+        });
+      
+      if (queueError) console.error('Error queueing for send:', queueError);
+      
+      toast.success(isImage ? 'Imagem enviada!' : 'Documento enviado!');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleStatusChange = async (status: ConversationStatus) => {
@@ -575,30 +668,46 @@ const ChatInterface: React.FC = () => {
             <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur-sm z-10">
               <form onSubmit={handleSendMessage} className="flex items-end gap-3 max-w-4xl mx-auto">
                 <div className="flex items-center gap-1">
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled
-                    title="Em breve: Emoji picker"
-                    className="text-slate-500 rounded-full cursor-not-allowed opacity-50"
-                  >
-                    <Smile className="w-5 h-5" />
-                  </Button>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        title="Emojis"
+                        className="text-slate-400 rounded-full hover:text-cyan-400 hover:bg-slate-800/50"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="start" className="p-0 border-0 bg-transparent shadow-none w-auto">
+                      <EmojiPicker onSelect={handleEmojiSelect} />
+                    </PopoverContent>
+                  </Popover>
+                  
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="icon"
-                    disabled
-                    title="Em breve: Enviar anexos"
-                    className="text-slate-500 rounded-full cursor-not-allowed opacity-50"
+                    title="Enviar anexo"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-slate-400 rounded-full hover:text-cyan-400 hover:bg-slate-800/50"
                   >
-                    <Paperclip className="w-5 h-5" />
+                    {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
                 </div>
                 
                 <div className="flex-1 bg-slate-950 rounded-2xl border border-slate-800 focus-within:ring-2 focus-within:ring-cyan-500/30 focus-within:border-cyan-500/50 transition-all shadow-inner">
                   <textarea
+                    ref={textareaRef}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => {
