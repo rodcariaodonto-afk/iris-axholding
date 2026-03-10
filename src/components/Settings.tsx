@@ -101,6 +101,10 @@ const Settings: React.FC = () => {
               <BookOpen className="w-4 h-4" />
               Documentação
             </TabsTrigger>
+            <TabsTrigger value="media" className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              Arquivos
+            </TabsTrigger>
           </TabsList>
 
           {activeTab !== 'docs' && isAdmin && (
