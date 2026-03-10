@@ -95,6 +95,29 @@ const cancelAppointmentTool = {
   }
 };
 
+// Tool definition for sending files from media library
+const sendFileTool = {
+  type: "function",
+  function: {
+    name: "send_file",
+    description: "Enviar um arquivo da biblioteca de mídia para o cliente (PDF, catálogo, imagem, tabela de preços, etc). Use quando o cliente pedir informações que estão em um documento disponível na biblioteca.",
+    parameters: {
+      type: "object",
+      properties: {
+        search_query: {
+          type: "string",
+          description: "Termo de busca para encontrar o arquivo na biblioteca. Ex: 'catálogo', 'tabela de preços', 'proposta', 'apresentação'"
+        },
+        reason: {
+          type: "string",
+          description: "Motivo para enviar o arquivo (ex: 'cliente pediu tabela de preços')"
+        }
+      },
+      required: ["search_query"]
+    }
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
