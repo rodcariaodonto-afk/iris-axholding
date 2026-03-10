@@ -1,15 +1,18 @@
 
 
-## Plano: Copiar RemixOverlay do projeto Nina Evolution
+# Suporte Multilíngue na Transcrição de Áudio
 
-### Alterações
+## Problema
+A transcrição de áudio está **hardcoded para português** (`language: 'pt'`) no `message-grouper/index.ts` (linha 340). Isso força o Whisper a interpretar todos os áudios como português, mesmo quando o áudio é em inglês ou outro idioma.
 
-1. **Criar `src/components/RemixOverlay.tsx`** - Copiar o componente completo do projeto de origem (overlay animado com 3 cards instrucionais: abrir menu, remix, ativar toggle)
+O mesmo problema existe no `simulate-audio-webhook/index.ts` que usa ElevenLabs Scribe sem especificar idioma (mas o Scribe auto-detecta, então esse é menor).
 
-2. **Modificar `src/pages/Auth.tsx`** - Importar e renderizar `<RemixOverlay />` antes do div principal
+## Solução
+Remover o parâmetro `language: 'pt'` fixo da chamada de transcrição no `message-grouper`. Sem esse parâmetro, o Whisper detecta automaticamente o idioma do áudio, permitindo transcrição multilíngue.
 
-### Detalhes Técnicos
-- O componente usa `framer-motion` (já instalado) e `lucide-react` (já instalado)
-- Overlay fixo com `z-[9999]` que cobre toda a tela com instruções visuais de como remixar o projeto
-- Será exibido na página de autenticação como no projeto original
+### Alteração em `supabase/functions/message-grouper/index.ts`:
+- **Remover** a linha `formData.append('language', 'pt');` (linha 340)
+- Whisper passará a auto-detectar o idioma do áudio
+
+Isso é tudo que precisa mudar. Uma linha removida.
 
