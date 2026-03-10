@@ -467,14 +467,14 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string):
           role: "user",
           content: [
             {
-              inline_data: {
-                mime_type: "audio/ogg",
-                data: base64Audio
+              type: "image_url",
+              image_url: {
+                url: `data:audio/ogg;base64,${base64Audio}`
               }
             },
             {
               type: "text",
-              text: "Transcribe this audio exactly as spoken. Return ONLY the transcription, nothing else. Detect the language automatically."
+              text: "Transcribe this audio message exactly as spoken by the person. Return ONLY the raw transcription text, nothing else. Do NOT invent or guess content. Detect the language automatically and transcribe in that same language."
             }
           ]
         }]
