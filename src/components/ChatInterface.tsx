@@ -187,17 +187,71 @@ const ChatInterface: React.FC = () => {
 
   const renderMessageContent = (msg: UIMessage) => {
     if (msg.type === MessageType.IMAGE) {
+      const imageUrl = msg.mediaUrl || msg.content;
+      const isValidUrl = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'));
       return (
         <div className="mb-1 group relative">
-          <img 
-            src={msg.mediaUrl || msg.content} 
-            alt="Anexo" 
-            className="rounded-lg max-w-full h-auto max-h-72 object-cover border border-slate-700/50 shadow-lg"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://placehold.co/300x200/1e293b/cbd5e1?text=Erro+Imagem';
-            }}
-          />
+          {isValidUrl ? (
+            <a href={imageUrl} target="_blank" rel="noopener noreferrer">
+              <img 
+                src={imageUrl} 
+                alt="Anexo" 
+                className="rounded-lg max-w-full h-auto max-h-72 object-cover border border-slate-700/50 shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                loading="lazy"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://placehold.co/300x200/1e293b/cbd5e1?text=Erro+Imagem';
+                }}
+              />
+            </a>
+          ) : (
+            <div className="flex items-center gap-2 py-1 text-slate-400">
+              <Paperclip className="w-4 h-4" />
+              <span className="text-sm">📷 Imagem</span>
+            </div>
+          )}
+          {msg.content && !msg.content.startsWith('http') && !msg.content.startsWith('[imagem') && (
+            <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+          )}
+        </div>
+      );
+    }
+
+    if (msg.type === MessageType.DOCUMENT) {
+      const docUrl = msg.mediaUrl;
+      const isPdf = docUrl && (docUrl.endsWith('.pdf') || msg.content?.includes('.pdf'));
+      return (
+        <div className="mb-1">
+          {docUrl ? (
+            <a 
+              href={docUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                msg.direction === MessageDirection.OUTGOING 
+                  ? 'border-white/20 hover:bg-white/10' 
+                  : 'border-slate-600 hover:bg-slate-700/50'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                isPdf ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                <Paperclip className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {msg.content?.replace(/\[documento:\s*/, '').replace(/\]$/, '') || 'Documento'}
+                </p>
+                <p className={`text-xs ${msg.direction === MessageDirection.OUTGOING ? 'text-white/60' : 'text-slate-400'}`}>
+                  {isPdf ? 'PDF' : 'Documento'} • Clique para abrir
+                </p>
+              </div>
+            </a>
+          ) : (
+            <div className="flex items-center gap-2 py-1 text-slate-400">
+              <Paperclip className="w-4 h-4" />
+              <span className="text-sm">{msg.content || '📎 Documento'}</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -215,7 +269,6 @@ const ChatInterface: React.FC = () => {
           audio.pause();
           setPlayingAudioId(null);
         } else {
-          // Pause all other audios
           Object.values(audioRefs.current).forEach(a => a.pause());
           audio.play();
           setPlayingAudioId(msg.id);
@@ -224,7 +277,6 @@ const ChatInterface: React.FC = () => {
 
       return (
         <div className="flex items-center gap-3 min-w-[220px] py-1">
-          {/* Hidden audio element */}
           {msg.mediaUrl && (
             <audio
               ref={el => { if (el) audioRefs.current[msg.id] = el; }}
@@ -241,7 +293,6 @@ const ChatInterface: React.FC = () => {
             />
           )}
           
-          {/* Play/Pause button */}
           <button 
             onClick={togglePlay}
             disabled={!msg.mediaUrl}
@@ -258,7 +309,6 @@ const ChatInterface: React.FC = () => {
             )}
           </button>
           
-          {/* Progress bar and duration */}
           <div className="flex-1 flex flex-col gap-1 justify-center h-9">
             <div 
               className={`h-1.5 rounded-full overflow-hidden cursor-pointer ${
@@ -367,6 +417,7 @@ const ChatInterface: React.FC = () => {
                   <p className="text-xs text-slate-500 truncate">
                     {chat.messages[chat.messages.length - 1]?.type === MessageType.IMAGE ? '📷 Imagem' : 
                      chat.messages[chat.messages.length - 1]?.type === MessageType.AUDIO ? '🎵 Áudio' : 
+                     chat.messages[chat.messages.length - 1]?.type === MessageType.DOCUMENT ? '📎 Documento' :
                      chat.lastMessage || 'Sem mensagens'}
                   </p>
                   
