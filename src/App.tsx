@@ -78,6 +78,7 @@ const App: React.FC = () => {
               <Route path="/scheduling" element={<Scheduling />} />
               <Route path="/team" element={<Team />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/meeting/:id" element={<MeetingRoom />} />
             </Route>
             
             {/* Catch all - redirect to dashboard */}

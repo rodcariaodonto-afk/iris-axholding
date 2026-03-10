@@ -685,7 +685,7 @@ export const api = {
         type: appointment.type,
         attendees: appointment.attendees || [],
         contact_id: appointment.contact_id,
-        meeting_url: appointment.meeting_url,
+        meeting_url: appointment.meeting_url || null,
         status: 'scheduled',
         user_id: userId
       })
