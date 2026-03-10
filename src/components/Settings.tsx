@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock } from 'lucide-react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
 import SystemRoadmap from './SystemRoadmap';
+import MediaLibrary from './settings/MediaLibrary';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
@@ -100,9 +101,13 @@ const Settings: React.FC = () => {
               <BookOpen className="w-4 h-4" />
               Documentação
             </TabsTrigger>
+            <TabsTrigger value="media" className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              Arquivos
+            </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && isAdmin && (
             <div className="flex gap-3">
               <Button
                 variant="ghost"
@@ -132,7 +137,7 @@ const Settings: React.FC = () => {
             </div>
           )}
           
-          {activeTab !== 'docs' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -150,6 +155,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="docs">
           <SystemRoadmap />
+        </TabsContent>
+
+        <TabsContent value="media">
+          <MediaLibrary />
         </TabsContent>
       </Tabs>
     </div>

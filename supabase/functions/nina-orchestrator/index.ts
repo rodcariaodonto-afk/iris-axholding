@@ -95,6 +95,29 @@ const cancelAppointmentTool = {
   }
 };
 
+// Tool definition for sending files from media library
+const sendFileTool = {
+  type: "function",
+  function: {
+    name: "send_file",
+    description: "Enviar um arquivo da biblioteca de mídia para o cliente (PDF, catálogo, imagem, tabela de preços, etc). Use quando o cliente pedir informações que estão em um documento disponível na biblioteca.",
+    parameters: {
+      type: "object",
+      properties: {
+        search_query: {
+          type: "string",
+          description: "Termo de busca para encontrar o arquivo na biblioteca. Ex: 'catálogo', 'tabela de preços', 'proposta', 'apresentação'"
+        },
+        reason: {
+          type: "string",
+          description: "Motivo para enviar o arquivo (ex: 'cliente pediu tabela de preços')"
+        }
+      },
+      required: ["search_query"]
+    }
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -630,6 +653,57 @@ async function cancelAppointmentFromAI(
   return data;
 }
 
+// Send file from media library
+async function sendFileFromLibrary(
+  supabase: any,
+  conversationId: string,
+  contactId: string,
+  args: { search_query: string; reason?: string }
+): Promise<any> {
+  console.log('[Nina] Searching media library for:', args.search_query);
+
+  // Search by name, description and tags using ilike
+  const query = args.search_query.toLowerCase();
+  const { data: files } = await supabase
+    .from('media_library')
+    .select('*')
+    .eq('is_active', true)
+    .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+    .limit(5);
+
+  if (!files || files.length === 0) {
+    console.log('[Nina] No files found in media library for:', args.search_query);
+    return { error: 'no_file_found', search_query: args.search_query };
+  }
+
+  const file = files[0];
+  console.log('[Nina] Found file:', file.name, file.file_url);
+
+  // Queue file for sending
+  const messageType = file.file_type === 'image' ? 'image' : 'document';
+  const { error } = await supabase.from('send_queue').insert({
+    conversation_id: conversationId,
+    contact_id: contactId,
+    content: file.name,
+    from_type: 'nina',
+    message_type: messageType,
+    media_url: file.file_url,
+    priority: 1,
+    metadata: {
+      media_library_id: file.id,
+      send_reason: args.reason || 'client_request'
+    }
+  });
+
+  if (error) {
+    console.error('[Nina] Error queuing file:', error);
+    return { error: error.message };
+  }
+
+  console.log('[Nina] File queued for sending:', file.name);
+  return { success: true, file_name: file.name, file_type: messageType };
+}
+
 async function processQueueItem(
   supabase: any,
   lovableApiKey: string,
@@ -749,6 +823,10 @@ async function processQueueItem(
     tools.push(cancelAppointmentTool);
     console.log('[Nina] AI scheduling enabled, adding appointment tools (create, reschedule, cancel)');
   }
+
+  // Always add send_file tool (media library)
+  tools.push(sendFileTool);
+  console.log('[Nina] Added send_file tool (media library)');
 
   // Build request body
   const requestBody: any = {
@@ -884,8 +962,33 @@ async function processQueueItem(
         }
       } catch (parseError) {
         console.error('[Nina] Error parsing cancel_appointment arguments:', parseError);
+    }
+
+    if (toolCall.function?.name === 'send_file') {
+      try {
+        const args = JSON.parse(toolCall.function.arguments);
+        console.log('[Nina] Processing send_file tool call:', args);
+        
+        const result = await sendFileFromLibrary(
+          supabase,
+          conversation.id,
+          conversation.contact_id,
+          args
+        );
+        
+        if (result.success) {
+          const emoji = result.file_type === 'image' ? '🖼️' : '📄';
+          aiContent = (aiContent || '') + `\n\n${emoji} Enviando: ${result.file_name}`;
+          console.log('[Nina] File send confirmation added');
+        } else if (result.error === 'no_file_found') {
+          console.log('[Nina] No file found for query:', args.search_query);
+          aiContent = (aiContent || '') + '\n\nDesculpe, não encontrei esse arquivo na nossa biblioteca no momento.';
+        }
+      } catch (parseError) {
+        console.error('[Nina] Error parsing send_file arguments:', parseError);
       }
     }
+  }
   }
 
   // If no content and we only got tool calls, generate a default response
@@ -1165,6 +1268,12 @@ Fluxo de cancelamento:
 2. Confirme se deseja realmente cancelar
 3. Use cancel_appointment após confirmação
 4. Ofereça reagendar para outro momento se apropriado
+
+Envio de arquivos:
+- Você tem acesso a uma biblioteca de arquivos (PDFs, catálogos, imagens, propostas).
+- Use a ferramenta send_file quando o cliente pedir materiais, preços, catálogos, propostas ou documentos.
+- Busque pelo nome ou descrição do arquivo na biblioteca.
+- Após enviar, confirme ao cliente que o arquivo está sendo enviado.
 
 Trigger para oferecer agendamento:
 - Lead demonstrou interesse claro no Viver de IA
