@@ -21,7 +21,6 @@ serve(async (req) => {
   try {
     console.log('[MessageGrouper] Starting message grouping...');
 
-    // Fetch messages ready to process (timer expired and not processed)
     const { data: readyMessages, error: fetchError } = await supabase
       .from('message_grouping_queue')
       .select('*')
@@ -36,10 +35,7 @@ serve(async (req) => {
 
     if (!readyMessages || readyMessages.length === 0) {
       console.log('[MessageGrouper] No messages ready to process');
-      
-      // Check if there are pending messages with future process_after and schedule re-invocation
       await scheduleNextProcessing(supabase, supabaseUrl, supabaseServiceKey);
-      
       return new Response(JSON.stringify({ processed: 0, groups: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -70,22 +66,30 @@ serve(async (req) => {
 
     let processedCount = 0;
 
-    // Process each group
     for (const [phoneNumber, messages] of Object.entries(grouped)) {
       try {
         console.log(`[MessageGrouper] Processing group for ${phoneNumber} with ${messages.length} messages`);
 
-        // Get the phone_number_id from the first message
         const phoneNumberId = messages[0].phone_number_id;
 
-        // Get owner settings for this phone_number_id
+        // Get owner settings including Evolution API fields
         const { data: ownerSettings } = await supabase
           .from('nina_settings')
-          .select('user_id, whatsapp_access_token')
+          .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
           .eq('whatsapp_phone_number_id', phoneNumberId)
           .maybeSingle();
 
-        // Get all message_ids from the queue entries
+        // If no settings found by phone_number_id, try global settings (Evolution uses instance name as phone_number_id)
+        let settings = ownerSettings;
+        if (!settings) {
+          const { data: globalSettings } = await supabase
+            .from('nina_settings')
+            .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
+            .limit(1)
+            .maybeSingle();
+          settings = globalSettings;
+        }
+
         const messageIds = messages.map(m => m.message_id).filter(Boolean);
         
         if (messageIds.length === 0) {
@@ -93,7 +97,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Fetch the actual messages from the database
         const { data: dbMessages, error: dbMsgError } = await supabase
           .from('messages')
           .select('*')
@@ -105,11 +108,9 @@ serve(async (req) => {
           continue;
         }
 
-        // Get the last message's conversation for context
         const lastDbMessage = dbMessages[dbMessages.length - 1];
         const conversationId = lastDbMessage.conversation_id;
 
-        // Get conversation details
         const { data: conversation } = await supabase
           .from('conversations')
           .select('*, contacts(*)')
@@ -126,13 +127,12 @@ serve(async (req) => {
           supabase,
           messages,
           dbMessages,
-          ownerSettings,
+          settings,
           lovableApiKey
         );
 
         console.log(`[MessageGrouper] Combined content for ${phoneNumber}:`, combinedContent.substring(0, 200));
 
-        // Update the last message with combined content if multiple messages
         if (dbMessages.length > 1) {
           await supabase
             .from('messages')
@@ -148,7 +148,6 @@ serve(async (req) => {
           
           console.log(`[MessageGrouper] Updated last message with combined content`);
         } else if (dbMessages[0].type === 'audio' && combinedContent !== dbMessages[0].content) {
-          // Update single audio message with transcription
           await supabase
             .from('messages')
             .update({ content: combinedContent })
@@ -159,7 +158,6 @@ serve(async (req) => {
 
         // If conversation is handled by Nina, queue for AI processing
         if (conversation.status === 'nina') {
-          // Check if already in queue to avoid duplicates
           const { data: existingQueue } = await supabase
             .from('nina_processing_queue')
             .select('id')
@@ -188,7 +186,6 @@ serve(async (req) => {
             } else {
               console.log('[MessageGrouper] Message queued for Nina processing');
               
-              // Trigger nina-orchestrator
               fetch(`${supabaseUrl}/functions/v1/nina-orchestrator`, {
                 method: 'POST',
                 headers: {
@@ -212,8 +209,6 @@ serve(async (req) => {
     }
 
     console.log(`[MessageGrouper] Completed. Processed ${processedCount} messages in ${groupCount} groups`);
-
-    // Check if there are more pending messages and schedule re-invocation
     await scheduleNextProcessing(supabase, supabaseUrl, supabaseServiceKey);
 
     return new Response(JSON.stringify({ 
@@ -252,23 +247,70 @@ async function combineAndTranscribeMessages(
 
     let content = dbMsg.content || '';
 
-    // Handle audio transcription
-    if (messageData.type === 'audio') {
-      const audioMediaId = messageData.audio?.id;
-      if (audioMediaId && settings?.whatsapp_access_token && lovableApiKey) {
-        console.log('[MessageGrouper] Transcribing audio:', audioMediaId);
-        const audioBuffer = await downloadWhatsAppMedia(settings, audioMediaId);
-        if (audioBuffer) {
-          const transcription = await transcribeAudio(audioBuffer, lovableApiKey);
-          if (transcription) {
-            content = transcription;
-            // Update the message in database with transcription
-            await supabase
-              .from('messages')
-              .update({ content: transcription })
-              .eq('id', dbMsg.id);
-          }
+    // Handle audio transcription - support both Evolution API and Meta Cloud API
+    const isAudio = messageData.type === 'audio' || messageData.messageType === 'audioMessage' || messageData.audioMessage;
+    
+    if (isAudio && lovableApiKey) {
+      console.log('[MessageGrouper] Detected audio message, attempting transcription...');
+      
+      let audioBuffer: ArrayBuffer | null = null;
+
+      // Try Evolution API first (audioMessage.url contains direct WhatsApp media URL)
+      const evolutionAudioUrl = messageData.audioMessage?.url;
+      const evolutionBase64 = messageData.audioMessage?.base64;
+      
+      if (evolutionBase64) {
+        // If base64 is directly available in the message data
+        console.log('[MessageGrouper] Using base64 audio from Evolution message data');
+        const binaryString = atob(evolutionBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let j = 0; j < binaryString.length; j++) {
+          bytes[j] = binaryString.charCodeAt(j);
         }
+        audioBuffer = bytes.buffer;
+      } else if (evolutionAudioUrl && settings?.evolution_api_url && settings?.evolution_api_key) {
+        // Download via Evolution API's getBase64FromMediaMessage endpoint
+        console.log('[MessageGrouper] Downloading audio via Evolution API');
+        audioBuffer = await downloadEvolutionMedia(
+          settings.evolution_api_url,
+          settings.evolution_api_key,
+          settings.evolution_instance_name,
+          messageData
+        );
+      } else if (evolutionAudioUrl) {
+        // Try downloading directly from the WhatsApp CDN URL (may fail due to auth)
+        console.log('[MessageGrouper] Attempting direct download from WhatsApp CDN URL');
+        audioBuffer = await downloadDirectUrl(evolutionAudioUrl);
+      }
+      
+      // Fallback to Meta Cloud API
+      if (!audioBuffer && messageData.audio?.id && settings?.whatsapp_access_token) {
+        console.log('[MessageGrouper] Downloading audio via Meta Cloud API');
+        audioBuffer = await downloadWhatsAppMedia(settings, messageData.audio.id);
+      }
+
+      if (audioBuffer) {
+        console.log('[MessageGrouper] Audio downloaded, size:', audioBuffer.byteLength, 'bytes. Transcribing...');
+        const transcription = await transcribeAudio(audioBuffer, lovableApiKey);
+        if (transcription) {
+          content = transcription;
+          await supabase
+            .from('messages')
+            .update({ content: transcription })
+            .eq('id', dbMsg.id);
+          console.log('[MessageGrouper] Audio transcribed successfully:', transcription.substring(0, 100));
+        } else {
+          console.error('[MessageGrouper] Transcription returned empty');
+        }
+      } else {
+        console.error('[MessageGrouper] Failed to download audio. Settings:', {
+          hasEvolutionUrl: !!settings?.evolution_api_url,
+          hasEvolutionKey: !!settings?.evolution_api_key,
+          hasEvolutionInstance: !!settings?.evolution_instance_name,
+          hasWhatsappToken: !!settings?.whatsapp_access_token,
+          hasAudioMessageUrl: !!evolutionAudioUrl,
+          hasAudioId: !!messageData.audio?.id,
+        });
       }
     }
 
@@ -280,7 +322,77 @@ async function combineAndTranscribeMessages(
   return contentParts.join('\n');
 }
 
-// Download media from WhatsApp API
+// Download media via Evolution API's getBase64FromMediaMessage endpoint
+async function downloadEvolutionMedia(
+  evolutionApiUrl: string,
+  evolutionApiKey: string,
+  instanceName: string,
+  messageData: any
+): Promise<ArrayBuffer | null> {
+  try {
+    // Use the Evolution API endpoint to get base64 from media message
+    const endpoint = `${evolutionApiUrl}/chat/getBase64FromMediaMessage/${instanceName}`;
+    console.log('[MessageGrouper] Evolution media endpoint:', endpoint);
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': evolutionApiKey,
+      },
+      body: JSON.stringify({
+        message: {
+          key: messageData.key || messageData.message?.key,
+        },
+        convertToMp4: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[MessageGrouper] Evolution media download failed:', response.status, errorText);
+      return null;
+    }
+
+    const result = await response.json();
+    const base64Data = result.base64;
+
+    if (!base64Data) {
+      console.error('[MessageGrouper] No base64 data in Evolution response');
+      return null;
+    }
+
+    // Decode base64 to ArrayBuffer
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    console.log('[MessageGrouper] Evolution media downloaded, size:', bytes.buffer.byteLength, 'bytes');
+    return bytes.buffer;
+  } catch (error) {
+    console.error('[MessageGrouper] Error downloading Evolution media:', error);
+    return null;
+  }
+}
+
+// Download media directly from a URL
+async function downloadDirectUrl(url: string): Promise<ArrayBuffer | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error('[MessageGrouper] Direct URL download failed:', response.status);
+      return null;
+    }
+    return await response.arrayBuffer();
+  } catch (error) {
+    console.error('[MessageGrouper] Error downloading from direct URL:', error);
+    return null;
+  }
+}
+
+// Download media from WhatsApp Meta Cloud API
 async function downloadWhatsAppMedia(settings: any, mediaId: string): Promise<ArrayBuffer | null> {
   if (!settings?.whatsapp_access_token) {
     console.error('[MessageGrouper] No WhatsApp access token configured');
@@ -370,7 +482,6 @@ async function scheduleNextProcessing(
   supabaseServiceKey: string
 ): Promise<void> {
   try {
-    // Check for pending messages with future process_after
     const { data: pendingMessages, error } = await supabase
       .from('message_grouping_queue')
       .select('id, process_after')
@@ -391,14 +502,11 @@ async function scheduleNextProcessing(
 
     const nextProcessAt = new Date(pendingMessages[0].process_after);
     const now = Date.now();
-    const delayMs = Math.max(nextProcessAt.getTime() - now + 500, 1000); // +500ms buffer, min 1s
-    
-    // Cap delay at 30 seconds to prevent edge function timeout issues
+    const delayMs = Math.max(nextProcessAt.getTime() - now + 500, 1000);
     const cappedDelayMs = Math.min(delayMs, 30000);
 
     console.log(`[MessageGrouper] Scheduling self-invocation in ${cappedDelayMs}ms for pending message ${pendingMessages[0].id}`);
 
-    // Use EdgeRuntime.waitUntil for background task
     (globalThis as any).EdgeRuntime?.waitUntil?.(
       new Promise<void>((resolve) => {
         setTimeout(async () => {
