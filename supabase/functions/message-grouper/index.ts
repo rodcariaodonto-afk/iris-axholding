@@ -277,9 +277,11 @@ async function combineAndTranscribeMessages(
           settings.evolution_instance_name,
           messageData
         );
-      } else if (evolutionAudioUrl) {
-        // Try downloading directly from the WhatsApp CDN URL (may fail due to auth)
-        console.log('[MessageGrouper] Attempting direct download from WhatsApp CDN URL');
+      }
+      
+      // Fallback: try direct URL if Evolution API failed or not configured
+      if (!audioBuffer && evolutionAudioUrl) {
+        console.log('[MessageGrouper] Fallback: Attempting direct download from WhatsApp CDN URL');
         audioBuffer = await downloadDirectUrl(evolutionAudioUrl);
       }
       

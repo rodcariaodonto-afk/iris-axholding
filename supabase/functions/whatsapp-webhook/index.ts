@@ -354,7 +354,7 @@ async function handleEvolutionWebhook(
       whatsapp_message_id: messageId,
       phone_number_id: instanceName,
       message_id: dbMessage.id,
-      message_data: { from: phoneNumber, type: messageType, ...msg },
+      message_data: { from: phoneNumber, type: messageType, key: data.key, ...msg },
       contacts_data: { wa_id: phoneNumber, profile: { name: contactName } },
       process_after: processAfter
     });
