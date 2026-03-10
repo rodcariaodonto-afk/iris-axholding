@@ -824,6 +824,10 @@ async function processQueueItem(
     console.log('[Nina] AI scheduling enabled, adding appointment tools (create, reschedule, cancel)');
   }
 
+  // Always add send_file tool (media library)
+  tools.push(sendFileTool);
+  console.log('[Nina] Added send_file tool (media library)');
+
   // Build request body
   const requestBody: any = {
     model: aiSettings.model,
