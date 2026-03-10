@@ -83,12 +83,47 @@ export function useGoogleCalendar() {
     }
   };
 
+  const syncAllAppointments = async (appointments: any[]) => {
+    if (!isConnected) return { synced: 0, failed: 0 };
+
+    const unsyncedAppointments = appointments.filter(a => !a.google_event_id);
+    if (unsyncedAppointments.length === 0) return { synced: 0, failed: 0, alreadySynced: true };
+
+    let synced = 0;
+    let failed = 0;
+
+    for (const app of unsyncedAppointments) {
+      try {
+        const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
+          body: {
+            action: 'create',
+            appointment: {
+              id: app.id,
+              title: app.title,
+              description: app.description,
+              date: app.date,
+              time: app.time,
+              duration: app.duration,
+            },
+          },
+        });
+        if (error) throw error;
+        synced++;
+      } catch {
+        failed++;
+      }
+    }
+
+    return { synced, failed };
+  };
+
   return {
     isConnected,
     loading,
     connect,
     disconnect,
     syncAppointment,
+    syncAllAppointments,
     refreshConnection: checkConnection,
   };
 }

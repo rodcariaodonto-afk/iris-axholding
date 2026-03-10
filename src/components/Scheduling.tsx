@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink, RefreshCw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from './Button';
 import { Appointment, Contact } from '../types';
@@ -19,7 +19,8 @@ const Scheduling: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, refreshConnection } = useGoogleCalendar();
+  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection } = useGoogleCalendar();
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -567,15 +568,43 @@ const Scheduling: React.FC = () => {
             {/* Google Calendar Connection */}
             {!gcalLoading && (
               gcalConnected ? (
-                <button
-                  onClick={disconnectGcal}
-                  className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
-                  title="Google Agenda conectado"
-                >
-                  <CalendarIcon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Google Agenda</span>
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={async () => {
+                      setIsSyncingAll(true);
+                      try {
+                        const result = await syncAllAppointments(appointments);
+                        if (result.alreadySynced) {
+                          toast.info('Todos os agendamentos já estão sincronizados!');
+                        } else if (result.synced > 0) {
+                          toast.success(`${result.synced} agendamento(s) sincronizado(s) com Google Agenda!`);
+                        }
+                        if (result.failed > 0) {
+                          toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
+                        }
+                      } catch {
+                        toast.error('Erro ao sincronizar agendamentos');
+                      } finally {
+                        setIsSyncingAll(false);
+                      }
+                    }}
+                    disabled={isSyncingAll}
+                    className="flex items-center gap-1.5 px-2.5 py-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+                    title="Sincronizar todos os agendamentos com Google Agenda"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">{isSyncingAll ? 'Sincronizando...' : 'Sync Todos'}</span>
+                  </button>
+                  <button
+                    onClick={disconnectGcal}
+                    className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                    title="Google Agenda conectado"
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Google Agenda</span>
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={connectGcal}
