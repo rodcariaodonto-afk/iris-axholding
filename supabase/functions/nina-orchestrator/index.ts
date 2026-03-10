@@ -653,6 +653,57 @@ async function cancelAppointmentFromAI(
   return data;
 }
 
+// Send file from media library
+async function sendFileFromLibrary(
+  supabase: any,
+  conversationId: string,
+  contactId: string,
+  args: { search_query: string; reason?: string }
+): Promise<any> {
+  console.log('[Nina] Searching media library for:', args.search_query);
+
+  // Search by name, description and tags using ilike
+  const query = args.search_query.toLowerCase();
+  const { data: files } = await supabase
+    .from('media_library')
+    .select('*')
+    .eq('is_active', true)
+    .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+    .limit(5);
+
+  if (!files || files.length === 0) {
+    console.log('[Nina] No files found in media library for:', args.search_query);
+    return { error: 'no_file_found', search_query: args.search_query };
+  }
+
+  const file = files[0];
+  console.log('[Nina] Found file:', file.name, file.file_url);
+
+  // Queue file for sending
+  const messageType = file.file_type === 'image' ? 'image' : 'document';
+  const { error } = await supabase.from('send_queue').insert({
+    conversation_id: conversationId,
+    contact_id: contactId,
+    content: file.name,
+    from_type: 'nina',
+    message_type: messageType,
+    media_url: file.file_url,
+    priority: 1,
+    metadata: {
+      media_library_id: file.id,
+      send_reason: args.reason || 'client_request'
+    }
+  });
+
+  if (error) {
+    console.error('[Nina] Error queuing file:', error);
+    return { error: error.message };
+  }
+
+  console.log('[Nina] File queued for sending:', file.name);
+  return { success: true, file_name: file.name, file_type: messageType };
+}
+
 async function processQueueItem(
   supabase: any,
   lovableApiKey: string,
