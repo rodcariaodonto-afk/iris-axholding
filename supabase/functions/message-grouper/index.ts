@@ -337,7 +337,6 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string):
     const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
     formData.append('file', audioBlob, 'audio.ogg');
     formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: 'POST',
