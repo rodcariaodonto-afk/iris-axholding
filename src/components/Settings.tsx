@@ -156,6 +156,10 @@ const Settings: React.FC = () => {
         <TabsContent value="docs">
           <SystemRoadmap />
         </TabsContent>
+
+        <TabsContent value="media">
+          <MediaLibrary />
+        </TabsContent>
       </Tabs>
     </div>
   );
