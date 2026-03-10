@@ -9,6 +9,7 @@ import Team from './components/Team';
 import Scheduling from './components/Scheduling';
 import Kanban from './components/Kanban';
 import Auth from './pages/Auth';
+import MeetingRoom from './pages/MeetingRoom';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
@@ -77,6 +78,7 @@ const App: React.FC = () => {
               <Route path="/scheduling" element={<Scheduling />} />
               <Route path="/team" element={<Team />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/meeting/:id" element={<MeetingRoom />} />
             </Route>
             
             {/* Catch all - redirect to dashboard */}

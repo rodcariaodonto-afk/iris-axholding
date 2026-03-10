@@ -685,7 +685,7 @@ export const api = {
         type: appointment.type,
         attendees: appointment.attendees || [],
         contact_id: appointment.contact_id,
-        meeting_url: appointment.meeting_url,
+        meeting_url: appointment.meeting_url || null,
         status: 'scheduled',
         user_id: userId
       })
@@ -695,6 +695,16 @@ export const api = {
     if (error) {
       console.error('[API] Error creating appointment:', error);
       throw error;
+    }
+
+    // Auto-generate meeting_url with Jitsi if not provided
+    if (!data.meeting_url) {
+      const autoMeetingUrl = `https://meet.jit.si/axhub-${data.id.slice(0, 8)}`;
+      await supabase
+        .from('appointments')
+        .update({ meeting_url: autoMeetingUrl })
+        .eq('id', data.id);
+      data.meeting_url = autoMeetingUrl;
     }
 
     return {
