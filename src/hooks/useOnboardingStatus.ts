@@ -110,6 +110,12 @@ export function useOnboardingStatus(): OnboardingStatus {
         .maybeSingle();
 
       if (settings) {
+        console.log('[Onboarding] WhatsApp check:', {
+          evolution_api_url: !!settings.evolution_api_url,
+          evolution_api_key: !!settings.evolution_api_key,
+          evolution_instance_name: !!settings.evolution_instance_name,
+          whatsapp_access_token: !!settings.whatsapp_access_token,
+        });
         setSteps(prev => prev.map(step => {
           switch (step.id) {
             case 'identity':
