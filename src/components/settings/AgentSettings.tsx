@@ -1,11 +1,12 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Bot, Loader2, Calendar, Wand2, Building2, RotateCcw, Info } from 'lucide-react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { Bot, Loader2, Calendar, Wand2, Building2, RotateCcw, Info, Upload, X, Download, Image } from 'lucide-react';
 import { Button } from '../Button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './PromptGeneratorSheet';
 import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   Tooltip,
   TooltipContent,

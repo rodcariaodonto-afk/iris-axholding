@@ -92,7 +92,7 @@ const SidebarContent = () => {
     <>
       <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
         <div className="mb-6">
-          {open ? <Logo companyName={companyName} /> : <LogoIcon />}
+          {open ? <Logo companyName={companyName} companyLogoUrl={companyLogoUrl} /> : <LogoIcon companyLogoUrl={companyLogoUrl} />}
         </div>
         
         <nav className="flex flex-col gap-1.5">
