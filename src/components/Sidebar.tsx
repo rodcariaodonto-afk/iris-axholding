@@ -39,11 +39,11 @@ const Logo = ({ companyName, companyLogoUrl }: { companyName: string; companyLog
   );
 };
 
-const LogoIcon = () => {
+const LogoIcon = ({ companyLogoUrl }: { companyLogoUrl: string | null }) => {
   return (
     <Link to="/dashboard" className="flex items-center py-1">
       <div className="relative flex items-center justify-center flex-shrink-0">
-        <img src={axhubIcon} alt="AXHUB" className="h-10 w-auto object-contain rounded-lg" />
+        <img src={companyLogoUrl || axhubIcon} alt="Logo" className="h-10 w-auto object-contain rounded-lg" />
       </div>
     </Link>
   );
