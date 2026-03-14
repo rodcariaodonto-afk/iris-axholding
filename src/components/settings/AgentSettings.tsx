@@ -150,12 +150,14 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
           company_name: settings.company_name,
           sdr_name: settings.sdr_name,
           ai_scheduling_enabled: settings.ai_scheduling_enabled,
+          company_logo_url: settings.company_logo_url,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', settings.id!);
 
       if (error) throw error;
 
+      await refetchCompanySettings();
       toast.success('Configurações do agente salvas com sucesso!');
     } catch (error) {
       console.error('Error saving agent settings:', error);
