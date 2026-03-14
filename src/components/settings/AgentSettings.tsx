@@ -1,11 +1,12 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Bot, Loader2, Calendar, Wand2, Building2, RotateCcw, Info } from 'lucide-react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { Bot, Loader2, Calendar, Wand2, Building2, RotateCcw, Info, Upload, X, Download, Image } from 'lucide-react';
 import { Button } from '../Button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './PromptGeneratorSheet';
 import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   Tooltip,
   TooltipContent,
@@ -13,7 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface AgentSettings {
+interface AgentSettingsState {
   id?: string;
   system_prompt_override: string | null;
   is_active: boolean;
@@ -26,6 +27,7 @@ interface AgentSettings {
   company_name: string | null;
   sdr_name: string | null;
   ai_scheduling_enabled: boolean;
+  company_logo_url: string | null;
 }
 
 const DAYS_OF_WEEK = [
@@ -48,10 +50,13 @@ export interface AgentSettingsRef {
 
 const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   const { user } = useAuth();
+  const { refetch: refetchCompanySettings } = useCompanySettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
-  const [settings, setSettings] = useState<AgentSettings>({
+  const [settings, setSettings] = useState<AgentSettingsState>({
     system_prompt_override: null,
     is_active: true,
     auto_response_enabled: true,
@@ -63,6 +68,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     company_name: null,
     sdr_name: null,
     ai_scheduling_enabled: true,
+    company_logo_url: null,
   });
 
   useImperativeHandle(ref, () => ({
@@ -116,6 +122,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         company_name: data.company_name,
         sdr_name: data.sdr_name,
         ai_scheduling_enabled: data.ai_scheduling_enabled ?? true,
+        company_logo_url: (data as any).company_logo_url || null,
       });
     } catch (error) {
       console.error('[AgentSettings] Error loading settings:', error);
@@ -143,12 +150,14 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
           company_name: settings.company_name,
           sdr_name: settings.sdr_name,
           ai_scheduling_enabled: settings.ai_scheduling_enabled,
+          company_logo_url: settings.company_logo_url,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', settings.id!);
 
       if (error) throw error;
 
+      await refetchCompanySettings();
       toast.success('Configurações do agente salvas com sucesso!');
     } catch (error) {
       console.error('Error saving agent settings:', error);
@@ -176,6 +185,73 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     toast.success('Prompt restaurado para o padrão');
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 2MB');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas imagens são permitidas');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `logos/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('media-files').upload(path, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('media-files').getPublicUrl(path);
+      setSettings(prev => ({ ...prev, company_logo_url: publicUrl }));
+      toast.success('Logo enviada com sucesso! Clique em Salvar para aplicar.');
+    } catch (err) {
+      console.error('Logo upload error:', err);
+      toast.error('Erro ao enviar logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSettings(prev => ({ ...prev, company_logo_url: null }));
+    toast.success('Logo removida. Clique em Salvar para aplicar.');
+  };
+
+  const handleDownloadPromptTemplate = () => {
+    const header = `# ================================================
+# MODELO DE PROMPT - TEMPLATE PARA PERSONALIZAÇÃO
+# ================================================
+#
+# INSTRUÇÕES:
+# 1. Substitua todas as informações de exemplo pelas da SUA empresa
+# 2. Adapte o tom, produtos, serviços e filosofia de vendas
+# 3. Adicione exemplos reais de conversas do seu negócio
+# 4. Cole o prompt personalizado nas Configurações > Prompt do Sistema
+#
+# Variáveis dinâmicas (serão preenchidas automaticamente):
+# {{ data_hora }} → Data e hora atual
+# {{ data }} → Apenas data
+# {{ hora }} → Apenas hora
+# {{ dia_semana }} → Dia da semana
+# {{ cliente_nome }} → Nome do cliente
+# {{ cliente_telefone }} → Telefone do cliente
+#
+# ================================================
+
+`;
+    const content = header + DEFAULT_NINA_PROMPT;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-prompt-agente.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Modelo de prompt baixado!');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -201,7 +277,16 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
               <Bot className="w-5 h-5 text-cyan-400" />
               <h3 className="font-semibold text-white">Prompt do Sistema</h3>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadPromptTemplate}
+                className="text-slate-400 hover:text-white hover:bg-slate-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar Modelo
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -287,6 +372,61 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                   onChange={(e) => setSettings({ ...settings, sdr_name: e.target.value || null })}
                   placeholder="Nome do agente (ex: Ana, Sofia)"
                   className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+              {/* Logo Upload */}
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                  Logo da Empresa <span className="text-slate-500 text-[10px]">(opcional, máx 2MB)</span>
+                </label>
+                {settings.company_logo_url ? (
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={settings.company_logo_url} 
+                      alt="Logo" 
+                      className="h-12 w-12 object-contain rounded-lg border border-slate-700 bg-slate-950 p-1" 
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="text-slate-400 hover:text-white hover:bg-slate-700 text-xs"
+                      >
+                        <Upload className="w-3 h-3 mr-1" />
+                        Trocar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="flex items-center gap-2 h-12 w-full rounded-lg border border-dashed border-slate-700 bg-slate-950/50 px-3 text-sm text-slate-500 hover:border-blue-500/50 hover:text-slate-300 transition-colors"
+                  >
+                    {uploadingLogo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Image className="w-4 h-4" />
+                    )}
+                    {uploadingLogo ? 'Enviando...' : 'Clique para enviar sua logo'}
+                  </button>
+                )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
                 />
               </div>
             </div>

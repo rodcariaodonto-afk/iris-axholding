@@ -712,6 +712,7 @@ export type Database = {
           business_days: number[]
           business_hours_end: string
           business_hours_start: string
+          company_logo_url: string | null
           company_name: string | null
           created_at: string
           elevenlabs_api_key: string | null
@@ -754,6 +755,7 @@ export type Database = {
           business_days?: number[]
           business_hours_end?: string
           business_hours_start?: string
+          company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
           elevenlabs_api_key?: string | null
@@ -796,6 +798,7 @@ export type Database = {
           business_days?: number[]
           business_hours_end?: string
           business_hours_start?: string
+          company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
           elevenlabs_api_key?: string | null

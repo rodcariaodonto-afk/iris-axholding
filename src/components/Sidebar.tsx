@@ -20,11 +20,11 @@ const menuItems = [
   { id: 'settings', label: 'Configurações', icon: SettingsIcon },
 ];
 
-const Logo = ({ companyName }: { companyName: string }) => {
+const Logo = ({ companyName, companyLogoUrl }: { companyName: string; companyLogoUrl: string | null }) => {
   return (
     <Link to="/dashboard" className="flex items-center space-x-3 py-1">
       <div className="relative flex items-center justify-center flex-shrink-0">
-        <img src={axhubIcon} alt="AXHUB" className="h-10 w-auto object-contain rounded-lg" />
+        <img src={companyLogoUrl || axhubIcon} alt={companyName || 'AXHUB'} className="h-10 w-auto object-contain rounded-lg" />
       </div>
       <motion.div
         initial={{ opacity: 0 }}
@@ -39,18 +39,18 @@ const Logo = ({ companyName }: { companyName: string }) => {
   );
 };
 
-const LogoIcon = () => {
+const LogoIcon = ({ companyLogoUrl }: { companyLogoUrl: string | null }) => {
   return (
     <Link to="/dashboard" className="flex items-center py-1">
       <div className="relative flex items-center justify-center flex-shrink-0">
-        <img src={axhubIcon} alt="AXHUB" className="h-10 w-auto object-contain rounded-lg" />
+        <img src={companyLogoUrl || axhubIcon} alt="Logo" className="h-10 w-auto object-contain rounded-lg" />
       </div>
     </Link>
   );
 };
 
 const SidebarContent = () => {
-  const { companyName } = useCompanySettings();
+  const { companyName, companyLogoUrl } = useCompanySettings();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,7 +92,7 @@ const SidebarContent = () => {
     <>
       <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
         <div className="mb-6">
-          {open ? <Logo companyName={companyName} /> : <LogoIcon />}
+          {open ? <Logo companyName={companyName} companyLogoUrl={companyLogoUrl} /> : <LogoIcon companyLogoUrl={companyLogoUrl} />}
         </div>
         
         <nav className="flex flex-col gap-1.5">

@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface CompanySettings {
   companyName: string;
   sdrName: string;
+  companyLogoUrl: string | null;
   loading: boolean;
   isAdmin: boolean;
   refetch: () => Promise<void>;
@@ -15,6 +16,7 @@ const CompanySettingsContext = createContext<CompanySettings | undefined>(undefi
 export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [companyName, setCompanyName] = useState('');
   const [sdrName, setSdrName] = useState('');
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
@@ -40,7 +42,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
       // Fetch global nina_settings (no user_id filter)
       const { data, error } = await supabase
         .from('nina_settings')
-        .select('company_name, sdr_name')
+        .select('company_name, sdr_name, company_logo_url')
         .limit(1)
         .maybeSingle();
 
@@ -52,6 +54,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
       if (data) {
         setCompanyName(data.company_name || 'Sua Empresa');
         setSdrName(data.sdr_name || 'Agente');
+        setCompanyLogoUrl((data as any).company_logo_url || null);
       } else {
         // No settings exist - use defaults (admin will need to configure via wizard)
         setCompanyName('Sua Empresa');
@@ -71,6 +74,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   const value: CompanySettings = {
     companyName,
     sdrName,
+    companyLogoUrl,
     loading,
     isAdmin,
     refetch: fetchSettings,
