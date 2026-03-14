@@ -277,7 +277,16 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
               <Bot className="w-5 h-5 text-cyan-400" />
               <h3 className="font-semibold text-white">Prompt do Sistema</h3>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadPromptTemplate}
+                className="text-slate-400 hover:text-white hover:bg-slate-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar Modelo
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
