@@ -56,7 +56,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
-  const [settings, setSettings] = useState<AgentSettings>({
+  const [settings, setSettings] = useState<AgentSettingsState>({
     system_prompt_override: null,
     is_active: true,
     auto_response_enabled: true,
@@ -68,6 +68,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     company_name: null,
     sdr_name: null,
     ai_scheduling_enabled: true,
+    company_logo_url: null,
   });
 
   useImperativeHandle(ref, () => ({
