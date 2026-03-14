@@ -185,6 +185,73 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     toast.success('Prompt restaurado para o padrão');
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 2MB');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas imagens são permitidas');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `logos/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('media-files').upload(path, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('media-files').getPublicUrl(path);
+      setSettings(prev => ({ ...prev, company_logo_url: publicUrl }));
+      toast.success('Logo enviada com sucesso! Clique em Salvar para aplicar.');
+    } catch (err) {
+      console.error('Logo upload error:', err);
+      toast.error('Erro ao enviar logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSettings(prev => ({ ...prev, company_logo_url: null }));
+    toast.success('Logo removida. Clique em Salvar para aplicar.');
+  };
+
+  const handleDownloadPromptTemplate = () => {
+    const header = `# ================================================
+# MODELO DE PROMPT - TEMPLATE PARA PERSONALIZAÇÃO
+# ================================================
+#
+# INSTRUÇÕES:
+# 1. Substitua todas as informações de exemplo pelas da SUA empresa
+# 2. Adapte o tom, produtos, serviços e filosofia de vendas
+# 3. Adicione exemplos reais de conversas do seu negócio
+# 4. Cole o prompt personalizado nas Configurações > Prompt do Sistema
+#
+# Variáveis dinâmicas (serão preenchidas automaticamente):
+# {{ data_hora }} → Data e hora atual
+# {{ data }} → Apenas data
+# {{ hora }} → Apenas hora
+# {{ dia_semana }} → Dia da semana
+# {{ cliente_nome }} → Nome do cliente
+# {{ cliente_telefone }} → Telefone do cliente
+#
+# ================================================
+
+`;
+    const content = header + DEFAULT_NINA_PROMPT;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-prompt-agente.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Modelo de prompt baixado!');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
