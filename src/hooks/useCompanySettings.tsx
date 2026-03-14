@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface CompanySettings {
   companyName: string;
   sdrName: string;
+  companyLogoUrl: string | null;
   loading: boolean;
   isAdmin: boolean;
   refetch: () => Promise<void>;
