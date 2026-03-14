@@ -49,8 +49,11 @@ export interface AgentSettingsRef {
 
 const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   const { user } = useAuth();
+  const { refetch: refetchCompanySettings } = useCompanySettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
   const [settings, setSettings] = useState<AgentSettings>({
     system_prompt_override: null,
