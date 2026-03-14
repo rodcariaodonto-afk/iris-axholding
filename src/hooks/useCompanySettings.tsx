@@ -42,7 +42,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
       // Fetch global nina_settings (no user_id filter)
       const { data, error } = await supabase
         .from('nina_settings')
-        .select('company_name, sdr_name')
+        .select('company_name, sdr_name, company_logo_url')
         .limit(1)
         .maybeSingle();
 
