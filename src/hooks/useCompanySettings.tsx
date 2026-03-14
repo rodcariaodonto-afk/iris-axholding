@@ -74,6 +74,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   const value: CompanySettings = {
     companyName,
     sdrName,
+    companyLogoUrl,
     loading,
     isAdmin,
     refetch: fetchSettings,
