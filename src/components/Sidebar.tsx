@@ -50,7 +50,7 @@ const LogoIcon = ({ companyLogoUrl }: { companyLogoUrl: string | null }) => {
 };
 
 const SidebarContent = () => {
-  const { companyName } = useCompanySettings();
+  const { companyName, companyLogoUrl } = useCompanySettings();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
