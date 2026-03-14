@@ -1,0 +1,1 @@
+ALTER TABLE public.nina_settings ADD COLUMN IF NOT EXISTS company_logo_url text;
