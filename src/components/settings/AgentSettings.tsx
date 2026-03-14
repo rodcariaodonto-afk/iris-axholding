@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface AgentSettings {
+interface AgentSettingsState {
   id?: string;
   system_prompt_override: string | null;
   is_active: boolean;
@@ -27,6 +27,7 @@ interface AgentSettings {
   company_name: string | null;
   sdr_name: string | null;
   ai_scheduling_enabled: boolean;
+  company_logo_url: string | null;
 }
 
 const DAYS_OF_WEEK = [
