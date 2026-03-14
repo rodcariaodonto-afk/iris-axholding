@@ -374,6 +374,61 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                   className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
+              {/* Logo Upload */}
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                  Logo da Empresa <span className="text-slate-500 text-[10px]">(opcional, máx 2MB)</span>
+                </label>
+                {settings.company_logo_url ? (
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={settings.company_logo_url} 
+                      alt="Logo" 
+                      className="h-12 w-12 object-contain rounded-lg border border-slate-700 bg-slate-950 p-1" 
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="text-slate-400 hover:text-white hover:bg-slate-700 text-xs"
+                      >
+                        <Upload className="w-3 h-3 mr-1" />
+                        Trocar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="flex items-center gap-2 h-12 w-full rounded-lg border border-dashed border-slate-700 bg-slate-950/50 px-3 text-sm text-slate-500 hover:border-blue-500/50 hover:text-slate-300 transition-colors"
+                  >
+                    {uploadingLogo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Image className="w-4 h-4" />
+                    )}
+                    {uploadingLogo ? 'Enviando...' : 'Clique para enviar sua logo'}
+                  </button>
+                )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
           </div>
 
