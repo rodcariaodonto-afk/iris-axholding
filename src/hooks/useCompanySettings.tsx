@@ -54,6 +54,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
       if (data) {
         setCompanyName(data.company_name || 'Sua Empresa');
         setSdrName(data.sdr_name || 'Agente');
+        setCompanyLogoUrl((data as any).company_logo_url || null);
       } else {
         // No settings exist - use defaults (admin will need to configure via wizard)
         setCompanyName('Sua Empresa');
