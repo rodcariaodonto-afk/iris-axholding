@@ -438,7 +438,8 @@ async function downloadEvolutionMedia(
   messageData: any
 ): Promise<ArrayBuffer | null> {
   try {
-    const endpoint = `${evolutionApiUrl}/chat/getBase64FromMediaMessage/${instanceName}`;
+    const baseUrl = evolutionApiUrl.replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`;
     console.log('[MessageGrouper] Evolution media endpoint:', endpoint);
 
     const response = await fetch(endpoint, {
