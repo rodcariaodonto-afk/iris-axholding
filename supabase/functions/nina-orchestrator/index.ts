@@ -781,9 +781,9 @@ async function processQueueItem(
     const role = msg.from_type === 'user' ? 'user' : 'assistant';
     let content: any = msg.content || '[media]';
     
-    // For audio messages from user, prepend language hint
+    // For audio messages from user, prepend language hint with explicit Portuguese instruction
     if (msg.from_type === 'user' && msg.type === 'audio' && content && content !== '[media]') {
-      content = `[Áudio transcrito do cliente]: "${content}"`;
+      content = `[Áudio transcrito do cliente - RESPONDA SEMPRE EM PORTUGUÊS BRASILEIRO]: "${content}"`;
     }
     
     // For image messages with media_url, build multimodal content
@@ -845,7 +845,7 @@ async function processQueueItem(
   const requestBody: any = {
     model: aiSettings.model,
     messages: [
-      { role: 'system', content: processedPrompt },
+      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.' },
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
