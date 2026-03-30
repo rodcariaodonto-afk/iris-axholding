@@ -9,6 +9,19 @@ const corsHeaders = {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
 
+// Helper: get current date/time in Brasília (UTC-3)
+function getNowBrasilia(): Date {
+  const now = new Date();
+  // Shift UTC to Brasília by subtracting 3 hours
+  return new Date(now.getTime() - 3 * 60 * 60 * 1000);
+}
+
+// Helper: parse a date+time string as Brasília local time for comparison
+function parseDateTimeBrasilia(date: string, time: string): Date {
+  // Create a date object treating the input as UTC (for comparison with getNowBrasilia)
+  return new Date(`${date}T${time}:00`);
+}
+
 // Tool definition for appointment creation
 const createAppointmentTool = {
   type: "function",
@@ -414,9 +427,9 @@ async function createAppointmentFromAI(
 ): Promise<any> {
   console.log('[Nina] Creating appointment from AI:', args, 'for user:', userId);
   
-  // Validate date is not in the past
-  const appointmentDate = new Date(`${args.date}T${args.time}:00`);
-  const now = new Date();
+  // Validate date is not in the past (using Brasília timezone)
+  const appointmentDate = parseDateTimeBrasilia(args.date, args.time);
+  const now = getNowBrasilia();
   
   if (appointmentDate < now) {
     console.log('[Nina] Attempted to create appointment in the past, skipping');
@@ -527,9 +540,9 @@ async function rescheduleAppointmentFromAI(
   
   const appointment = existingAppointments[0];
   
-  // Validate new date is not in the past
-  const newAppointmentDate = new Date(`${args.new_date}T${args.new_time}:00`);
-  const now = new Date();
+  // Validate new date is not in the past (using Brasília timezone)
+  const newAppointmentDate = parseDateTimeBrasilia(args.new_date, args.new_time);
+  const now = getNowBrasilia();
   
   if (newAppointmentDate < now) {
     console.log('[Nina] Attempted to reschedule to a past date');
