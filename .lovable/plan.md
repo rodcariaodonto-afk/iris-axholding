@@ -1,15 +1,34 @@
 
 
-## Plano: Copiar RemixOverlay do projeto Nina Evolution
+## Plano: Diagnosticar e restaurar Iris
 
-### Alterações
+### Problema identificado
+As Edge Functions não estão gerando logs, indicando que não estão sendo chamadas. As mensagens do WhatsApp não estão entrando no pipeline desde ~21 de março.
 
-1. **Criar `src/components/RemixOverlay.tsx`** - Copiar o componente completo do projeto de origem (overlay animado com 3 cards instrucionais: abrir menu, remix, ativar toggle)
+### Causa provável
+1. **Edge Functions não deployadas** — Após edições recentes, as funções podem precisar de redeploy
+2. **Webhook da Evolution API desconfigurado** — A URL do webhook pode estar apontando para um endpoint incorreto
 
-2. **Modificar `src/pages/Auth.tsx`** - Importar e renderizar `<RemixOverlay />` antes do div principal
+### Ações
 
-### Detalhes Técnicos
-- O componente usa `framer-motion` (já instalado) e `lucide-react` (já instalado)
-- Overlay fixo com `z-[9999]` que cobre toda a tela com instruções visuais de como remixar o projeto
-- Será exibido na página de autenticação como no projeto original
+#### 1. Redeployar todas as Edge Functions críticas
+Forçar o deploy das funções do pipeline:
+- `whatsapp-webhook` (recebe mensagens)
+- `message-grouper` (agrupa mensagens)
+- `nina-orchestrator` (processa com IA)
+- `whatsapp-sender` (envia respostas)
+- `trigger-nina-orchestrator` e `trigger-whatsapp-sender` (triggers de cron)
+
+#### 2. Verificar URL do webhook
+A URL do webhook que deve estar configurada na Evolution API é:
+```
+https://ggrgqvnmuptwinxsobkz.supabase.co/functions/v1/whatsapp-webhook
+```
+Confirmar que esta URL está configurada na instância `Iris-AXholding` da Evolution API em `https://mythicallamprey-evolution.cloudfy.live/`.
+
+#### 3. Testar o pipeline
+Após o redeploy, usar a função `simulate-webhook` para enviar uma mensagem de teste e verificar se o fluxo completo funciona (webhook → grouper → orchestrator → sender).
+
+### Resultado esperado
+Iris voltará a receber mensagens do WhatsApp e respondê-las automaticamente.
 
