@@ -280,7 +280,7 @@ const ChatInterface: React.FC = () => {
 
   const renderMessageContent = (msg: UIMessage) => {
     if (msg.type === MessageType.IMAGE) {
-      const imageUrl = msg.mediaUrl || msg.content;
+      const imageUrl = msg.mediaUrl;
       const isValidUrl = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'));
       return (
         <div className="mb-1 group relative">
@@ -292,14 +292,21 @@ const ChatInterface: React.FC = () => {
                 className="rounded-lg max-w-full h-auto max-h-72 object-cover border border-slate-700/50 shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
                 loading="lazy"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://placehold.co/300x200/1e293b/cbd5e1?text=Erro+Imagem';
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = target.parentElement?.querySelector('.img-fallback');
+                  if (fallback) (fallback as HTMLElement).style.display = 'flex';
                 }}
               />
+              <div className="img-fallback hidden items-center gap-2 py-3 px-4 rounded-lg bg-muted/50 text-muted-foreground">
+                <ImageIcon className="w-5 h-5" />
+                <span className="text-sm">Imagem indisponível</span>
+              </div>
             </a>
           ) : (
-            <div className="flex items-center gap-2 py-1 text-slate-400">
-              <Paperclip className="w-4 h-4" />
-              <span className="text-sm">📷 Imagem</span>
+            <div className="flex items-center gap-2 py-3 px-4 rounded-lg bg-muted/50 text-muted-foreground">
+              <ImageIcon className="w-5 h-5" />
+              <span className="text-sm">📷 Imagem indisponível</span>
             </div>
           )}
           {msg.content && !msg.content.startsWith('http') && !msg.content.startsWith('[imagem') && (

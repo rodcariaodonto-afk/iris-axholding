@@ -155,7 +155,7 @@ async function sendMessageEvolution(supabase: any, settings: any, queueItem: any
   if (!contact) throw new Error('Contact not found');
 
   const recipient = contact.whatsapp_id || contact.phone_number;
-  const baseUrl = settings.evolution_api_url.replace(/\/$/, '');
+  const baseUrl = settings.evolution_api_url.replace(/\/+$/, '');
   const instance = settings.evolution_instance_name;
   const headers = { 'Content-Type': 'application/json', 'apikey': settings.evolution_api_key };
 
