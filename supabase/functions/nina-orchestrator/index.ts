@@ -845,7 +845,7 @@ async function processQueueItem(
   const requestBody: any = {
     model: aiSettings.model,
     messages: [
-      { role: 'system', content: processedPrompt },
+      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.' },
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
