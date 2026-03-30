@@ -570,7 +570,7 @@ async function transcribeAudio(audioBuffer: ArrayBuffer, lovableApiKey: string):
             },
             {
               type: "text",
-              text: "Transcribe this audio message exactly as spoken by the person. Return ONLY the raw transcription text, nothing else. Do NOT invent or guess content. Detect the language automatically and transcribe in that same language."
+              text: "Transcreva esta mensagem de áudio exatamente como falada pela pessoa. Retorne APENAS o texto da transcrição, nada mais. NÃO invente ou adivinhe conteúdo. O áudio provavelmente está em Português Brasileiro. Transcreva no idioma em que foi falado."
             }
           ]
         }]
