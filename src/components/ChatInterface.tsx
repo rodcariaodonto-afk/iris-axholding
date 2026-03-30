@@ -305,7 +305,7 @@ const ChatInterface: React.FC = () => {
             </a>
           ) : (
             <div className="flex items-center gap-2 py-3 px-4 rounded-lg bg-muted/50 text-muted-foreground">
-              <ImageIcon className="w-5 h-5" />
+              <Image className="w-5 h-5" />
               <span className="text-sm">📷 Imagem indisponível</span>
             </div>
           )}
