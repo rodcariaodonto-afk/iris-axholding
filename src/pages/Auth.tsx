@@ -187,6 +187,7 @@ const Auth: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
+                  autoComplete="off"
                 />
               </div>
               {errors.password && (
