@@ -9,6 +9,7 @@ import Settings from './components/Settings';
 import Team from './components/Team';
 import Scheduling from './components/Scheduling';
 import Kanban from './components/Kanban';
+import Reports from './components/Reports';
 import Auth from './pages/Auth';
 import MeetingRoom from './pages/MeetingRoom';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -77,6 +78,7 @@ const App: React.FC = () => {
               <Route path="/chat" element={<ChatInterface />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/scheduling" element={<Scheduling />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/team" element={<Team />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/meeting/:id" element={<MeetingRoom />} />
