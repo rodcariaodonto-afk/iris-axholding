@@ -153,11 +153,17 @@ export function useOnboardingStatus(): OnboardingStatus {
                 ...step,
                 isComplete: !isDefaultConfig || hasSeenWizard,
               };
-            case 'verification':
+            case 'verification': {
+              const hasIdentity = !!(settings.company_name && settings.sdr_name);
+              const hasWhatsapp = !!(
+                (settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name) ||
+                (settings.whatsapp_access_token && settings.whatsapp_phone_number_id)
+              );
               return {
                 ...step,
-                isComplete: !!(settings.company_name && settings.sdr_name && settings.whatsapp_access_token && settings.system_prompt_override),
+                isComplete: hasIdentity && hasWhatsapp,
               };
+            }
             case 'finish':
               return {
                 ...step,
