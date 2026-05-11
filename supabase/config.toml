@@ -50,3 +50,5 @@ verify_jwt = false
 
 [functions.google-calendar-callback]
 verify_jwt = false
+[functions.create-team-user]
+verify_jwt = false
