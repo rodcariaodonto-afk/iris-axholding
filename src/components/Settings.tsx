@@ -106,9 +106,13 @@ const Settings: React.FC = () => {
               <FolderOpen className="w-4 h-4" />
               Arquivos
             </TabsTrigger>
+            <TabsTrigger value="account" className="gap-2">
+              <User className="w-4 h-4" />
+              Conta
+            </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && activeTab !== 'media' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && isAdmin && (
             <div className="flex gap-3">
               <Button
                 variant="ghost"
