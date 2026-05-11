@@ -87,6 +87,7 @@ const Team: React.FC = () => {
           team_id: formData.team_id || null,
           function_id: formData.function_id || null,
           weight: formData.weight,
+          password: formData.password?.trim() ? formData.password.trim() : undefined,
         },
       });
 
@@ -94,7 +95,7 @@ const Team: React.FC = () => {
       if (data?.error) throw new Error(data.error);
 
       setShowModal(false);
-      setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1 });
+      setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1, password: '' });
       await loadAllData();
 
       setCreatedCredentials({
