@@ -496,7 +496,7 @@ const Team: React.FC = () => {
 
                     <div className="pt-4 flex gap-3">
                         <Button type="button" variant="ghost" onClick={() => setShowModal(false)} className="flex-1 border border-slate-700 hover:bg-slate-800">Cancelar</Button>
-                        <Button type="submit" className="flex-1 bg-white text-black hover:bg-slate-200">Enviar Convite</Button>
+                        <Button type="submit" className="flex-1 bg-white text-black hover:bg-slate-200">Criar Usuário</Button>
                     </div>
                 </form>
             </div>
