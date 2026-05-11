@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, Search, Loader2, X, Check, Edit2, Users, Settings, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Loader2, X, Check, Edit2, Users, Settings, Trash2, Copy, KeyRound } from 'lucide-react';
 import { Button } from './Button';
 import { api } from '../services/api';
 import { TeamMember, type Team as TeamType, type TeamFunction } from '../types';
