@@ -111,9 +111,13 @@ const Settings: React.FC = () => {
               <User className="w-4 h-4" />
               Conta
             </TabsTrigger>
+            <TabsTrigger value="email" className="gap-2">
+              <Mail className="w-4 h-4" />
+              Email
+            </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && isAdmin && (
             <div className="flex gap-3">
               <Button
                 variant="ghost"
