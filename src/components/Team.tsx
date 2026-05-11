@@ -20,7 +20,8 @@ const Team: React.FC = () => {
     role: 'agent',
     team_id: '',
     function_id: '',
-    weight: 1
+    weight: 1,
+    password: '',
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
@@ -86,6 +87,7 @@ const Team: React.FC = () => {
           team_id: formData.team_id || null,
           function_id: formData.function_id || null,
           weight: formData.weight,
+          password: formData.password?.trim() ? formData.password.trim() : undefined,
         },
       });
 
@@ -93,7 +95,7 @@ const Team: React.FC = () => {
       if (data?.error) throw new Error(data.error);
 
       setShowModal(false);
-      setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1 });
+      setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1, password: '' });
       await loadAllData();
 
       setCreatedCredentials({
@@ -492,6 +494,19 @@ const Team: React.FC = () => {
                             onChange={(e) => setFormData({...formData, weight: parseInt(e.target.value)})}
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Senha (opcional)</label>
+                        <input
+                            type="text"
+                            autoComplete="new-password"
+                            placeholder="Deixe em branco para gerar automaticamente"
+                            value={formData.password}
+                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white font-mono focus:ring-1 focus:ring-slate-600 outline-none transition-all"
+                        />
+                        <p className="text-xs text-slate-500">Mínimo 6 caracteres. O usuário poderá alterar depois em Configurações → Conta.</p>
                     </div>
 
                     <div className="pt-4 flex gap-3">
