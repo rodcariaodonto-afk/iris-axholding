@@ -402,7 +402,7 @@ const Team: React.FC = () => {
       {/* Invite Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
                 <div className="p-6 border-b border-slate-800 flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-bold text-white">Adicionar Usuário à Equipe</h3>
