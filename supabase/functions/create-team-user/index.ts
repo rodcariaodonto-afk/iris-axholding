@@ -128,30 +128,29 @@ Deno.serve(async (req) => {
       memberRow = data;
     }
 
-    // 3) Tenta enviar email com as credenciais (silencioso se infra não existir)
+    // 3) Tenta enviar email com as credenciais via Resend (se configurado)
     let emailSent = false;
     let emailError: string | null = null;
     try {
       const loginUrl = `${req.headers.get("origin") || ""}/auth`;
-      const { error: invokeErr } = await admin.functions.invoke(
-        "send-transactional-email",
+      const { data: emailResp, error: invokeErr } = await admin.functions.invoke(
+        "send-invite-email",
         {
           body: {
-            templateName: "team-invite",
-            recipientEmail: email,
-            idempotencyKey: `team-invite-${memberRow.id}-${Date.now()}`,
-            templateData: {
-              name,
-              email,
-              tempPassword,
-              loginUrl,
-              role,
-            },
+            mode: "invite",
+            to: email,
+            name,
+            email,
+            tempPassword,
+            loginUrl,
+            role,
           },
         },
       );
       if (invokeErr) {
         emailError = invokeErr.message || String(invokeErr);
+      } else if (emailResp?.error) {
+        emailError = emailResp.error;
       } else {
         emailSent = true;
       }
