@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen } from 'lucide-react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
 import SystemRoadmap from './SystemRoadmap';
 import MediaLibrary from './settings/MediaLibrary';
+import AccountSettings from './settings/AccountSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
@@ -105,9 +106,13 @@ const Settings: React.FC = () => {
               <FolderOpen className="w-4 h-4" />
               Arquivos
             </TabsTrigger>
+            <TabsTrigger value="account" className="gap-2">
+              <User className="w-4 h-4" />
+              Conta
+            </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && activeTab !== 'media' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && isAdmin && (
             <div className="flex gap-3">
               <Button
                 variant="ghost"
@@ -137,7 +142,7 @@ const Settings: React.FC = () => {
             </div>
           )}
           
-          {activeTab !== 'docs' && activeTab !== 'media' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -159,6 +164,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="media">
           <MediaLibrary />
+        </TabsContent>
+
+        <TabsContent value="account">
+          <AccountSettings />
         </TabsContent>
       </Tabs>
     </div>

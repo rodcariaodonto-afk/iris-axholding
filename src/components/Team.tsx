@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, Search, Loader2, X, Check, Edit2, Users, Settings, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Loader2, X, Check, Edit2, Users, Settings, Trash2, Copy, KeyRound } from 'lucide-react';
 import { Button } from './Button';
 import { api } from '../services/api';
 import { TeamMember, type Team as TeamType, type TeamFunction } from '../types';
@@ -72,26 +72,44 @@ const Team: React.FC = () => {
     };
   };
 
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; emailSent: boolean } | null>(null);
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      await api.createTeamMember({
-        name: formData.name,
-        email: formData.email,
-        role: formData.role as 'agent' | 'admin' | 'manager',
-        team_id: formData.team_id || undefined,
-        function_id: formData.function_id || undefined,
-        weight: formData.weight
+      const { data, error } = await supabase.functions.invoke('create-team-user', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          team_id: formData.team_id || null,
+          function_id: formData.function_id || null,
+          weight: formData.weight,
+        },
       });
 
-      toast.success('Membro convidado com sucesso!');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       setShowModal(false);
       setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1 });
       await loadAllData();
-    } catch (error) {
-      console.error('Erro ao convidar membro:', error);
-      toast.error('Erro ao convidar membro. Verifique se o email já não está cadastrado.');
+
+      setCreatedCredentials({
+        email: data.member.email,
+        password: data.tempPassword,
+        emailSent: !!data.emailSent,
+      });
+
+      if (data.emailSent) {
+        toast.success('Usuário criado e email enviado!');
+      } else {
+        toast.success('Usuário criado! Compartilhe a senha temporária manualmente.');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      toast.error(error?.message || 'Erro ao criar usuário.');
     }
   };
 
@@ -383,8 +401,11 @@ const Team: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-white">Convidar para a Equipe</h3>
+                <div className="p-6 border-b border-slate-800 flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Adicionar Usuário à Equipe</h3>
+                      <p className="text-xs text-slate-500 mt-1">Uma senha temporária será gerada automaticamente.</p>
+                    </div>
                     <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
@@ -475,7 +496,7 @@ const Team: React.FC = () => {
 
                     <div className="pt-4 flex gap-3">
                         <Button type="button" variant="ghost" onClick={() => setShowModal(false)} className="flex-1 border border-slate-700 hover:bg-slate-800">Cancelar</Button>
-                        <Button type="submit" className="flex-1 bg-white text-black hover:bg-slate-200">Enviar Convite</Button>
+                        <Button type="submit" className="flex-1 bg-white text-black hover:bg-slate-200">Criar Usuário</Button>
                     </div>
                 </form>
             </div>
@@ -600,6 +621,64 @@ const Team: React.FC = () => {
                     </div>
                 </form>
             </div>
+        </div>
+      )}
+
+      {/* Created Credentials Modal */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-800 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Usuário criado com sucesso</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {createdCredentials.emailSent
+                    ? 'Email com as credenciais foi enviado.'
+                    : 'Compartilhe estas credenciais manualmente.'}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-slate-400 uppercase">Email</label>
+                <div className="mt-1 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-3">
+                  <span className="flex-1 text-sm text-slate-200 font-mono">{createdCredentials.email}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(createdCredentials.email); toast.success('Email copiado'); }}
+                    className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 uppercase">Senha temporária</label>
+                <div className="mt-1 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-3">
+                  <span className="flex-1 text-sm text-emerald-300 font-mono select-all">{createdCredentials.password}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(createdCredentials.password); toast.success('Senha copiada'); }}
+                    className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                <p className="text-xs text-amber-300">
+                  O usuário deve fazer login em <span className="font-mono">/auth</span> e alterar esta senha no primeiro acesso.
+                </p>
+              </div>
+              <Button
+                onClick={() => setCreatedCredentials(null)}
+                className="w-full bg-white text-black hover:bg-slate-200"
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
