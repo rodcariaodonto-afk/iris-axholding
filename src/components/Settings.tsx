@@ -142,7 +142,7 @@ const Settings: React.FC = () => {
             </div>
           )}
           
-          {activeTab !== 'docs' && activeTab !== 'media' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -164,6 +164,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="media">
           <MediaLibrary />
+        </TabsContent>
+
+        <TabsContent value="account">
+          <AccountSettings />
         </TabsContent>
       </Tabs>
     </div>
