@@ -727,6 +727,10 @@ export type Database = {
           evolution_api_url: string | null
           evolution_instance_name: string | null
           id: string
+          invite_email_provider: string | null
+          invite_email_verified_at: string | null
+          invite_from_email: string | null
+          invite_from_name: string | null
           is_active: boolean
           message_breaking_enabled: boolean
           response_delay_max: number
@@ -770,6 +774,10 @@ export type Database = {
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
           id?: string
+          invite_email_provider?: string | null
+          invite_email_verified_at?: string | null
+          invite_from_email?: string | null
+          invite_from_name?: string | null
           is_active?: boolean
           message_breaking_enabled?: boolean
           response_delay_max?: number
@@ -813,6 +821,10 @@ export type Database = {
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
           id?: string
+          invite_email_provider?: string | null
+          invite_email_verified_at?: string | null
+          invite_from_email?: string | null
+          invite_from_name?: string | null
           is_active?: boolean
           message_breaking_enabled?: boolean
           response_delay_max?: number
