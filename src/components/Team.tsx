@@ -72,26 +72,44 @@ const Team: React.FC = () => {
     };
   };
 
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; emailSent: boolean } | null>(null);
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      await api.createTeamMember({
-        name: formData.name,
-        email: formData.email,
-        role: formData.role as 'agent' | 'admin' | 'manager',
-        team_id: formData.team_id || undefined,
-        function_id: formData.function_id || undefined,
-        weight: formData.weight
+      const { data, error } = await supabase.functions.invoke('create-team-user', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          team_id: formData.team_id || null,
+          function_id: formData.function_id || null,
+          weight: formData.weight,
+        },
       });
 
-      toast.success('Membro convidado com sucesso!');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       setShowModal(false);
       setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1 });
       await loadAllData();
-    } catch (error) {
-      console.error('Erro ao convidar membro:', error);
-      toast.error('Erro ao convidar membro. Verifique se o email já não está cadastrado.');
+
+      setCreatedCredentials({
+        email: data.member.email,
+        password: data.tempPassword,
+        emailSent: !!data.emailSent,
+      });
+
+      if (data.emailSent) {
+        toast.success('Usuário criado e email enviado!');
+      } else {
+        toast.success('Usuário criado! Compartilhe a senha temporária manualmente.');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      toast.error(error?.message || 'Erro ao criar usuário.');
     }
   };
 
