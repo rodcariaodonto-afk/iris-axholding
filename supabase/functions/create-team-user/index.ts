@@ -1,0 +1,179 @@
+// Cria um usuário de equipe diretamente: cria conta no auth com senha temporária
+// (já confirmada), insere/atualiza o team_member com status 'active' e tenta
+// enviar email com as credenciais (se a infra de email transacional estiver pronta).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+function generateTempPassword(length = 12) {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  let out = "";
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  for (let i = 0; i < length; i++) out += chars[arr[i] % chars.length];
+  return out;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    const body = await req.json();
+    const {
+      name,
+      email,
+      role = "agent",
+      team_id,
+      function_id,
+      weight = 1,
+      password: providedPassword,
+    } = body || {};
+
+    if (!name || !email) {
+      return new Response(
+        JSON.stringify({ error: "name e email são obrigatórios" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const tempPassword = providedPassword || generateTempPassword();
+
+    // 1) Cria o usuário no auth (ou recupera se já existe)
+    let userId: string | null = null;
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { full_name: name, must_change_password: true },
+    });
+
+    if (createErr) {
+      // Se já existe, busca o id existente
+      const msg = (createErr.message || "").toLowerCase();
+      if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+        const { data: list } = await admin.auth.admin.listUsers();
+        const existing = list?.users?.find(
+          (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
+        );
+        if (existing) {
+          userId = existing.id;
+          // Atualiza senha do usuário existente (reset)
+          await admin.auth.admin.updateUserById(userId, {
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: { ...(existing.user_metadata || {}), full_name: name, must_change_password: true },
+          });
+        } else {
+          throw createErr;
+        }
+      } else {
+        throw createErr;
+      }
+    } else {
+      userId = created.user?.id ?? null;
+    }
+
+    // 2) Upsert do team_member
+    const { data: existingMember } = await admin
+      .from("team_members")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    let memberRow;
+    if (existingMember) {
+      const { data, error } = await admin
+        .from("team_members")
+        .update({
+          name,
+          role,
+          team_id: team_id || null,
+          function_id: function_id || null,
+          weight,
+          status: "active",
+          user_id: userId,
+        })
+        .eq("id", existingMember.id)
+        .select()
+        .single();
+      if (error) throw error;
+      memberRow = data;
+    } else {
+      const { data, error } = await admin
+        .from("team_members")
+        .insert({
+          name,
+          email,
+          role,
+          team_id: team_id || null,
+          function_id: function_id || null,
+          weight,
+          status: "active",
+          user_id: userId,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      memberRow = data;
+    }
+
+    // 3) Tenta enviar email com as credenciais (silencioso se infra não existir)
+    let emailSent = false;
+    let emailError: string | null = null;
+    try {
+      const loginUrl = `${req.headers.get("origin") || ""}/auth`;
+      const { error: invokeErr } = await admin.functions.invoke(
+        "send-transactional-email",
+        {
+          body: {
+            templateName: "team-invite",
+            recipientEmail: email,
+            idempotencyKey: `team-invite-${memberRow.id}-${Date.now()}`,
+            templateData: {
+              name,
+              email,
+              tempPassword,
+              loginUrl,
+              role,
+            },
+          },
+        },
+      );
+      if (invokeErr) {
+        emailError = invokeErr.message || String(invokeErr);
+      } else {
+        emailSent = true;
+      }
+    } catch (e) {
+      emailError = (e as Error).message;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        member: memberRow,
+        tempPassword,
+        emailSent,
+        emailError,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    console.error("[create-team-user] error", e);
+    return new Response(
+      JSON.stringify({ error: (e as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
