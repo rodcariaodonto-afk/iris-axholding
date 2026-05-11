@@ -20,7 +20,8 @@ const Team: React.FC = () => {
     role: 'agent',
     team_id: '',
     function_id: '',
-    weight: 1
+    weight: 1,
+    password: '',
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
