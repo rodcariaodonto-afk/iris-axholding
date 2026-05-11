@@ -496,6 +496,19 @@ const Team: React.FC = () => {
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Senha (opcional)</label>
+                        <input
+                            type="text"
+                            autoComplete="new-password"
+                            placeholder="Deixe em branco para gerar automaticamente"
+                            value={formData.password}
+                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white font-mono focus:ring-1 focus:ring-slate-600 outline-none transition-all"
+                        />
+                        <p className="text-xs text-slate-500">Mínimo 6 caracteres. O usuário poderá alterar depois em Configurações → Conta.</p>
+                    </div>
+
                     <div className="pt-4 flex gap-3">
                         <Button type="button" variant="ghost" onClick={() => setShowModal(false)} className="flex-1 border border-slate-700 hover:bg-slate-800">Cancelar</Button>
                         <Button type="submit" className="flex-1 bg-white text-black hover:bg-slate-200">Criar Usuário</Button>
