@@ -223,7 +223,7 @@ const Team: React.FC = () => {
           </Button>
           <Button onClick={() => setShowModal(true)} className="shadow-lg shadow-cyan-500/20 bg-slate-100 text-slate-900 hover:bg-white hover:text-black">
             <UserPlus className="w-4 h-4 mr-2" />
-            Convidar Usuário
+            Criar Usuário
           </Button>
         </div>
       </div>
