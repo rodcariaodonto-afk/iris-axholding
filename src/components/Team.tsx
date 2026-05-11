@@ -623,6 +623,64 @@ const Team: React.FC = () => {
             </div>
         </div>
       )}
+
+      {/* Created Credentials Modal */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-800 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Usuário criado com sucesso</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {createdCredentials.emailSent
+                    ? 'Email com as credenciais foi enviado.'
+                    : 'Compartilhe estas credenciais manualmente.'}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-slate-400 uppercase">Email</label>
+                <div className="mt-1 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-3">
+                  <span className="flex-1 text-sm text-slate-200 font-mono">{createdCredentials.email}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(createdCredentials.email); toast.success('Email copiado'); }}
+                    className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 uppercase">Senha temporária</label>
+                <div className="mt-1 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-3">
+                  <span className="flex-1 text-sm text-emerald-300 font-mono select-all">{createdCredentials.password}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(createdCredentials.password); toast.success('Senha copiada'); }}
+                    className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                <p className="text-xs text-amber-300">
+                  O usuário deve fazer login em <span className="font-mono">/auth</span> e alterar esta senha no primeiro acesso.
+                </p>
+              </div>
+              <Button
+                onClick={() => setCreatedCredentials(null)}
+                className="w-full bg-white text-black hover:bg-slate-200"
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
