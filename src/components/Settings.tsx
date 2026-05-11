@@ -174,6 +174,10 @@ const Settings: React.FC = () => {
         <TabsContent value="account">
           <AccountSettings />
         </TabsContent>
+
+        <TabsContent value="email">
+          <EmailSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );
