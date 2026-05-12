@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Building2, Users as UsersIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+const Badge = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border border-border/40 ${className}`}>{children}</span>
+);
 import { format } from "date-fns";
 
 interface AccountRow {
