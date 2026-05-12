@@ -19,7 +19,7 @@ const Scheduling: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection } = useGoogleCalendar();
+  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection, handleOAuthCallback } = useGoogleCalendar();
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   
   // Modals state
