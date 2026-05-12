@@ -169,23 +169,26 @@ async function handleEvolutionWebhook(
   const contactName = data.pushName || null;
   const timestamp = data.messageTimestamp || Math.floor(Date.now() / 1000);
 
-  // Find owner - look for settings with this instance name
-  const { data: ownerSettings } = await supabase
-    .from('nina_settings')
-    .select('user_id')
+  // Resolve WhatsApp session by instance name (multi-user routing)
+  const { data: waSession } = await supabase
+    .from('whatsapp_sessions')
+    .select('id, account_id, owner_user_id')
     .eq('evolution_instance_name', instanceName)
     .maybeSingle();
 
-  let ownerId = ownerSettings?.user_id || null;
-  
+  let sessionId: string | null = waSession?.id ?? null;
+  let sessionAccountId: string | null = waSession?.account_id ?? null;
+  let ownerId: string | null = waSession?.owner_user_id ?? null;
+
+  // Fallback to nina_settings (legacy)
   if (!ownerId) {
-    const { data: adminRole } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin')
-      .limit(1)
+    const { data: ownerSettings } = await supabase
+      .from('nina_settings')
+      .select('user_id, account_id')
+      .eq('evolution_instance_name', instanceName)
       .maybeSingle();
-    ownerId = adminRole?.user_id || null;
+    ownerId = ownerSettings?.user_id || null;
+    sessionAccountId = sessionAccountId || ownerSettings?.account_id || null;
   }
 
   // Get or create contact
