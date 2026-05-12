@@ -345,7 +345,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
     }
     
     return { valid: issues.length === 0, issues };
-  }, [companyName, sdrName, evolutionApiUrl, evolutionApiKey, evolutionInstanceName, 
+  }, [companyName, sdrName, whatsappProvider, evolutionApiUrl, evolutionApiKey, evolutionInstanceName,
+      whatsappAccessToken, whatsappPhoneNumberId, whatsappBusinessAccountId, whatsappVerifyToken,
       systemPrompt, aiModelMode, elevenLabsApiKey, audioResponseEnabled,
       timezone, businessHoursStart, businessHoursEnd, businessDays]);
 
