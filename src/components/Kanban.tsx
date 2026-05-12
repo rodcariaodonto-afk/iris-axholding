@@ -33,6 +33,25 @@ const Kanban: React.FC = () => {
   const [newActivityDescription, setNewActivityDescription] = useState('');
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [valueInput, setValueInput] = useState('');
+
+  const handleSaveValue = async () => {
+    if (!selectedDeal) return;
+    const parsed = parseFloat(valueInput.replace(/\./g, '').replace(',', '.'));
+    const newValue = isNaN(parsed) ? 0 : parsed;
+    setIsEditingValue(false);
+    if (newValue === selectedDeal.value) return;
+    try {
+      await api.updateDeal(selectedDeal.id, { value: newValue });
+      setSelectedDeal({ ...selectedDeal, value: newValue });
+      setDeals(deals.map(d => d.id === selectedDeal.id ? { ...d, value: newValue } : d));
+      toast.success('Valor atualizado');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao atualizar valor');
+    }
+  };
   
   const dragItem = useRef<string | null>(null);
   
