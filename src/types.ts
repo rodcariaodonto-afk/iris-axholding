@@ -240,6 +240,7 @@ export interface DBConversation {
   is_active: boolean;
   assigned_user_id: string | null;
   assigned_team: string | null;
+  session_id: string | null;
   tags: string[];
   metadata: Record<string, any>;
   nina_context: Record<string, any>;
