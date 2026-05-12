@@ -13,6 +13,10 @@ interface NinaSettings {
   evolution_api_url: string | null;
   evolution_api_key: string | null;
   evolution_instance_name: string | null;
+  whatsapp_access_token: string | null;
+  whatsapp_phone_number_id: string | null;
+  whatsapp_business_account_id: string | null;
+  whatsapp_verify_token: string | null;
   elevenlabs_api_key: string | null;
   elevenlabs_voice_id: string;
   elevenlabs_model: string | null;
