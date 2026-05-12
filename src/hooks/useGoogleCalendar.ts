@@ -158,6 +158,7 @@ export function useGoogleCalendar() {
     disconnect,
     syncAppointment,
     syncAllAppointments,
+    handleOAuthCallback,
     refreshConnection: checkConnection,
   };
 }
