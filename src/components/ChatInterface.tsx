@@ -509,7 +509,14 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex h-full bg-slate-950 rounded-tl-2xl overflow-hidden border-t border-l border-slate-800/50 shadow-2xl">
-      
+
+      {/* Sessions Sidebar (WhatsApp numbers) */}
+      <SessionsSidebar
+        selected={selectedSessionId}
+        onSelect={setSelectedSessionId}
+        conversationCounts={conversationCounts}
+      />
+
       {/* Left Sidebar: Chat List */}
       <div className="w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0">
         {/* Search Header */}
