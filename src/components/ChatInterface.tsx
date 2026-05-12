@@ -361,17 +361,26 @@ const ChatInterface: React.FC = () => {
       const duration = audioDurations[msg.id] || 0;
       const progress = audioProgress[msg.id] || 0;
       
-      const togglePlay = () => {
+      const togglePlay = async () => {
         const audio = audioRefs.current[msg.id];
-        if (!audio) return;
-        
+        if (!audio) {
+          console.warn('[Audio] No audio element for', msg.id);
+          return;
+        }
+
         if (isPlaying) {
           audio.pause();
           setPlayingAudioId(null);
-        } else {
-          Object.values(audioRefs.current).forEach(a => a.pause());
-          audio.play();
+          return;
+        }
+
+        Object.values(audioRefs.current).forEach(a => { if (a !== audio) a.pause(); });
+        try {
+          await audio.play();
           setPlayingAudioId(msg.id);
+        } catch (err) {
+          console.error('[Audio] Play failed for', msg.id, err, 'src=', msg.mediaUrl);
+          setPlayingAudioId(null);
         }
       };
 
