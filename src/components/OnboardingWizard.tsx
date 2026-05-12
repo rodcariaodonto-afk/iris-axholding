@@ -412,11 +412,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         company_name: companyName?.trim() || null,
         sdr_name: sdrName?.trim() || null,
         
-        // WhatsApp - Evolution API
-        whatsapp_provider: 'evolution',
-        evolution_api_url: evolutionApiUrl?.trim() || null,
-        evolution_api_key: evolutionApiKey?.trim() || null,
-        evolution_instance_name: evolutionInstanceName?.trim() || null,
+        // WhatsApp - provider-aware
+        whatsapp_provider: whatsappProvider,
+        evolution_api_url: whatsappProvider === 'evolution' ? (evolutionApiUrl?.trim() || null) : null,
+        evolution_api_key: whatsappProvider === 'evolution' ? (evolutionApiKey?.trim() || null) : null,
+        evolution_instance_name: whatsappProvider === 'evolution' ? (evolutionInstanceName?.trim() || null) : null,
+        whatsapp_access_token: whatsappProvider === 'meta_cloud' ? (whatsappAccessToken?.trim() || null) : null,
+        whatsapp_phone_number_id: whatsappProvider === 'meta_cloud' ? (whatsappPhoneNumberId?.trim() || null) : null,
+        whatsapp_business_account_id: whatsappProvider === 'meta_cloud' ? (whatsappBusinessAccountId?.trim() || null) : null,
+        whatsapp_verify_token: whatsappProvider === 'meta_cloud' ? (whatsappVerifyToken?.trim() || null) : null,
         
         // Agent - use default prompt if empty
         system_prompt_override: systemPrompt?.trim() || DEFAULT_NINA_PROMPT,
