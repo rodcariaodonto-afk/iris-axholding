@@ -340,14 +340,40 @@ export const api = {
       return []; // Return empty array if no data
     }
 
-    return data.map(c => ({
-      id: c.id,
-      name: c.name || c.call_name || c.phone_number,
-      phone: c.phone_number,
-      email: c.email || '',
-      status: 'lead' as const, // Map from tags or client_memory in future
-      lastContact: new Date(c.last_activity).toLocaleDateString('pt-BR')
-    }));
+    // Buscar deals para derivar status real (customer = ganhou, churned = perdeu)
+    const contactIds = data.map(c => c.id);
+    const { data: dealsData } = await supabase
+      .from('deals')
+      .select('contact_id, stage, won_at, lost_at')
+      .in('contact_id', contactIds);
+
+    const dealStatusByContact = new Map<string, 'customer' | 'churned' | 'lead'>();
+    (dealsData || []).forEach(d => {
+      if (!d.contact_id) return;
+      const current = dealStatusByContact.get(d.contact_id);
+      if (d.won_at || d.stage === 'won') {
+        dealStatusByContact.set(d.contact_id, 'customer');
+      } else if ((d.lost_at || d.stage === 'lost') && current !== 'customer') {
+        dealStatusByContact.set(d.contact_id, 'churned');
+      } else if (!current) {
+        dealStatusByContact.set(d.contact_id, 'lead');
+      }
+    });
+
+    return data.map(c => {
+      const tags = (c.tags || []) as string[];
+      let status: 'lead' | 'customer' | 'churned' = dealStatusByContact.get(c.id) || 'lead';
+      if (tags.some(t => /cliente|customer/i.test(t))) status = 'customer';
+      else if (tags.some(t => /churn/i.test(t))) status = 'churned';
+      return {
+        id: c.id,
+        name: c.name || c.call_name || c.phone_number,
+        phone: c.phone_number,
+        email: c.email || '',
+        status,
+        lastContact: new Date(c.last_activity).toLocaleDateString('pt-BR'),
+      };
+    });
   },
 
   /**
