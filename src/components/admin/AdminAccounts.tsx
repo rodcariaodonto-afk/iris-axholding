@@ -63,13 +63,13 @@ export default function AdminAccounts() {
             <div className="flex-1 min-w-0">
               <div className="font-medium flex items-center gap-2">
                 {a.name}
-                {a.is_internal && <Badge variant="outline" className="text-[10px]">Interna</Badge>}
+                {a.is_internal && <Badge className="text-[10px]">Interna</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">/{a.slug} · criada em {format(new Date(a.created_at), "dd/MM/yyyy")}</div>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground"><UsersIcon className="w-3.5 h-3.5" />{a.member_count}</div>
-            <Badge variant="outline" className="capitalize">{a.plan}</Badge>
-            <Badge variant="outline" className={STATUS_COLOR[a.status] || ""}>{a.status}</Badge>
+            <Badge className="capitalize">{a.plan}</Badge>
+            <Badge className={STATUS_COLOR[a.status] || ""}>{a.status}</Badge>
           </div>
         ))}
         {filtered.length === 0 && <div className="p-12 text-center text-muted-foreground">Nenhuma conta encontrada.</div>}
