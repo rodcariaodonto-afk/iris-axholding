@@ -14,6 +14,7 @@ import { PipelineSettingsModal } from './PipelineSettingsModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { RequireRole } from './RequireRole';
 
 const Kanban: React.FC = () => {
   const { sdrName } = useCompanySettings();
