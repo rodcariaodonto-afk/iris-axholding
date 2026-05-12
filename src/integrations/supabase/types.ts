@@ -117,6 +117,54 @@ export type Database = {
           },
         ]
       }
+      account_plans: {
+        Row: {
+          ai_responses_month: number
+          code: string
+          created_at: string
+          description: string | null
+          features: Json
+          is_public: boolean
+          max_contacts: number
+          max_messages_month: number
+          max_users: number
+          max_whatsapp_numbers: number
+          name: string
+          position: number
+          price_monthly: number
+        }
+        Insert: {
+          ai_responses_month?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          features?: Json
+          is_public?: boolean
+          max_contacts?: number
+          max_messages_month?: number
+          max_users?: number
+          max_whatsapp_numbers?: number
+          name: string
+          position?: number
+          price_monthly?: number
+        }
+        Update: {
+          ai_responses_month?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          features?: Json
+          is_public?: boolean
+          max_contacts?: number
+          max_messages_month?: number
+          max_users?: number
+          max_whatsapp_numbers?: number
+          name?: string
+          position?: number
+          price_monthly?: number
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           cancelled_at: string | null
@@ -252,6 +300,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          account_id: string
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          impersonated_by: string | null
+          ip: string | null
+          metadata: Json
+          resource_id: string | null
+          resource_type: string
+        }
+        Insert: {
+          account_id: string
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          impersonated_by?: string | null
+          ip?: string | null
+          metadata?: Json
+          resource_id?: string | null
+          resource_type: string
+        }
+        Update: {
+          account_id?: string
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          impersonated_by?: string | null
+          ip?: string | null
+          metadata?: Json
+          resource_id?: string | null
+          resource_type?: string
+        }
+        Relationships: []
       }
       contacts: {
         Row: {
@@ -1558,6 +1648,10 @@ export type Database = {
         Args: { _account_id: string }
         Returns: Database["public"]["Enums"]["app_account_role"]
       }
+      check_account_limit: {
+        Args: { _account_id: string; _resource: string }
+        Returns: Json
+      }
       claim_message_processing_batch: {
         Args: { p_limit?: number }
         Returns: {
@@ -1676,6 +1770,16 @@ export type Database = {
       }
       is_account_member: { Args: { _account_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      log_audit: {
+        Args: {
+          _account_id: string
+          _action: string
+          _metadata?: Json
+          _resource_id?: string
+          _resource_type: string
+        }
+        Returns: undefined
+      }
       set_active_account: { Args: { _account_id: string }; Returns: undefined }
       update_client_memory: {
         Args: { p_contact_id: string; p_new_memory: Json }

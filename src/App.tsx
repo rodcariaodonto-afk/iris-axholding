@@ -20,6 +20,12 @@ import AccountUsers from './components/account/AccountUsers';
 import AccountPermissions from './components/account/AccountPermissions';
 import AccountIntegrations from './components/account/AccountIntegrations';
 import AccountSecurity from './components/account/AccountSecurity';
+import AccountPlan from './components/account/AccountPlan';
+import AccountAudit from './components/account/AccountAudit';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminAccounts from './components/admin/AdminAccounts';
+import AdminUsers from './components/admin/AdminUsers';
+import AdminAudit from './components/admin/AdminAudit';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
@@ -96,10 +102,19 @@ const App: React.FC = () => {
               <Route path="/account" element={<AccountLayout />}>
                 <Route index element={<Navigate to="/account/overview" replace />} />
                 <Route path="overview" element={<AccountOverview />} />
+                <Route path="plan" element={<AccountPlan />} />
                 <Route path="users" element={<AccountUsers />} />
                 <Route path="permissions" element={<AccountPermissions />} />
                 <Route path="integrations" element={<AccountIntegrations />} />
+                <Route path="audit" element={<AccountAudit />} />
                 <Route path="security" element={<AccountSecurity />} />
+              </Route>
+
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="/admin/accounts" replace />} />
+                <Route path="accounts" element={<AdminAccounts />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="audit" element={<AdminAudit />} />
               </Route>
             </Route>
 

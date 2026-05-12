@@ -1,62 +1,52 @@
-# Fase 2 — Menu "Conta", Papéis Granulares, Convites e AccountSwitcher
+## Fase 3 — Planos, Auditoria, Super-Admin AXHolding e Retenção
 
-Construir a camada de gestão de conta sobre a base multi-tenant da Fase 1, sem mexer em features existentes.
+Última camada do modelo multi-tenant. Tudo aditivo, sem mexer em features das Fases 1 e 2.
 
-## Entregáveis
+### 1. Planos & Limites
+- Tabela `account_plans` (catálogo: starter, pro, business, enterprise) com limites: `max_users`, `max_contacts`, `max_messages_month`, `max_whatsapp_numbers`, `ai_responses_month`, `features` jsonb.
+- Função `check_account_limit(_account_id, _resource)` usada em edge functions (criar contato, enviar mensagem, criar usuário) — retorna erro amigável quando estoura.
+- Página `/account/plan` — mostra plano atual, uso vs limite (barras), CTA "Falar com vendas" (sem billing real nesta fase, só estrutura).
+- Campo `accounts.plan` já existe; vamos popular limites por padrão via trigger.
 
-### 1. Hook & permissões
-- `useAccountRole()` — retorna role do usuário na conta ativa (`owner | admin | manager | sdr | viewer`) + helpers (`isOwner`, `canManageUsers`, `canManageBilling`, `isSuperAdmin`).
-- `<RequireRole roles={[...]}>` — wrapper para esconder UI por papel.
+### 2. Audit Logs
+- Tabela `audit_logs` (`account_id`, `actor_user_id`, `action`, `resource_type`, `resource_id`, `metadata`, `ip`, `created_at`).
+- RLS: leitura para `owner|admin`; insert via service_role (edge functions e triggers).
+- Triggers em: `account_members` (invite/remove/role change), `accounts` (update), `nina_settings` (mudanças críticas), `pipeline_stages` (delete).
+- Página `/account/audit` — timeline filtrável por ator, ação e período.
 
-### 2. AccountSwitcher (header)
-- Dropdown no topbar listando contas onde o user é membro.
-- Troca chama `set_active_account` (RPC) + atualiza `localStorage` e força reload das queries.
-- Aparece só se o user pertence a 2+ contas (ou é super-admin).
+### 3. Super-Admin AXHolding (área interna)
+- Conta `AXHolding Internal` (`is_internal=true`) já criada na Fase 1.
+- Novo grupo no Sidebar **"AXHolding"** visível só para `isSuperAdmin`:
+  - `/admin/accounts` — lista todas as contas, status, plano, MRR fictício, último acesso, ações (suspender, reativar, impersonar).
+  - `/admin/users` — busca global de usuários cross-account.
+  - `/admin/health` — saúde do sistema (filas, edge functions, erros recentes).
+  - `/admin/audit` — audit logs globais (todas as contas).
+- Edge function `admin-impersonate` (apenas super-admin) — gera token temporário para entrar em uma conta como viewer (ações ficam logadas com flag `impersonated_by`).
 
-### 3. Sidebar — grupo "Conta"
-Adicionar novo grupo no `AppSidebar` com 5 rotas:
-- `/account/overview` — nome, plano, logo, slug, métricas básicas
-- `/account/users` — lista de membros + convites pendentes (move funcionalidade atual de Team para cá, mas mantém Team como está)
-- `/account/permissions` — matriz visual de permissões por papel (read-only nesta fase)
-- `/account/integrations` — atalho para WhatsApp/Google Calendar/Evolution já existentes
-- `/account/security` — sessões, change password, (placeholder para Fase 3 retention/export)
+### 4. Retenção, Export e Soft-Delete
+- Campos `accounts.cancelled_at` e `accounts.delete_after` já existem.
+- Edge function `account-export` — gera ZIP com JSON de contatos, conversas, mensagens, deals, appointments. Resultado em storage privado, link assinado por 24h.
+- Edge function `account-cancel` — marca `cancelled_at=now()`, `delete_after=now()+30d`, suspende membros (status=suspended), bloqueia novas mensagens.
+- Cron diário `account-purge` — apaga contas onde `delete_after < now()`.
+- Página `/account/security` ganha botões reais: "Exportar dados", "Cancelar conta" (com confirmação dupla).
 
-Visível apenas para `owner|admin`. `manager` vê só Overview e Users. `sdr|viewer` não vê o grupo.
+### 5. Refinos finais
+- Aplicar gating por papel nos botões pendentes da UI: criar deal (sdr+), excluir deal (manager+), editar prompt IA (admin+), configurar WhatsApp (admin+), pipeline (manager+).
+- Esconder grupo "Conta" para sdr/viewer no Sidebar (já parcialmente feito, completar).
+- Mostrar badge do plano atual no header ao lado do AccountSwitcher.
 
-### 4. Sistema de Convites
-- Página pública `/invite/:token` — mostra dados do convite e CTA "Aceitar" (com signup ou login se já houver conta).
-- Edge function `account-invite` (criar convite + enviar email via Resend usando template já existente).
-- Edge function `account-invite-accept` (valida token, expira, cria/atualiza `account_members`).
-- UI em `/account/users` para criar convite, listar pendentes, revogar, reenviar.
+### Detalhes técnicos
+- Migration única com: `account_plans`, `audit_logs`, função `check_account_limit`, função `log_audit`, triggers em tabelas críticas, seed dos 4 planos padrão.
+- Edge functions novas: `admin-impersonate`, `account-export`, `account-cancel`, `account-purge` (cron). Todas com validação de papel via `has_account_role` ou `is_super_admin`.
+- Storage bucket privado novo: `account-exports` (RLS: owner/admin do account_id no path).
+- Hook novo `useAccountUsage()` para alimentar a página `/account/plan`.
 
-### 5. Refactor da criação direta de usuário
-- `create-team-user` ganha validação de papel (apenas `owner|admin` da conta podem chamar).
-- Quando o convidado aceita, papel é mapeado: admin↔admin, manager↔manager, atendente↔sdr.
+### Não inclui
+- Billing real (Stripe/Paddle) — fica para Fase 4 quando comercial estiver definido.
+- Onboarding self-service de novas contas (criar conta a partir do signup público) — fica como decisão futura.
 
-### 6. Esconder ações sensíveis na UI
-Auditar e gatear por papel:
-- Botões "Adicionar usuário", "Editar prompt da IA", "Configurar WhatsApp", "Excluir deal", "Mudar pipeline" → admin/manager conforme caso.
-- `sdr` só interage com conversas/contatos atribuídos.
-- `viewer` só leitura.
-
-## Detalhes técnicos
-
-- **AccountSwitcher**: usa `useActiveAccount` (já existe). Ao trocar, executa `await supabase.rpc('set_active_account', { _account_id })` e `window.location.reload()` para garantir que TanStack Query/realtime reabram com o novo contexto.
-- **Convites**: tabela `account_invites` já existe. Token é uuid v4 + base64. Email enviado via `send-invite-email` (já existe), apenas trocando o payload (`mode: 'account_invite'`, link `/invite/:token`).
-- **`/invite/:token`**: rota pública (fora do AuthGuard). Se o user não está logado, faz login/signup; depois chama `account-invite-accept` que insere em `account_members` e seta o convite como `accepted_at`.
-- **RLS**: já cobre — `account_invites` tem policy de owner/admin; `account_members` permite owner/admin gerenciar.
-- **Edge functions novas**: `account-invite` (POST), `account-invite-accept` (POST). Ambas com `verify_jwt = false` no `config.toml` apenas para `account-invite-accept` (aceite pode ser feito por usuário recém-criado). `account-invite` valida JWT e papel via `is_account_member` + `has_account_role`.
-
-## Não está nesta fase
-- Planos comerciais, billing, limites
-- Audit logs
-- Super-admin AXHolding (área especial)
-- Export/retention pós-cancelamento
-
-→ Tudo isso fica para Fase 3.
-
-## Riscos
-- Baixo. Toda Fase 2 é aditiva. Não mexe em RLS existente nem em fluxos de mensagem/IA/calendário.
-- Único cuidado: AccountSwitcher precisa fazer `reload()` para evitar caches de queries com `account_id` antigo.
+### Riscos
+- Médio. Triggers de audit podem virar gargalo em volume alto → escrita assíncrona via fila se necessário.
+- Soft-delete precisa garantir que webhooks da Evolution/Meta não criem contatos em contas suspensas (adicionar check em `whatsapp-webhook`).
 
 Confirma para eu começar a implementação?
