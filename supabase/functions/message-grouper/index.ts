@@ -265,6 +265,7 @@ async function uploadMediaToStorage(
 }
 
 function getExtensionFromMime(mimeType: string): string {
+  const base = (mimeType || '').split(';')[0].trim().toLowerCase();
   const map: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
@@ -272,13 +273,16 @@ function getExtensionFromMime(mimeType: string): string {
     'image/gif': 'gif',
     'application/pdf': 'pdf',
     'audio/ogg': 'ogg',
+    'audio/opus': 'ogg',
     'audio/mpeg': 'mp3',
     'audio/mp4': 'm4a',
+    'audio/aac': 'aac',
+    'audio/webm': 'webm',
     'video/mp4': 'mp4',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
   };
-  return map[mimeType] || 'bin';
+  return map[base] || 'bin';
 }
 
 // Detect MIME type from message data
