@@ -198,10 +198,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
   const [companyName, setCompanyName] = useState('');
   const [sdrName, setSdrName] = useState('');
   
-  // Form state - WhatsApp (Evolution API)
+  // Form state - WhatsApp
+  const [whatsappProvider, setWhatsappProvider] = useState<'evolution' | 'meta_cloud'>('evolution');
+  // Evolution API
   const [evolutionApiUrl, setEvolutionApiUrl] = useState('');
   const [evolutionApiKey, setEvolutionApiKey] = useState('');
   const [evolutionInstanceName, setEvolutionInstanceName] = useState('');
+  // Meta Cloud API
+  const [whatsappAccessToken, setWhatsappAccessToken] = useState('');
+  const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState('');
+  const [whatsappBusinessAccountId, setWhatsappBusinessAccountId] = useState('');
+  const [whatsappVerifyToken, setWhatsappVerifyToken] = useState('');
   
   // Form state - Agent
   const [systemPrompt, setSystemPrompt] = useState('');
