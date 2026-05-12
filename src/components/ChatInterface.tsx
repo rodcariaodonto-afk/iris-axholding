@@ -15,10 +15,16 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import EmojiPicker from './EmojiPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { requireActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import TransferConversationDialog from './chat/TransferConversationDialog';
+import SessionsSidebar from './chat/SessionsSidebar';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
+  const { role } = useActiveAccount();
+  const canSeeAll = role === 'owner' || role === 'admin' || role === 'manager';
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
   const { sdrName, companyName } = useCompanySettings();
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
@@ -64,7 +70,12 @@ const ChatInterface: React.FC = () => {
     });
   }, []);
 
-  // Auto-select first conversation or from URL param
+  // Load current user id (for own-conversation filter)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+
   useEffect(() => {
     // Check for conversation param in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -258,7 +269,24 @@ const ChatInterface: React.FC = () => {
     await updateStatus(activeChat.id, status);
   };
 
-  const filteredConversations = conversations.filter(chat => {
+  // Conversations visible to the current user:
+  // - owner/admin/manager: all conversations of the account
+  // - others: only conversations assigned to themselves
+  const visibleConversations = conversations.filter(chat => {
+    if (canSeeAll) return true;
+    return chat.assignedUserId === currentUserId;
+  });
+
+  // Counts per session (after permission filter, before search/session filter)
+  const conversationCounts: Record<string, number> = { all: visibleConversations.length };
+  for (const c of visibleConversations) {
+    if (c.sessionId) {
+      conversationCounts[c.sessionId] = (conversationCounts[c.sessionId] ?? 0) + 1;
+    }
+  }
+
+  const filteredConversations = visibleConversations.filter(chat => {
+    if (selectedSessionId !== 'all' && chat.sessionId !== selectedSessionId) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -481,7 +509,14 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex h-full bg-slate-950 rounded-tl-2xl overflow-hidden border-t border-l border-slate-800/50 shadow-2xl">
-      
+
+      {/* Sessions Sidebar (WhatsApp numbers) */}
+      <SessionsSidebar
+        selected={selectedSessionId}
+        onSelect={setSelectedSessionId}
+        conversationCounts={conversationCounts}
+      />
+
       {/* Left Sidebar: Chat List */}
       <div className="w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0">
         {/* Search Header */}
