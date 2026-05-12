@@ -147,6 +147,10 @@ const Settings: React.FC = () => {
           <ApiSettings ref={apiRef} />
         </TabsContent>
 
+        <TabsContent value="whatsapp">
+          <WhatsAppSessions />
+        </TabsContent>
+
         <TabsContent value="docs">
           <SystemRoadmap />
         </TabsContent>
