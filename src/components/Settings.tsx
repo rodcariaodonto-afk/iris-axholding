@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail } from 'lucide-react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
@@ -7,6 +7,7 @@ import SystemRoadmap from './SystemRoadmap';
 import MediaLibrary from './settings/MediaLibrary';
 import AccountSettings from './settings/AccountSettings';
 import EmailSettings from './settings/EmailSettings';
+import WhatsAppSessions from './settings/WhatsAppSessions';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
@@ -99,6 +100,10 @@ const Settings: React.FC = () => {
               <Plug className="w-4 h-4" />
               APIs
             </TabsTrigger>
+            <TabsTrigger value="whatsapp" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              WhatsApp
+            </TabsTrigger>
             <TabsTrigger value="docs" className="gap-2">
               <BookOpen className="w-4 h-4" />
               Documentação
@@ -117,37 +122,16 @@ const Settings: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && isAdmin && (
             <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={handleCancel}
-                disabled={isSaving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Salvar Alterações
-                  </>
-                )}
+              <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
+              <Button variant="primary" onClick={handleSave} disabled={isSaving} className="gap-2">
+                {isSaving ? (<><Loader2 className="w-4 h-4 animate-spin" />Salvando...</>) : (<><Save className="w-4 h-4" />Salvar Alterações</>)}
               </Button>
             </div>
           )}
-          
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && !isAdmin && (
+
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -161,6 +145,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="apis">
           <ApiSettings ref={apiRef} />
+        </TabsContent>
+
+        <TabsContent value="whatsapp">
+          <WhatsAppSessions />
         </TabsContent>
 
         <TabsContent value="docs">
