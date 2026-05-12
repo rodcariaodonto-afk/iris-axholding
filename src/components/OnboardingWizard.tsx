@@ -551,7 +551,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       setIsSaving(false);
     }
   }, [
-    user, activeStep, companyName, sdrName, evolutionApiUrl, evolutionApiKey, evolutionInstanceName, 
+    user, activeStep, companyName, sdrName, whatsappProvider, evolutionApiUrl, evolutionApiKey, evolutionInstanceName,
+    whatsappAccessToken, whatsappPhoneNumberId, whatsappBusinessAccountId, whatsappVerifyToken,
     systemPrompt, aiModelMode, elevenLabsApiKey, elevenLabsVoiceId, elevenLabsModel,
     audioResponseEnabled, elevenLabsStability, elevenLabsSimilarityBoost, elevenLabsSpeed,
     timezone, businessHoursStart, businessHoursEnd, businessDays, refetch
