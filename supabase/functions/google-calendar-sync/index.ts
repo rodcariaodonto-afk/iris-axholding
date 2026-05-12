@@ -53,8 +53,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, appointment } = await req.json();
-    // action: 'create' | 'update' | 'delete'
+    // Support GET ?action=status for connection check
+    const url = new URL(req.url);
+    const queryAction = url.searchParams.get('action');
 
     // Use service role to read tokens
     const supabase = createClient(
@@ -68,14 +69,23 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('user_id', user.id)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
+
+    if (req.method === 'GET' && queryAction === 'status') {
+      return new Response(JSON.stringify({ connected: !!connection }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (connError || !connection) {
-      return new Response(JSON.stringify({ error: 'No Google Calendar connection found' }), {
+      return new Response(JSON.stringify({ error: 'No Google Calendar connection found', connected: false }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { action, appointment } = await req.json();
+    // action: 'create' | 'update' | 'delete'
 
     // Check if token needs refresh
     let accessToken = connection.access_token;
