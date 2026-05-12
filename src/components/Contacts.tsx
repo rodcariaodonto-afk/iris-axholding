@@ -6,6 +6,7 @@ import { Button } from './Button';
 import { api } from '../services/api';
 import { Contact } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { requireActiveAccountId } from '@/lib/activeAccount';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,6 +68,7 @@ const Contacts: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('contacts').insert({
+        account_id: requireActiveAccountId(),
         name: form.name.trim(),
         call_name: form.name.trim(),
         phone_number: phone,

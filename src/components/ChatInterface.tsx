@@ -14,6 +14,7 @@ import { TagSelector } from './TagSelector';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import EmojiPicker from './EmojiPicker';
 import { supabase } from '@/integrations/supabase/client';
+import { requireActiveAccountId } from '@/lib/activeAccount';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
@@ -213,6 +214,7 @@ const ChatInterface: React.FC = () => {
       const { error: msgError } = await supabase
         .from('messages')
         .insert({
+          account_id: requireActiveAccountId(),
           conversation_id: activeChat.id,
           content: caption,
           type: messageType,
@@ -228,6 +230,7 @@ const ChatInterface: React.FC = () => {
       const { error: queueError } = await supabase
         .from('send_queue')
         .insert({
+          account_id: requireActiveAccountId(),
           conversation_id: activeChat.id,
           contact_id: activeChat.contactId,
           content: caption,

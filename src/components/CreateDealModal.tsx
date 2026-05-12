@@ -190,6 +190,7 @@ export const CreateDealModal: React.FC<CreateDealModalProps> = ({
         const { data: newContact, error: contactError } = await supabase
           .from('contacts')
           .insert({
+            account_id: requireActiveAccountId(),
             name: data.new_contact_name,
             phone_number: data.new_contact_phone,
             email: data.new_contact_email || null,
