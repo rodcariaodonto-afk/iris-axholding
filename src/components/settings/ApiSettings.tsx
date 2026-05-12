@@ -461,7 +461,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
     }
   };
 
-  const whatsappConfigured = settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name;
+  const isMeta = settings.whatsapp_provider === 'meta_cloud';
+  const whatsappConfigured = isMeta
+    ? !!(settings.whatsapp_access_token && settings.whatsapp_phone_number_id && settings.whatsapp_business_account_id && settings.whatsapp_verify_token)
+    : !!(settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name);
   const elevenlabsConfigured = settings.elevenlabs_api_key;
 
   if (loading) {
