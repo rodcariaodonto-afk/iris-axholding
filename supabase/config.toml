@@ -55,3 +55,7 @@ verify_jwt = false
 
 [functions.send-invite-email]
 verify_jwt = false
+
+[functions.account-invite-accept]
+verify_jwt = false
+

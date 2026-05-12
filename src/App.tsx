@@ -12,7 +12,14 @@ import Kanban from './components/Kanban';
 import Reports from './components/Reports';
 import Auth from './pages/Auth';
 import MeetingRoom from './pages/MeetingRoom';
+import InviteAccept from './pages/InviteAccept';
 import ProtectedRoute from './components/ProtectedRoute';
+import AccountLayout from './components/account/AccountLayout';
+import AccountOverview from './components/account/AccountOverview';
+import AccountUsers from './components/account/AccountUsers';
+import AccountPermissions from './components/account/AccountPermissions';
+import AccountIntegrations from './components/account/AccountIntegrations';
+import AccountSecurity from './components/account/AccountSecurity';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
@@ -67,7 +74,8 @@ const App: React.FC = () => {
           <Routes>
             {/* Public Routes */}
             <Route path="/auth" element={<Auth />} />
-            
+            <Route path="/invite/:token" element={<InviteAccept />} />
+
             {/* Protected Routes (With Sidebar) */}
             <Route element={
               <ProtectedRoute>
@@ -84,8 +92,17 @@ const App: React.FC = () => {
               <Route path="/team" element={<Team />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/meeting/:id" element={<MeetingRoom />} />
+
+              <Route path="/account" element={<AccountLayout />}>
+                <Route index element={<Navigate to="/account/overview" replace />} />
+                <Route path="overview" element={<AccountOverview />} />
+                <Route path="users" element={<AccountUsers />} />
+                <Route path="permissions" element={<AccountPermissions />} />
+                <Route path="integrations" element={<AccountIntegrations />} />
+                <Route path="security" element={<AccountSecurity />} />
+              </Route>
             </Route>
-            
+
             {/* Catch all - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

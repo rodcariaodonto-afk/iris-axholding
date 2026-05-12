@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3, Building2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { canManageAccount } from '@/lib/permissions';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { AccountSwitcher } from '@/components/AccountSwitcher';
 import axhubIcon from '@/assets/icon-axhub.png';
 import axhubLogo from '@/assets/logo-axhub.png';
 
@@ -53,6 +56,7 @@ const LogoIcon = ({ companyLogoUrl }: { companyLogoUrl: string | null }) => {
 const SidebarContent = () => {
   const { companyName, companyLogoUrl } = useCompanySettings();
   const { user, signOut } = useAuth();
+  const { role, isSuperAdmin } = useActiveAccount();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.substring(1) || 'dashboard';
@@ -63,6 +67,13 @@ const SidebarContent = () => {
     href: `/${item.id}`,
     icon: <item.icon className="h-5 w-5" />,
   }));
+
+  const showAccountGroup = isSuperAdmin || canManageAccount(role);
+  const accountLink = {
+    label: 'Conta',
+    href: '/account/overview',
+    icon: <Building2 className="h-5 w-5" />,
+  };
 
   const handleLogout = async () => {
     try {
@@ -95,7 +106,13 @@ const SidebarContent = () => {
         <div className="mb-6">
           {open ? <Logo companyName={companyName} companyLogoUrl={companyLogoUrl} /> : <LogoIcon companyLogoUrl={companyLogoUrl} />}
         </div>
-        
+
+        {open && (
+          <div className="mb-4">
+            <AccountSwitcher />
+          </div>
+        )}
+
         <nav className="flex flex-col gap-1.5">
           {links.map((link, idx) => (
             <SidebarLink
@@ -104,6 +121,17 @@ const SidebarContent = () => {
               isActive={currentPath.startsWith(link.href.slice(1))}
             />
           ))}
+          {showAccountGroup && (
+            <>
+              <div className={`px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60 ${open ? '' : 'hidden'}`}>
+                Workspace
+              </div>
+              <SidebarLink
+                link={accountLink}
+                isActive={currentPath.startsWith('account')}
+              />
+            </>
+          )}
         </nav>
       </div>
 
