@@ -102,10 +102,19 @@ const App: React.FC = () => {
               <Route path="/account" element={<AccountLayout />}>
                 <Route index element={<Navigate to="/account/overview" replace />} />
                 <Route path="overview" element={<AccountOverview />} />
+                <Route path="plan" element={<AccountPlan />} />
                 <Route path="users" element={<AccountUsers />} />
                 <Route path="permissions" element={<AccountPermissions />} />
                 <Route path="integrations" element={<AccountIntegrations />} />
+                <Route path="audit" element={<AccountAudit />} />
                 <Route path="security" element={<AccountSecurity />} />
+              </Route>
+
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="/admin/accounts" replace />} />
+                <Route path="accounts" element={<AdminAccounts />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="audit" element={<AdminAudit />} />
               </Route>
             </Route>
 
