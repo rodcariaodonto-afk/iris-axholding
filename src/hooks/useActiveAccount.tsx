@@ -71,7 +71,7 @@ export function ActiveAccountProvider({ children }: { children: ReactNode }) {
       setActiveAccountId(next);
       setActiveId(next);
       // Set GUC server-side so RLS helpers can read it (best-effort)
-      await supabase.rpc("set_active_account", { _account_id: next }).catch(() => {});
+      try { await supabase.rpc("set_active_account", { _account_id: next }); } catch {}
     } else {
       setActiveAccountId(null);
       setActiveId(null);
@@ -90,7 +90,7 @@ export function ActiveAccountProvider({ children }: { children: ReactNode }) {
   const switchAccount = useCallback(async (accountId: string) => {
     setActiveAccountId(accountId);
     setActiveId(accountId);
-    await supabase.rpc("set_active_account", { _account_id: accountId }).catch(() => {});
+    try { await supabase.rpc("set_active_account", { _account_id: accountId }); } catch {}
   }, []);
 
   const active = memberships.find((m) => m.account_id === activeId);
