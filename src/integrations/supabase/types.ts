@@ -14,8 +14,166 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_invites: {
+        Row: {
+          accepted_at: string | null
+          account_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          metadata: Json
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["app_account_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          account_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["app_account_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          account_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["app_account_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_invites_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_members: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          joined_at: string
+          last_active_at: string | null
+          permissions: Json
+          role: Database["public"]["Enums"]["app_account_role"]
+          status: Database["public"]["Enums"]["account_member_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string
+          last_active_at?: string | null
+          permissions?: Json
+          role?: Database["public"]["Enums"]["app_account_role"]
+          status?: Database["public"]["Enums"]["account_member_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string
+          last_active_at?: string | null
+          permissions?: Json
+          role?: Database["public"]["Enums"]["app_account_role"]
+          status?: Database["public"]["Enums"]["account_member_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_members_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          delete_after: string | null
+          domain: string | null
+          id: string
+          is_internal: boolean
+          limits: Json
+          logo_url: string | null
+          name: string
+          plan: Database["public"]["Enums"]["account_plan"]
+          settings: Json
+          slug: string
+          status: Database["public"]["Enums"]["account_status"]
+          subscription_data: Json
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          delete_after?: string | null
+          domain?: string | null
+          id?: string
+          is_internal?: boolean
+          limits?: Json
+          logo_url?: string | null
+          name: string
+          plan?: Database["public"]["Enums"]["account_plan"]
+          settings?: Json
+          slug: string
+          status?: Database["public"]["Enums"]["account_status"]
+          subscription_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          delete_after?: string | null
+          domain?: string | null
+          id?: string
+          is_internal?: boolean
+          limits?: Json
+          logo_url?: string | null
+          name?: string
+          plan?: Database["public"]["Enums"]["account_plan"]
+          settings?: Json
+          slug?: string
+          status?: Database["public"]["Enums"]["account_status"]
+          subscription_data?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
+          account_id: string
           attendees: string[] | null
           contact_id: string | null
           created_at: string
@@ -34,6 +192,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           attendees?: string[] | null
           contact_id?: string | null
           created_at?: string
@@ -52,6 +211,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           attendees?: string[] | null
           contact_id?: string | null
           created_at?: string
@@ -71,6 +231,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "appointments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_contact_id_fkey"
             columns: ["contact_id"]
             isOneToOne: false
@@ -88,6 +255,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          account_id: string
           blocked_at: string | null
           blocked_reason: string | null
           call_name: string | null
@@ -109,6 +277,7 @@ export type Database = {
           whatsapp_id: string | null
         }
         Insert: {
+          account_id: string
           blocked_at?: string | null
           blocked_reason?: string | null
           call_name?: string | null
@@ -130,6 +299,7 @@ export type Database = {
           whatsapp_id?: string | null
         }
         Update: {
+          account_id?: string
           blocked_at?: string | null
           blocked_reason?: string | null
           call_name?: string | null
@@ -150,10 +320,19 @@ export type Database = {
           user_id?: string | null
           whatsapp_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversation_states: {
         Row: {
+          account_id: string
           conversation_id: string
           created_at: string
           current_state: string
@@ -164,6 +343,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id: string
           conversation_id: string
           created_at?: string
           current_state?: string
@@ -174,6 +354,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string
           conversation_id?: string
           created_at?: string
           current_state?: string
@@ -185,6 +366,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "conversation_states_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversation_states_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: true
@@ -195,6 +383,7 @@ export type Database = {
       }
       conversations: {
         Row: {
+          account_id: string
           assigned_team: Database["public"]["Enums"]["team_assignment"] | null
           assigned_user_id: string | null
           contact_id: string
@@ -211,6 +400,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           assigned_team?: Database["public"]["Enums"]["team_assignment"] | null
           assigned_user_id?: string | null
           contact_id: string
@@ -227,6 +417,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           assigned_team?: Database["public"]["Enums"]["team_assignment"] | null
           assigned_user_id?: string | null
           contact_id?: string
@@ -243,6 +434,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_contact_id_fkey"
             columns: ["contact_id"]
@@ -261,6 +459,7 @@ export type Database = {
       }
       deal_activities: {
         Row: {
+          account_id: string
           completed_at: string | null
           created_at: string | null
           created_by: string | null
@@ -274,6 +473,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_id: string
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -287,6 +487,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_id?: string
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -300,6 +501,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deal_activities_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deal_activities_created_by_fkey"
             columns: ["created_by"]
@@ -318,6 +526,7 @@ export type Database = {
       }
       deals: {
         Row: {
+          account_id: string
           company: string | null
           contact_id: string | null
           created_at: string | null
@@ -338,6 +547,7 @@ export type Database = {
           won_at: string | null
         }
         Insert: {
+          account_id: string
           company?: string | null
           contact_id?: string | null
           created_at?: string | null
@@ -358,6 +568,7 @@ export type Database = {
           won_at?: string | null
         }
         Update: {
+          account_id?: string
           company?: string | null
           contact_id?: string | null
           created_at?: string | null
@@ -378,6 +589,13 @@ export type Database = {
           won_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deals_contact_id_fkey"
             columns: ["contact_id"]
@@ -411,6 +629,7 @@ export type Database = {
       google_calendar_connections: {
         Row: {
           access_token: string
+          account_id: string
           calendar_id: string
           created_at: string
           id: string
@@ -422,6 +641,7 @@ export type Database = {
         }
         Insert: {
           access_token: string
+          account_id: string
           calendar_id?: string
           created_at?: string
           id?: string
@@ -433,6 +653,7 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          account_id?: string
           calendar_id?: string
           created_at?: string
           id?: string
@@ -442,10 +663,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       media_library: {
         Row: {
+          account_id: string
           created_at: string
           description: string | null
           file_name: string | null
@@ -460,6 +690,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           created_at?: string
           description?: string | null
           file_name?: string | null
@@ -474,6 +705,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           created_at?: string
           description?: string | null
           file_name?: string | null
@@ -487,10 +719,19 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "media_library_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_grouping_queue: {
         Row: {
+          account_id: string
           contacts_data: Json | null
           created_at: string
           id: string
@@ -502,6 +743,7 @@ export type Database = {
           whatsapp_message_id: string
         }
         Insert: {
+          account_id: string
           contacts_data?: Json | null
           created_at?: string
           id?: string
@@ -513,6 +755,7 @@ export type Database = {
           whatsapp_message_id: string
         }
         Update: {
+          account_id?: string
           contacts_data?: Json | null
           created_at?: string
           id?: string
@@ -525,6 +768,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "message_grouping_queue_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "message_grouping_queue_message_id_fkey"
             columns: ["message_id"]
             isOneToOne: false
@@ -535,6 +785,7 @@ export type Database = {
       }
       message_processing_queue: {
         Row: {
+          account_id: string
           created_at: string
           error_message: string | null
           id: string
@@ -549,6 +800,7 @@ export type Database = {
           whatsapp_message_id: string
         }
         Insert: {
+          account_id: string
           created_at?: string
           error_message?: string | null
           id?: string
@@ -563,6 +815,7 @@ export type Database = {
           whatsapp_message_id: string
         }
         Update: {
+          account_id?: string
           created_at?: string
           error_message?: string | null
           id?: string
@@ -576,10 +829,19 @@ export type Database = {
           updated_at?: string
           whatsapp_message_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "message_processing_queue_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
+          account_id: string
           content: string | null
           conversation_id: string
           created_at: string
@@ -599,6 +861,7 @@ export type Database = {
           whatsapp_message_id: string | null
         }
         Insert: {
+          account_id: string
           content?: string | null
           conversation_id: string
           created_at?: string
@@ -618,6 +881,7 @@ export type Database = {
           whatsapp_message_id?: string | null
         }
         Update: {
+          account_id?: string
           content?: string | null
           conversation_id?: string
           created_at?: string
@@ -638,6 +902,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "messages_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
@@ -655,6 +926,7 @@ export type Database = {
       }
       nina_processing_queue: {
         Row: {
+          account_id: string
           contact_id: string
           context_data: Json | null
           conversation_id: string
@@ -670,6 +942,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id: string
           contact_id: string
           context_data?: Json | null
           conversation_id: string
@@ -685,6 +958,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string
           contact_id?: string
           context_data?: Json | null
           conversation_id?: string
@@ -699,10 +973,19 @@ export type Database = {
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "nina_processing_queue_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nina_settings: {
         Row: {
+          account_id: string
           adaptive_response_enabled: boolean
           ai_model_mode: string | null
           ai_scheduling_enabled: boolean | null
@@ -750,6 +1033,7 @@ export type Database = {
           whatsapp_verify_token: string | null
         }
         Insert: {
+          account_id: string
           adaptive_response_enabled?: boolean
           ai_model_mode?: string | null
           ai_scheduling_enabled?: boolean | null
@@ -797,6 +1081,7 @@ export type Database = {
           whatsapp_verify_token?: string | null
         }
         Update: {
+          account_id?: string
           adaptive_response_enabled?: boolean
           ai_model_mode?: string | null
           ai_scheduling_enabled?: boolean | null
@@ -843,10 +1128,19 @@ export type Database = {
           whatsapp_provider?: string
           whatsapp_verify_token?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "nina_settings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipeline_stages: {
         Row: {
+          account_id: string
           ai_trigger_criteria: string | null
           color: string
           created_at: string | null
@@ -860,6 +1154,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           ai_trigger_criteria?: string | null
           color?: string
           created_at?: string | null
@@ -873,6 +1168,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           ai_trigger_criteria?: string | null
           color?: string
           created_at?: string | null
@@ -885,7 +1181,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -916,6 +1220,7 @@ export type Database = {
       }
       send_queue: {
         Row: {
+          account_id: string
           contact_id: string
           content: string | null
           conversation_id: string
@@ -935,6 +1240,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id: string
           contact_id: string
           content?: string | null
           conversation_id: string
@@ -954,6 +1260,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string
           contact_id?: string
           content?: string | null
           conversation_id?: string
@@ -974,6 +1281,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "send_queue_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "send_queue_message_id_fkey"
             columns: ["message_id"]
             isOneToOne: false
@@ -984,6 +1298,7 @@ export type Database = {
       }
       tag_definitions: {
         Row: {
+          account_id: string
           category: string
           color: string
           created_at: string
@@ -995,6 +1310,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           category?: string
           color?: string
           created_at?: string
@@ -1006,6 +1322,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           category?: string
           color?: string
           created_at?: string
@@ -1016,10 +1333,19 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tag_definitions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_functions: {
         Row: {
+          account_id: string
           created_at: string
           description: string | null
           id: string
@@ -1029,6 +1355,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1038,6 +1365,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1046,10 +1374,19 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_functions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
+          account_id: string
           avatar: string | null
           created_at: string
           email: string
@@ -1065,6 +1402,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          account_id: string
           avatar?: string | null
           created_at?: string
           email: string
@@ -1080,6 +1418,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          account_id?: string
           avatar?: string | null
           created_at?: string
           email?: string
@@ -1095,6 +1434,13 @@ export type Database = {
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "team_members_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "team_members_function_id_fkey"
             columns: ["function_id"]
@@ -1113,6 +1459,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          account_id: string
           color: string | null
           created_at: string
           description: string | null
@@ -1123,6 +1470,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_id: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1133,6 +1481,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_id?: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1142,7 +1491,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teams_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1197,9 +1554,14 @@ export type Database = {
       }
     }
     Functions: {
+      account_member_role: {
+        Args: { _account_id: string }
+        Returns: Database["public"]["Enums"]["app_account_role"]
+      }
       claim_message_processing_batch: {
         Args: { p_limit?: number }
         Returns: {
+          account_id: string
           created_at: string
           error_message: string | null
           id: string
@@ -1223,6 +1585,7 @@ export type Database = {
       claim_nina_processing_batch: {
         Args: { p_limit?: number }
         Returns: {
+          account_id: string
           contact_id: string
           context_data: Json | null
           conversation_id: string
@@ -1247,6 +1610,7 @@ export type Database = {
       claim_send_queue_batch: {
         Args: { p_limit?: number }
         Returns: {
+          account_id: string
           contact_id: string
           content: string | null
           conversation_id: string
@@ -1274,10 +1638,12 @@ export type Database = {
       }
       cleanup_processed_message_queue: { Args: never; Returns: undefined }
       cleanup_processed_queues: { Args: never; Returns: undefined }
+      current_account_id: { Args: never; Returns: string }
       get_auth_user_id: { Args: never; Returns: string }
       get_or_create_conversation_state: {
         Args: { p_conversation_id: string }
         Returns: {
+          account_id: string
           conversation_id: string
           created_at: string
           current_state: string
@@ -1294,6 +1660,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      has_account_role: {
+        Args: {
+          _account_id: string
+          _roles: Database["public"]["Enums"]["app_account_role"][]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1301,6 +1674,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_account_member: { Args: { _account_id: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      set_active_account: { Args: { _account_id: string }; Returns: undefined }
       update_client_memory: {
         Args: { p_contact_id: string; p_new_memory: Json }
         Returns: undefined
@@ -1313,6 +1689,7 @@ export type Database = {
           p_new_state: string
         }
         Returns: {
+          account_id: string
           conversation_id: string
           created_at: string
           current_state: string
@@ -1331,6 +1708,10 @@ export type Database = {
       }
     }
     Enums: {
+      account_member_status: "invited" | "active" | "disabled"
+      account_plan: "starter" | "pro" | "business" | "enterprise"
+      account_status: "active" | "suspended" | "cancelled" | "pending"
+      app_account_role: "owner" | "admin" | "manager" | "sdr" | "viewer"
       app_role: "admin" | "user"
       appointment_type: "demo" | "meeting" | "support" | "followup"
       conversation_status: "nina" | "human" | "paused"
@@ -1468,6 +1849,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_member_status: ["invited", "active", "disabled"],
+      account_plan: ["starter", "pro", "business", "enterprise"],
+      account_status: ["active", "suspended", "cancelled", "pending"],
+      app_account_role: ["owner", "admin", "manager", "sdr", "viewer"],
       app_role: ["admin", "user"],
       appointment_type: ["demo", "meeting", "support", "followup"],
       conversation_status: ["nina", "human", "paused"],
