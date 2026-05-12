@@ -8,6 +8,7 @@ import MediaLibrary from './settings/MediaLibrary';
 import AccountSettings from './settings/AccountSettings';
 import EmailSettings from './settings/EmailSettings';
 import WhatsAppSessions from './settings/WhatsAppSessions';
+import WhatsAppQueues from './settings/WhatsAppQueues';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
@@ -104,6 +105,10 @@ const Settings: React.FC = () => {
               <MessageSquare className="w-4 h-4" />
               WhatsApp
             </TabsTrigger>
+            <TabsTrigger value="queues" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Filas
+            </TabsTrigger>
             <TabsTrigger value="docs" className="gap-2">
               <BookOpen className="w-4 h-4" />
               Documentação
@@ -122,7 +127,7 @@ const Settings: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && isAdmin && (
             <div className="flex gap-3">
               <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
               <Button variant="primary" onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -131,7 +136,7 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -149,6 +154,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="whatsapp">
           <WhatsAppSessions />
+        </TabsContent>
+
+        <TabsContent value="queues">
+          <WhatsAppQueues />
         </TabsContent>
 
         <TabsContent value="docs">

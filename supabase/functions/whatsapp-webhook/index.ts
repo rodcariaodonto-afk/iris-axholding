@@ -169,23 +169,26 @@ async function handleEvolutionWebhook(
   const contactName = data.pushName || null;
   const timestamp = data.messageTimestamp || Math.floor(Date.now() / 1000);
 
-  // Find owner - look for settings with this instance name
-  const { data: ownerSettings } = await supabase
-    .from('nina_settings')
-    .select('user_id')
+  // Resolve WhatsApp session by instance name (multi-user routing)
+  const { data: waSession } = await supabase
+    .from('whatsapp_sessions')
+    .select('id, account_id, owner_user_id')
     .eq('evolution_instance_name', instanceName)
     .maybeSingle();
 
-  let ownerId = ownerSettings?.user_id || null;
-  
+  let sessionId: string | null = waSession?.id ?? null;
+  let sessionAccountId: string | null = waSession?.account_id ?? null;
+  let ownerId: string | null = waSession?.owner_user_id ?? null;
+
+  // Fallback to nina_settings (legacy)
   if (!ownerId) {
-    const { data: adminRole } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin')
-      .limit(1)
+    const { data: ownerSettings } = await supabase
+      .from('nina_settings')
+      .select('user_id, account_id')
+      .eq('evolution_instance_name', instanceName)
       .maybeSingle();
-    ownerId = adminRole?.user_id || null;
+    ownerId = ownerSettings?.user_id || null;
+    sessionAccountId = sessionAccountId || ownerSettings?.account_id || null;
   }
 
   // Get or create contact
@@ -241,7 +244,10 @@ async function handleEvolutionWebhook(
         contact_id: contact.id,
         status: 'nina',
         is_active: true,
-        user_id: null
+        user_id: null,
+        session_id: sessionId,
+        assigned_user_id: ownerId,
+        ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
       })
       .select()
       .single();
@@ -304,6 +310,8 @@ async function handleEvolutionWebhook(
       status: 'sent',
       media_type: mediaType,
       sent_at: new Date(parseInt(timestamp) * 1000).toISOString(),
+      session_id: sessionId,
+      ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
       metadata: {
         provider: 'evolution',
         instance: instanceName,
@@ -446,6 +454,16 @@ async function handleCloudAPIWebhook(
     });
   }
 
+  // Resolve session by phone_number_id (multi-user routing)
+  const { data: waSession } = await supabase
+    .from('whatsapp_sessions')
+    .select('id, account_id, owner_user_id')
+    .eq('whatsapp_phone_number_id', phoneNumberId)
+    .maybeSingle();
+  const sessionId: string | null = waSession?.id ?? null;
+  const sessionAccountId: string | null = waSession?.account_id ?? null;
+  const ownerId: string | null = waSession?.owner_user_id ?? null;
+
   if (messages && messages.length > 0) {
     const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
 
@@ -477,7 +495,11 @@ async function handleCloudAPIWebhook(
       if (!conversation) {
         const { data: newConv, error: convError } = await supabase
           .from('conversations')
-          .insert({ contact_id: contact.id, status: 'nina', is_active: true, user_id: null })
+          .insert({
+            contact_id: contact.id, status: 'nina', is_active: true, user_id: null,
+            session_id: sessionId, assigned_user_id: ownerId,
+            ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
+          })
           .select().single();
         if (convError) { console.error('[Webhook:CloudAPI] Error creating conversation:', convError); continue; }
         conversation = newConv;
@@ -497,6 +519,8 @@ async function handleCloudAPIWebhook(
         conversation_id: conversation.id, whatsapp_message_id: message.id, content: messageContent,
         type: messageType, from_type: 'user', status: 'sent', media_type: mediaType,
         sent_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+        session_id: sessionId,
+        ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
         metadata: { provider: 'cloud_api', original_type: message.type, media_id: message.audio?.id || message.image?.id || message.video?.id || message.document?.id || null }
       }).select().single();
 

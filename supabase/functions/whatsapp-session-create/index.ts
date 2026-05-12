@@ -18,6 +18,7 @@ interface Body {
   whatsapp_business_account_id?: string;
   whatsapp_access_token?: string;
   whatsapp_verify_token?: string;
+  owner_user_id?: string;
 }
 
 Deno.serve(async (req) => {
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
         whatsapp_business_account_id: body.whatsapp_business_account_id ?? null,
         whatsapp_access_token: body.whatsapp_access_token ?? null,
         whatsapp_verify_token: body.whatsapp_verify_token ?? null,
+        owner_user_id: body.owner_user_id ?? userId,
         created_by: userId,
       })
       .select()

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, MoreVertical, Phone, Paperclip, Send, Check, CheckCheck, 
   Smile, Play, Loader2, MessageSquare, Info, X, Mail, 
-  Tag, Bot, User, Pause, Brain, Plus, Image, FileText
+  Tag, Bot, User, Pause, Brain, Plus, Image, FileText, ArrowRightLeft
 } from 'lucide-react';
 import { MessageDirection, MessageType, UIConversation, UIMessage, ConversationStatus, TagDefinition } from '../types';
 import { Button } from './Button';
@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import EmojiPicker from './EmojiPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { requireActiveAccountId } from '@/lib/activeAccount';
+import TransferConversationDialog from './chat/TransferConversationDialog';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
@@ -30,6 +31,7 @@ const ChatInterface: React.FC = () => {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -620,6 +622,15 @@ const ChatInterface: React.FC = () => {
                   <Pause className="w-5 h-5" />
                 </Button>
                 <div className="h-6 w-px bg-slate-800 mx-1"></div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setTransferOpen(true)}
+                  title="Transferir conversa"
+                >
+                  <ArrowRightLeft className="w-5 h-5" />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -988,6 +999,15 @@ const ChatInterface: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeChat && (
+        <TransferConversationDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          conversationId={activeChat.id}
+          currentAssignedUserId={(activeChat as any).assignedUserId ?? null}
+        />
       )}
     </div>
   );
