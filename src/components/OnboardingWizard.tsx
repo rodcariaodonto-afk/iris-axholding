@@ -251,10 +251,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
           setCompanyName(data.company_name || '');
           setSdrName(data.sdr_name || '');
           
-          // WhatsApp (Evolution API)
+          // WhatsApp
+          setWhatsappProvider(((data as any).whatsapp_provider || 'evolution') as 'evolution' | 'meta_cloud');
           setEvolutionApiUrl((data as any).evolution_api_url || '');
           setEvolutionApiKey((data as any).evolution_api_key || '');
           setEvolutionInstanceName((data as any).evolution_instance_name || '');
+          setWhatsappAccessToken((data as any).whatsapp_access_token || '');
+          setWhatsappPhoneNumberId((data as any).whatsapp_phone_number_id || '');
+          setWhatsappBusinessAccountId((data as any).whatsapp_business_account_id || '');
+          setWhatsappVerifyToken((data as any).whatsapp_verify_token || '');
           
           // Agent - usar prompt padrão se vazio
           setSystemPrompt(data.system_prompt_override || DEFAULT_NINA_PROMPT);
