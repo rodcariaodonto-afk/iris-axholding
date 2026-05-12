@@ -1,0 +1,1 @@
+UPDATE public.nina_settings SET evolution_api_url = rtrim(evolution_api_url, '/') WHERE evolution_api_url LIKE '%/';
