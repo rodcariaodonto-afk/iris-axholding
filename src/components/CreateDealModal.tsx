@@ -37,6 +37,7 @@ import { cn } from '../lib/utils';
 import { api } from '../services/api';
 import { Contact, TeamMember } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { requireActiveAccountId } from '@/lib/activeAccount';
 import { toast } from 'sonner';
 
 // Schema para contato existente

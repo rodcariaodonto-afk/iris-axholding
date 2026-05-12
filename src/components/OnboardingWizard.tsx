@@ -13,6 +13,7 @@ import { StepBusinessHours } from './onboarding/StepBusinessHours';
 import { StepVerification } from './onboarding/StepVerification';
 import { StepFinish } from './onboarding/StepFinish';
 import { supabase } from '@/integrations/supabase/client';
+import { requireActiveAccountId } from '@/lib/activeAccount';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './settings/PromptGeneratorSheet';
 import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
@@ -475,7 +476,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
           .from('nina_settings')
           .insert({
             ...settings,
-            user_id: null,  // Single-tenant: configuração global
+            account_id: requireActiveAccountId(),
+            user_id: null,
           })
           .select()
           .single();
