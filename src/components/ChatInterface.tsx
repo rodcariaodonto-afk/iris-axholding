@@ -70,7 +70,12 @@ const ChatInterface: React.FC = () => {
     });
   }, []);
 
-  // Auto-select first conversation or from URL param
+  // Load current user id (for own-conversation filter)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+
   useEffect(() => {
     // Check for conversation param in URL
     const urlParams = new URLSearchParams(window.location.search);
