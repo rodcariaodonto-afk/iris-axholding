@@ -33,8 +33,8 @@ export function useAccountUsage() {
       setLoading(true);
       const { data: acc } = await supabase.from("accounts").select("plan").eq("id", activeAccountId).single();
       if (acc?.plan) {
-        const { data: planRow } = await supabase.from("account_plans" as any).select("*").eq("code", acc.plan).maybeSingle();
-        if (!cancelled && planRow) setPlan(planRow as PlanInfo);
+        const { data: planRow } = await (supabase as any).from("account_plans").select("*").eq("code", acc.plan).maybeSingle();
+        if (!cancelled && planRow) setPlan(planRow as unknown as PlanInfo);
       }
       const monthStart = new Date();
       monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
