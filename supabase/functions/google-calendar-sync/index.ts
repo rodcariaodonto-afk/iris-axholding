@@ -212,6 +212,76 @@ Deno.serve(async (req) => {
       }
 
       result = await response.json();
+    } else if (action === 'import') {
+      // Import events from Google Calendar into appointments table
+      const timeMin = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(); // last 7 days
+      const timeMax = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(); // next 180 days
+      const listUrl = `${baseUrl}?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`;
+      const listResp = await fetch(listUrl, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (!listResp.ok) {
+        const error = await listResp.json();
+        throw new Error(`Google Calendar list error: ${JSON.stringify(error)}`);
+      }
+      const listData = await listResp.json();
+      const events = listData.items || [];
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (const ev of events) {
+        // Skip all-day events (no dateTime) and cancelled
+        if (!ev.start?.dateTime || ev.status === 'cancelled') { skipped++; continue; }
+
+        const startDate = new Date(ev.start.dateTime);
+        const endDate = ev.end?.dateTime ? new Date(ev.end.dateTime) : new Date(startDate.getTime() + 60 * 60000);
+        // Convert to São Paulo local date/time
+        const tzDate = new Date(startDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const tzEnd = new Date(endDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const yyyy = tzDate.getFullYear();
+        const mm = String(tzDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(tzDate.getDate()).padStart(2, '0');
+        const hh = String(tzDate.getHours()).padStart(2, '0');
+        const mi = String(tzDate.getMinutes()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const timeStr = `${hh}:${mi}:00`;
+        const duration = Math.max(15, Math.round((tzEnd.getTime() - tzDate.getTime()) / 60000));
+
+        const attendees = (ev.attendees || []).map((a: any) => a.email).filter(Boolean);
+
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('google_event_id', ev.id)
+          .maybeSingle();
+
+        const payload: any = {
+          google_event_id: ev.id,
+          user_id: user.id,
+          title: ev.summary || '(Sem título)',
+          description: ev.description || null,
+          date: dateStr,
+          time: timeStr,
+          duration,
+          type: 'meeting',
+          status: 'scheduled',
+          attendees,
+          meeting_url: ev.hangoutLink || null,
+        };
+
+        if (existing) {
+          await supabase.from('appointments').update(payload).eq('id', existing.id);
+          updated++;
+        } else {
+          await supabase.from('appointments').insert(payload);
+          imported++;
+        }
+      }
+
+      result = { imported, updated, skipped, total: events.length };
     } else if (action === 'delete') {
       if (!appointment.google_event_id) {
         return new Response(JSON.stringify({ skipped: true, message: 'No google_event_id' }), {
