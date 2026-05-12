@@ -33,6 +33,25 @@ const Kanban: React.FC = () => {
   const [newActivityDescription, setNewActivityDescription] = useState('');
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [valueInput, setValueInput] = useState('');
+
+  const handleSaveValue = async () => {
+    if (!selectedDeal) return;
+    const parsed = parseFloat(valueInput.replace(/\./g, '').replace(',', '.'));
+    const newValue = isNaN(parsed) ? 0 : parsed;
+    setIsEditingValue(false);
+    if (newValue === selectedDeal.value) return;
+    try {
+      await api.updateDeal(selectedDeal.id, { value: newValue });
+      setSelectedDeal({ ...selectedDeal, value: newValue });
+      setDeals(deals.map(d => d.id === selectedDeal.id ? { ...d, value: newValue } : d));
+      toast.success('Valor atualizado');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao atualizar valor');
+    }
+  };
   
   const dragItem = useRef<string | null>(null);
   
@@ -462,7 +481,33 @@ const Kanban: React.FC = () => {
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-1">{selectedDeal.title}</h2>
                             <div className="flex items-center gap-2 text-slate-400 text-sm flex-wrap">
-                                <span className="font-semibold text-emerald-400">{formatCurrency(selectedDeal.value)}</span>
+                                {isEditingValue ? (
+                                  <input
+                                    autoFocus
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={valueInput}
+                                    onChange={(e) => setValueInput(e.target.value)}
+                                    onBlur={handleSaveValue}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                      if (e.key === 'Escape') setIsEditingValue(false);
+                                    }}
+                                    placeholder="0,00"
+                                    className="w-28 h-7 px-2 text-xs bg-slate-800 border border-cyan-500/40 rounded text-emerald-400 font-semibold focus:outline-none focus:border-cyan-500"
+                                  />
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setValueInput(selectedDeal.value ? String(selectedDeal.value).replace('.', ',') : '');
+                                      setIsEditingValue(true);
+                                    }}
+                                    title="Clique para editar valor"
+                                    className="font-semibold text-emerald-400 hover:text-emerald-300 hover:underline"
+                                  >
+                                    {formatCurrency(selectedDeal.value)}
+                                  </button>
+                                )}
                                 <span className="w-1 h-1 rounded-full bg-slate-600"></span>
                                 <span className="flex items-center gap-1"><Building className="w-3 h-3" /> {selectedDeal.company}</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-600"></span>
