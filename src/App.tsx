@@ -22,10 +22,20 @@ import AccountIntegrations from './components/account/AccountIntegrations';
 import AccountSecurity from './components/account/AccountSecurity';
 import AccountPlan from './components/account/AccountPlan';
 import AccountAudit from './components/account/AccountAudit';
+import GovernanceLayout from './components/account/governance/GovernanceLayout';
+import GovernanceOverview from './components/account/governance/GovernanceOverview';
+import GovernanceExports from './components/account/governance/GovernanceExports';
+import GovernanceAudit from './components/account/governance/GovernanceAudit';
+import GovernanceRetention from './components/account/governance/GovernanceRetention';
+import GovernanceCompliance from './components/account/governance/GovernanceCompliance';
+import GovernanceDSAR from './components/account/governance/GovernanceDSAR';
+import GovernanceConsents from './components/account/governance/GovernanceConsents';
+import GovernancePolicies from './components/account/governance/GovernancePolicies';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminAccounts from './components/admin/AdminAccounts';
 import AdminUsers from './components/admin/AdminUsers';
 import AdminAudit from './components/admin/AdminAudit';
+import AdminGovernance from './components/admin/AdminGovernance';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
@@ -108,6 +118,17 @@ const App: React.FC = () => {
                 <Route path="integrations" element={<AccountIntegrations />} />
                 <Route path="audit" element={<AccountAudit />} />
                 <Route path="security" element={<AccountSecurity />} />
+                <Route path="governance" element={<GovernanceLayout />}>
+                  <Route index element={<Navigate to="/account/governance/overview" replace />} />
+                  <Route path="overview" element={<GovernanceOverview />} />
+                  <Route path="exports" element={<GovernanceExports />} />
+                  <Route path="audit" element={<GovernanceAudit />} />
+                  <Route path="retention" element={<GovernanceRetention />} />
+                  <Route path="compliance" element={<GovernanceCompliance />} />
+                  <Route path="dsar" element={<GovernanceDSAR />} />
+                  <Route path="consents" element={<GovernanceConsents />} />
+                  <Route path="policies" element={<GovernancePolicies />} />
+                </Route>
               </Route>
 
               <Route path="/admin" element={<AdminLayout />}>
@@ -115,6 +136,7 @@ const App: React.FC = () => {
                 <Route path="accounts" element={<AdminAccounts />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="audit" element={<AdminAudit />} />
+                <Route path="governance" element={<AdminGovernance />} />
               </Route>
             </Route>
 

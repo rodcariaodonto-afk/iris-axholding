@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Building2, Users, Shield, Plug, Lock, Zap, Activity } from "lucide-react";
+import { Building2, Users, Shield, Plug, Lock, Zap, Activity, ShieldCheck } from "lucide-react";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
 
 const tabs = [
@@ -8,6 +8,7 @@ const tabs = [
   { to: "/account/users", label: "Usuários", icon: Users, roles: ["owner", "admin"] },
   { to: "/account/permissions", label: "Permissões", icon: Shield, roles: ["owner", "admin"] },
   { to: "/account/integrations", label: "Integrações", icon: Plug, roles: ["owner", "admin"] },
+  { to: "/account/governance", label: "Governança", icon: ShieldCheck, roles: ["owner", "admin"] },
   { to: "/account/audit", label: "Auditoria", icon: Activity, roles: ["owner", "admin"] },
   { to: "/account/security", label: "Segurança", icon: Lock, roles: ["owner", "admin"] },
 ] as const;
