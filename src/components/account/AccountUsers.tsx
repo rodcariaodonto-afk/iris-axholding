@@ -116,7 +116,7 @@ export default function AccountUsers() {
 
   const removeMember = async (memberId: string) => {
     if (!confirm("Remover este usuário da conta?")) return;
-    await supabase.from("account_members").update({ status: "removed" }).eq("id", memberId);
+    await supabase.from("account_members").update({ status: "disabled" }).eq("id", memberId);
     toast.success("Usuário removido");
     load();
   };
