@@ -15,10 +15,16 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import EmojiPicker from './EmojiPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { requireActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import TransferConversationDialog from './chat/TransferConversationDialog';
+import SessionsSidebar from './chat/SessionsSidebar';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
+  const { role } = useActiveAccount();
+  const canSeeAll = role === 'owner' || role === 'admin' || role === 'manager';
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
   const { sdrName, companyName } = useCompanySettings();
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
