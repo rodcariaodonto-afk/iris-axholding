@@ -31,6 +31,7 @@ const ChatInterface: React.FC = () => {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -621,6 +622,15 @@ const ChatInterface: React.FC = () => {
                   <Pause className="w-5 h-5" />
                 </Button>
                 <div className="h-6 w-px bg-slate-800 mx-1"></div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setTransferOpen(true)}
+                  title="Transferir conversa"
+                >
+                  <ArrowRightLeft className="w-5 h-5" />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
