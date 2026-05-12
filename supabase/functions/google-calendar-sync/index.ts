@@ -125,20 +125,26 @@ Deno.serve(async (req) => {
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
       const endDateTime = `${appointment.date}T${endTime}:00`;
 
-      const event = {
+      const wantsMeet = appointment.create_meet === true || appointment.type === 'meeting' || appointment.type === 'demo';
+
+      const event: any = {
         summary: appointment.title,
         description: appointment.description || '',
-        start: {
-          dateTime: startDateTime,
-          timeZone: 'America/Sao_Paulo',
-        },
-        end: {
-          dateTime: endDateTime,
-          timeZone: 'America/Sao_Paulo',
-        },
+        start: { dateTime: startDateTime, timeZone: 'America/Sao_Paulo' },
+        end: { dateTime: endDateTime, timeZone: 'America/Sao_Paulo' },
       };
 
-      const response = await fetch(baseUrl, {
+      if (wantsMeet) {
+        event.conferenceData = {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: { type: 'hangoutsMeet' },
+          },
+        };
+      }
+
+      const createUrl = wantsMeet ? `${baseUrl}?conferenceDataVersion=1` : baseUrl;
+      const response = await fetch(createUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -154,11 +160,13 @@ Deno.serve(async (req) => {
 
       result = await response.json();
 
-      // Save google_event_id to appointment
+      // Save google_event_id and meeting_url (Meet link) to appointment
       if (appointment.id && result.id) {
+        const updates: any = { google_event_id: result.id };
+        if (result.hangoutLink) updates.meeting_url = result.hangoutLink;
         await supabase
           .from('appointments')
-          .update({ google_event_id: result.id })
+          .update(updates)
           .eq('id', appointment.id);
       }
     } else if (action === 'update') {
