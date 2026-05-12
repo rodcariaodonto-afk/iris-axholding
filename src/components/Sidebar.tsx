@@ -132,6 +132,17 @@ const SidebarContent = () => {
               />
             </>
           )}
+          {isSuperAdmin && (
+            <>
+              <div className={`px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider text-primary/70 ${open ? '' : 'hidden'}`}>
+                AXHolding
+              </div>
+              <SidebarLink
+                link={{ label: 'Super Admin', href: '/admin/accounts', icon: <ShieldCheck className="h-5 w-5" /> }}
+                isActive={currentPath.startsWith('admin')}
+              />
+            </>
+          )}
         </nav>
       </div>
 
