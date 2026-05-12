@@ -589,6 +589,7 @@ export type Database = {
           last_message_at: string
           metadata: Json | null
           nina_context: Json | null
+          session_id: string | null
           started_at: string
           status: Database["public"]["Enums"]["conversation_status"]
           tags: string[] | null
@@ -606,6 +607,7 @@ export type Database = {
           last_message_at?: string
           metadata?: Json | null
           nina_context?: Json | null
+          session_id?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["conversation_status"]
           tags?: string[] | null
@@ -623,6 +625,7 @@ export type Database = {
           last_message_at?: string
           metadata?: Json | null
           nina_context?: Json | null
+          session_id?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["conversation_status"]
           tags?: string[] | null
@@ -649,6 +652,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1158,6 +1168,7 @@ export type Database = {
           phone_number_id: string
           process_after: string | null
           processed: boolean
+          session_id: string | null
           whatsapp_message_id: string
         }
         Insert: {
@@ -1170,6 +1181,7 @@ export type Database = {
           phone_number_id: string
           process_after?: string | null
           processed?: boolean
+          session_id?: string | null
           whatsapp_message_id: string
         }
         Update: {
@@ -1182,6 +1194,7 @@ export type Database = {
           phone_number_id?: string
           process_after?: string | null
           processed?: boolean
+          session_id?: string | null
           whatsapp_message_id?: string
         }
         Relationships: [
@@ -1199,6 +1212,13 @@ export type Database = {
             referencedRelation: "messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "message_grouping_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       message_processing_queue: {
@@ -1213,6 +1233,7 @@ export type Database = {
           raw_data: Json
           retry_count: number
           scheduled_for: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
           whatsapp_message_id: string
@@ -1228,6 +1249,7 @@ export type Database = {
           raw_data: Json
           retry_count?: number
           scheduled_for?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
           whatsapp_message_id: string
@@ -1243,6 +1265,7 @@ export type Database = {
           raw_data?: Json
           retry_count?: number
           scheduled_for?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
           whatsapp_message_id?: string
@@ -1253,6 +1276,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_processing_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1275,6 +1305,7 @@ export type Database = {
           read_at: string | null
           reply_to_id: string | null
           sent_at: string
+          session_id: string | null
           status: Database["public"]["Enums"]["message_status"]
           type: Database["public"]["Enums"]["message_type"]
           whatsapp_message_id: string | null
@@ -1296,6 +1327,7 @@ export type Database = {
           read_at?: string | null
           reply_to_id?: string | null
           sent_at?: string
+          session_id?: string | null
           status?: Database["public"]["Enums"]["message_status"]
           type?: Database["public"]["Enums"]["message_type"]
           whatsapp_message_id?: string | null
@@ -1317,6 +1349,7 @@ export type Database = {
           read_at?: string | null
           reply_to_id?: string | null
           sent_at?: string
+          session_id?: string | null
           status?: Database["public"]["Enums"]["message_status"]
           type?: Database["public"]["Enums"]["message_type"]
           whatsapp_message_id?: string | null
@@ -1343,6 +1376,13 @@ export type Database = {
             referencedRelation: "messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       nina_processing_queue: {
@@ -1359,6 +1399,7 @@ export type Database = {
           processed_at: string | null
           retry_count: number
           scheduled_for: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
         }
@@ -1375,6 +1416,7 @@ export type Database = {
           processed_at?: string | null
           retry_count?: number
           scheduled_for?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
         }
@@ -1391,6 +1433,7 @@ export type Database = {
           processed_at?: string | null
           retry_count?: number
           scheduled_for?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
         }
@@ -1400,6 +1443,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nina_processing_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1657,6 +1707,7 @@ export type Database = {
           retry_count: number
           scheduled_at: string | null
           sent_at: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
         }
@@ -1677,6 +1728,7 @@ export type Database = {
           retry_count?: number
           scheduled_at?: string | null
           sent_at?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
         }
@@ -1697,6 +1749,7 @@ export type Database = {
           retry_count?: number
           scheduled_at?: string | null
           sent_at?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["queue_status"]
           updated_at?: string
         }
@@ -1713,6 +1766,13 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "send_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1982,6 +2042,74 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_queue_members: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          queue_id: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          queue_id: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          queue_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_queue_members_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_queues: {
+        Row: {
+          account_id: string
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_sessions: {
         Row: {
           account_id: string
@@ -1994,6 +2122,7 @@ export type Database = {
           is_default: boolean
           last_connected_at: string | null
           metadata: Json
+          owner_user_id: string | null
           phone_number: string | null
           provider: Database["public"]["Enums"]["whatsapp_provider"]
           qr_code: string | null
@@ -2016,6 +2145,7 @@ export type Database = {
           is_default?: boolean
           last_connected_at?: string | null
           metadata?: Json
+          owner_user_id?: string | null
           phone_number?: string | null
           provider: Database["public"]["Enums"]["whatsapp_provider"]
           qr_code?: string | null
@@ -2038,6 +2168,7 @@ export type Database = {
           is_default?: boolean
           last_connected_at?: string | null
           metadata?: Json
+          owner_user_id?: string | null
           phone_number?: string | null
           provider?: Database["public"]["Enums"]["whatsapp_provider"]
           qr_code?: string | null
@@ -2050,6 +2181,53 @@ export type Database = {
           whatsapp_verify_token?: string | null
         }
         Relationships: []
+      }
+      whatsapp_transfer_logs: {
+        Row: {
+          account_id: string
+          contact_id: string | null
+          conversation_id: string
+          created_at: string
+          from_user_id: string | null
+          id: string
+          reason: string | null
+          to_queue_id: string | null
+          to_user_id: string | null
+          transferred_by: string
+        }
+        Insert: {
+          account_id: string
+          contact_id?: string | null
+          conversation_id: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_queue_id?: string | null
+          to_user_id?: string | null
+          transferred_by: string
+        }
+        Update: {
+          account_id?: string
+          contact_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          reason?: string | null
+          to_queue_id?: string | null
+          to_user_id?: string | null
+          transferred_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_transfer_logs_to_queue_id_fkey"
+            columns: ["to_queue_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_queues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -2104,6 +2282,7 @@ export type Database = {
           raw_data: Json
           retry_count: number
           scheduled_for: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
           whatsapp_message_id: string
@@ -2130,6 +2309,7 @@ export type Database = {
           processed_at: string | null
           retry_count: number
           scheduled_for: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
         }[]
@@ -2159,6 +2339,7 @@ export type Database = {
           retry_count: number
           scheduled_at: string | null
           sent_at: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["queue_status"]
           updated_at: string
         }[]
