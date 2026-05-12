@@ -195,12 +195,12 @@ export default function WhatsAppSessions() {
           </div>
           <div className="space-y-2">
             <Label className="text-xs">URL</Label>
-            <Input value={settings.evolution_api_url || ""} onChange={e => setSettings({ ...settings, evolution_api_url: e.target.value })}
+            <Input value={settings.evolution_api_url || ""} onChange={(e: InputEv) => setSettings({ ...settings, evolution_api_url: e.target.value })}
               placeholder="https://sua-evolution.com" className="font-mono text-xs" />
           </div>
           <div className="space-y-2">
             <Label className="text-xs">API Key</Label>
-            <Input type="password" value={settings.evolution_api_key || ""} onChange={e => setSettings({ ...settings, evolution_api_key: e.target.value })}
+            <Input type="password" value={settings.evolution_api_key || ""} onChange={(e: InputEv) => setSettings({ ...settings, evolution_api_key: e.target.value })}
               placeholder="••••••••" className="font-mono text-xs" />
           </div>
           <Button size="sm" variant="secondary" onClick={saveSettings} disabled={savingSettings} className="w-full gap-2">
@@ -333,7 +333,7 @@ function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDef
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Nome</Label>
-            <Input value={form.session_name} disabled={!editing} onChange={e => setForm({ ...form, session_name: e.target.value })} />
+            <Input value={form.session_name} disabled={!editing} onChange={(e: InputEv) => setForm({ ...form, session_name: e.target.value })} />
           </div>
           {session.provider === "evolution" ? (
             <div>
@@ -345,22 +345,22 @@ function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDef
               <div>
                 <Label className="text-xs">Phone Number ID</Label>
                 <Input value={form.whatsapp_phone_number_id} disabled={!editing}
-                  onChange={e => setForm({ ...form, whatsapp_phone_number_id: e.target.value })} className="font-mono text-xs" />
+                  onChange={(e: InputEv) => setForm({ ...form, whatsapp_phone_number_id: e.target.value })} className="font-mono text-xs" />
               </div>
               <div>
                 <Label className="text-xs">Business Account ID</Label>
                 <Input value={form.whatsapp_business_account_id} disabled={!editing}
-                  onChange={e => setForm({ ...form, whatsapp_business_account_id: e.target.value })} className="font-mono text-xs" />
+                  onChange={(e: InputEv) => setForm({ ...form, whatsapp_business_account_id: e.target.value })} className="font-mono text-xs" />
               </div>
               <div>
                 <Label className="text-xs">Access Token</Label>
                 <Input type="password" value={form.whatsapp_access_token} disabled={!editing}
-                  onChange={e => setForm({ ...form, whatsapp_access_token: e.target.value })} className="font-mono text-xs" />
+                  onChange={(e: InputEv) => setForm({ ...form, whatsapp_access_token: e.target.value })} className="font-mono text-xs" />
               </div>
               <div>
                 <Label className="text-xs">Verify Token</Label>
                 <Input value={form.whatsapp_verify_token} disabled={!editing}
-                  onChange={e => setForm({ ...form, whatsapp_verify_token: e.target.value })} className="font-mono text-xs" />
+                  onChange={(e: InputEv) => setForm({ ...form, whatsapp_verify_token: e.target.value })} className="font-mono text-xs" />
               </div>
             </>
           )}
@@ -427,21 +427,21 @@ function CreateSessionDialog({ open, onOpenChange, accountId, onCreated }: {
           </div>
           <div>
             <Label>Nome da sessão</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Vendas, Suporte..." />
+            <Input value={name} onChange={(e: InputEv) => setName(e.target.value)} placeholder="Ex: Vendas, Suporte..." />
           </div>
           {provider === "evolution" ? (
             <div>
               <Label>Nome da instância (opcional)</Label>
-              <Input value={instanceName} onChange={e => setInstanceName(e.target.value)}
+              <Input value={instanceName} onChange={(e: InputEv) => setInstanceName(e.target.value)}
                 placeholder="auto-gerado a partir do nome" className="font-mono text-xs" />
               <p className="text-[10px] text-slate-500 mt-1">Será criado automaticamente no servidor Evolution ao conectar.</p>
             </div>
           ) : (
             <>
-              <div><Label>Phone Number ID</Label><Input value={meta.phone_id} onChange={e => setMeta({ ...meta, phone_id: e.target.value })} className="font-mono text-xs" /></div>
-              <div><Label>Business Account ID</Label><Input value={meta.waba} onChange={e => setMeta({ ...meta, waba: e.target.value })} className="font-mono text-xs" /></div>
-              <div><Label>Access Token</Label><Input type="password" value={meta.token} onChange={e => setMeta({ ...meta, token: e.target.value })} className="font-mono text-xs" /></div>
-              <div><Label>Verify Token (opcional)</Label><Input value={meta.verify} onChange={e => setMeta({ ...meta, verify: e.target.value })} className="font-mono text-xs" /></div>
+              <div><Label>Phone Number ID</Label><Input value={meta.phone_id} onChange={(e: InputEv) => setMeta({ ...meta, phone_id: e.target.value })} className="font-mono text-xs" /></div>
+              <div><Label>Business Account ID</Label><Input value={meta.waba} onChange={(e: InputEv) => setMeta({ ...meta, waba: e.target.value })} className="font-mono text-xs" /></div>
+              <div><Label>Access Token</Label><Input type="password" value={meta.token} onChange={(e: InputEv) => setMeta({ ...meta, token: e.target.value })} className="font-mono text-xs" /></div>
+              <div><Label>Verify Token (opcional)</Label><Input value={meta.verify} onChange={(e: InputEv) => setMeta({ ...meta, verify: e.target.value })} className="font-mono text-xs" /></div>
             </>
           )}
         </div>
