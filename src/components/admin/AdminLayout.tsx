@@ -1,12 +1,13 @@
 import { ReactNode } from "react";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-import { Building2, Users, Activity, ShieldCheck, Loader2 } from "lucide-react";
+import { Building2, Users, Activity, ShieldCheck, Loader2, FileCheck } from "lucide-react";
 
 const TABS: { to: string; label: string; icon: ReactNode }[] = [
   { to: "/admin/accounts", label: "Contas", icon: <Building2 className="w-4 h-4" /> },
   { to: "/admin/users", label: "Usuários", icon: <Users className="w-4 h-4" /> },
   { to: "/admin/audit", label: "Auditoria global", icon: <Activity className="w-4 h-4" /> },
+  { to: "/admin/governance", label: "Governança", icon: <FileCheck className="w-4 h-4" /> },
 ];
 
 export default function AdminLayout() {
