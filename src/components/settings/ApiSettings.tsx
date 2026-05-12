@@ -13,6 +13,10 @@ interface NinaSettings {
   evolution_api_url: string | null;
   evolution_api_key: string | null;
   evolution_instance_name: string | null;
+  whatsapp_access_token: string | null;
+  whatsapp_phone_number_id: string | null;
+  whatsapp_business_account_id: string | null;
+  whatsapp_verify_token: string | null;
   elevenlabs_api_key: string | null;
   elevenlabs_voice_id: string;
   elevenlabs_model: string | null;
@@ -106,6 +110,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
     evolution_api_url: null,
     evolution_api_key: null,
     evolution_instance_name: null,
+    whatsapp_access_token: null,
+    whatsapp_phone_number_id: null,
+    whatsapp_business_account_id: null,
+    whatsapp_verify_token: null,
     elevenlabs_api_key: null,
     elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
     elevenlabs_model: 'eleven_turbo_v2_5',
@@ -185,6 +193,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
         evolution_api_url: (data as any).evolution_api_url,
         evolution_api_key: (data as any).evolution_api_key,
         evolution_instance_name: (data as any).evolution_instance_name,
+        whatsapp_access_token: (data as any).whatsapp_access_token,
+        whatsapp_phone_number_id: (data as any).whatsapp_phone_number_id,
+        whatsapp_business_account_id: (data as any).whatsapp_business_account_id,
+        whatsapp_verify_token: (data as any).whatsapp_verify_token,
         elevenlabs_api_key: data.elevenlabs_api_key,
         elevenlabs_voice_id: data.elevenlabs_voice_id,
         elevenlabs_model: data.elevenlabs_model,
@@ -211,9 +223,13 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
         .from('nina_settings')
         .update({
           whatsapp_provider: settings.whatsapp_provider,
-          evolution_api_url: settings.evolution_api_url,
-          evolution_api_key: settings.evolution_api_key,
-          evolution_instance_name: settings.evolution_instance_name,
+          evolution_api_url: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_url : null,
+          evolution_api_key: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_key : null,
+          evolution_instance_name: settings.whatsapp_provider === 'evolution' ? settings.evolution_instance_name : null,
+          whatsapp_access_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_access_token : null,
+          whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
+          whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
+          whatsapp_verify_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_verify_token : null,
           elevenlabs_api_key: settings.elevenlabs_api_key,
           elevenlabs_voice_id: settings.elevenlabs_voice_id,
           elevenlabs_model: settings.elevenlabs_model,
@@ -445,7 +461,10 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
     }
   };
 
-  const whatsappConfigured = settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name;
+  const isMeta = settings.whatsapp_provider === 'meta_cloud';
+  const whatsappConfigured = isMeta
+    ? !!(settings.whatsapp_access_token && settings.whatsapp_phone_number_id && settings.whatsapp_business_account_id && settings.whatsapp_verify_token)
+    : !!(settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name);
   const elevenlabsConfigured = settings.elevenlabs_api_key;
 
   if (loading) {
@@ -458,16 +477,16 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   return (
     <div className="space-y-6">
-      {/* Evolution API */}
+      {/* WhatsApp Provider Card */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-cyan-400" />
-            <h3 className="font-semibold text-white">Evolution API</h3>
+            <h3 className="font-semibold text-white">WhatsApp · {isMeta ? 'Meta Cloud API' : 'Evolution API'}</h3>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-            whatsappConfigured 
-              ? 'bg-emerald-500/10 text-emerald-400' 
+            whatsappConfigured
+              ? 'bg-emerald-500/10 text-emerald-400'
               : 'bg-amber-500/10 text-amber-400'
           }`}>
             <span className={`h-2 w-2 rounded-full ${whatsappConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
@@ -475,80 +494,199 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           </div>
         </div>
 
+        {/* Provider Toggle */}
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-slate-950 border border-slate-800 mb-4">
+          <button
+            type="button"
+            onClick={() => setSettings({ ...settings, whatsapp_provider: 'evolution' })}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+              !isMeta
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Evolution API
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettings({ ...settings, whatsapp_provider: 'meta_cloud' })}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+              isMeta
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Meta Cloud API (oficial)
+          </button>
+        </div>
+
         <details className="mb-4">
           <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300 flex items-center gap-2 py-2">
             <HelpCircle className="w-4 h-4" />
-            Como configurar a Evolution API?
+            Como configurar a {isMeta ? 'Meta Cloud API' : 'Evolution API'}?
           </summary>
           <div className="mt-2 p-4 rounded-lg bg-slate-950 border border-slate-800 text-xs space-y-3">
-            <div className="space-y-2">
-              <p className="text-white font-medium">📋 Passo a passo:</p>
-              <ol className="list-decimal list-inside space-y-1.5 text-slate-400">
-                <li>Instale a Evolution API no seu servidor ou use um serviço cloud</li>
-                <li>Copie a <strong className="text-white">URL do servidor</strong> (ex: https://sua-evolution.com)</li>
-                <li>Copie a <strong className="text-white">API Key global</strong> gerada na instalação</li>
-                <li>Crie uma instância e copie o <strong className="text-white">nome da instância</strong></li>
-                <li>Escaneie o QR Code para conectar ao WhatsApp</li>
-                <li>Configure o webhook da instância com a URL abaixo</li>
-              </ol>
-            </div>
-            <div className="pt-2 border-t border-slate-700">
-              <p className="text-slate-500">
-                📚 <a href="https://doc.evolution-api.com/v2/pt/get-started/introduction" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação da Evolution API</a>
-              </p>
-            </div>
+            {!isMeta ? (
+              <>
+                <div className="space-y-2">
+                  <p className="text-white font-medium">📋 Passo a passo:</p>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-400">
+                    <li>Instale a Evolution API no seu servidor ou use um serviço cloud</li>
+                    <li>Copie a <strong className="text-white">URL do servidor</strong> (ex: https://sua-evolution.com)</li>
+                    <li>Copie a <strong className="text-white">API Key global</strong> gerada na instalação</li>
+                    <li>Crie uma instância e copie o <strong className="text-white">nome da instância</strong></li>
+                    <li>Escaneie o QR Code para conectar ao WhatsApp</li>
+                    <li>Configure o webhook da instância com a URL abaixo</li>
+                  </ol>
+                </div>
+                <div className="pt-2 border-t border-slate-700">
+                  <p className="text-slate-500">
+                    📚 <a href="https://doc.evolution-api.com/v2/pt/get-started/introduction" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação da Evolution API</a>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <p className="text-white font-medium">📋 Passo a passo:</p>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-400">
+                    <li>Acesse <strong className="text-white">developers.facebook.com</strong> e crie um app Business</li>
+                    <li>Em <strong className="text-white">WhatsApp → API Setup</strong>, copie o <strong className="text-white">Phone Number ID</strong> e o <strong className="text-white">WhatsApp Business Account ID</strong></li>
+                    <li>Crie um <strong className="text-white">System User</strong> com permissões <code>whatsapp_business_messaging</code> e <code>whatsapp_business_management</code> e gere um Access Token permanente</li>
+                    <li>Defina um <strong className="text-white">Verify Token</strong> qualquer (você escolhe a string)</li>
+                    <li>Em <strong className="text-white">Configuration → Webhook</strong>, cole a Callback URL abaixo, o Verify Token, e inscreva-se nos eventos <strong className="text-white">messages</strong> e <strong className="text-white">message_status</strong></li>
+                  </ol>
+                </div>
+                <div className="pt-2 border-t border-slate-700">
+                  <p className="text-slate-500">
+                    📚 <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Documentação Meta Cloud API</a>
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </details>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div className="lg:col-span-2">
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              URL do Servidor <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={settings.evolution_api_url || ''}
-              onChange={(e) => setSettings({ ...settings, evolution_api_url: e.target.value })}
-              placeholder="https://sua-evolution.com"
-              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              API Key <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
+        {!isMeta ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="lg:col-span-2">
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                URL do Servidor <span className="text-red-400">*</span>
+              </label>
               <input
-                type={showWhatsAppToken ? "text" : "password"}
-                value={settings.evolution_api_key || ''}
-                onChange={(e) => setSettings({ ...settings, evolution_api_key: e.target.value })}
-                placeholder="Sua API Key"
-                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                type="text"
+                value={settings.evolution_api_url || ''}
+                onChange={(e) => setSettings({ ...settings, evolution_api_url: e.target.value })}
+                placeholder="https://sua-evolution.com"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
               />
-              <button
-                type="button"
-                onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-              >
-                {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                API Key <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showWhatsAppToken ? "text" : "password"}
+                  value={settings.evolution_api_key || ''}
+                  onChange={(e) => setSettings({ ...settings, evolution_api_key: e.target.value })}
+                  placeholder="Sua API Key"
+                  className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Nome da Instância <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.evolution_instance_name || ''}
+                onChange={(e) => setSettings({ ...settings, evolution_instance_name: e.target.value })}
+                placeholder="minha-instancia"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+              />
             </div>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Phone Number ID <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.whatsapp_phone_number_id || ''}
+                onChange={(e) => setSettings({ ...settings, whatsapp_phone_number_id: e.target.value })}
+                placeholder="123456789012345"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-              Nome da Instância <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={settings.evolution_instance_name || ''}
-              onChange={(e) => setSettings({ ...settings, evolution_instance_name: e.target.value })}
-              placeholder="minha-instancia"
-              className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
-            />
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Business Account ID (WABA) <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.whatsapp_business_account_id || ''}
+                onChange={(e) => setSettings({ ...settings, whatsapp_business_account_id: e.target.value })}
+                placeholder="987654321098765"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+              />
+            </div>
+
+            <div className="lg:col-span-2">
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Access Token (permanente) <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showWhatsAppToken ? "text" : "password"}
+                  value={settings.whatsapp_access_token || ''}
+                  onChange={(e) => setSettings({ ...settings, whatsapp_access_token: e.target.value })}
+                  placeholder="EAAxxxxxxxxxxxxxxxxxxx"
+                  className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Token de System User com escopos <code>whatsapp_business_messaging</code> e <code>whatsapp_business_management</code>
+              </p>
+            </div>
+
+            <div className="lg:col-span-2">
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Verify Token <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.whatsapp_verify_token || ''}
+                onChange={(e) => setSettings({ ...settings, whatsapp_verify_token: e.target.value })}
+                placeholder="meu-token-secreto-123"
+                className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Use o mesmo valor ao configurar o webhook no Meta for Developers
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Webhook URL */}
         <Collapsible.Root open={webhookOpen} onOpenChange={setWebhookOpen}>
@@ -558,7 +696,9 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           </Collapsible.Trigger>
           <Collapsible.Content className="mt-3 space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Callback URL (cole na Evolution API)</label>
+              <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+                Callback URL (cole no {isMeta ? 'Meta for Developers' : 'painel da Evolution API'})
+              </label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -576,7 +716,9 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
                 </Button>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Ative os eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE
+                {isMeta
+                  ? 'Inscreva-se nos eventos: messages, message_status'
+                  : 'Ative os eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE'}
               </p>
             </div>
           </Collapsible.Content>
