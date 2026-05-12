@@ -79,6 +79,7 @@ const Team: React.FC = () => {
     e.preventDefault();
 
     try {
+      const { requireActiveAccountId } = await import('@/lib/activeAccount');
       const { data, error } = await supabase.functions.invoke('create-team-user', {
         body: {
           name: formData.name,
@@ -88,6 +89,7 @@ const Team: React.FC = () => {
           function_id: formData.function_id || null,
           weight: formData.weight,
           password: formData.password?.trim() ? formData.password.trim() : undefined,
+          account_id: requireActiveAccountId(),
         },
       });
 
