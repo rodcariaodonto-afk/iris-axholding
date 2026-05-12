@@ -117,12 +117,25 @@ export function useGoogleCalendar() {
     }
   };
 
+  const importFromGoogle = async () => {
+    if (!isConnected) return { imported: 0, updated: 0 };
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
+        body: { action: 'import', appointment: {} },
+      });
+      if (error) throw error;
+      return data?.data || { imported: 0, updated: 0 };
+    } catch (err) {
+      console.error('Error importing from Google:', err);
+      return { imported: 0, updated: 0, failed: true };
+    }
+  };
+
   const syncAllAppointments = async (appointments: any[]) => {
-    if (!isConnected) return { synced: 0, failed: 0 };
+    if (!isConnected) return { synced: 0, failed: 0, imported: 0, updated: 0 };
 
+    // 1) Push: send local appointments without google_event_id to Google
     const unsyncedAppointments = appointments.filter(a => !a.google_event_id);
-    if (unsyncedAppointments.length === 0) return { synced: 0, failed: 0, alreadySynced: true };
-
     let synced = 0;
     let failed = 0;
 
@@ -138,6 +151,7 @@ export function useGoogleCalendar() {
               date: app.date,
               time: app.time,
               duration: app.duration,
+              type: app.type,
             },
           },
         });
@@ -148,7 +162,16 @@ export function useGoogleCalendar() {
       }
     }
 
-    return { synced, failed };
+    // 2) Pull: import events from Google into appointments
+    const importResult = await importFromGoogle();
+
+    return {
+      synced,
+      failed,
+      imported: importResult.imported || 0,
+      updated: importResult.updated || 0,
+      alreadySynced: unsyncedAppointments.length === 0 && (importResult.imported || 0) === 0,
+    };
   };
 
   return {

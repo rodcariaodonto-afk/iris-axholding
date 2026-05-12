@@ -590,10 +590,15 @@ const Scheduling: React.FC = () => {
                       setIsSyncingAll(true);
                       try {
                         const result = await syncAllAppointments(appointments);
-                        if (result.alreadySynced) {
-                          toast.info('Todos os agendamentos já estão sincronizados!');
-                        } else if (result.synced > 0) {
-                          toast.success(`${result.synced} agendamento(s) sincronizado(s) com Google Agenda!`);
+                        const msgs: string[] = [];
+                        if (result.synced > 0) msgs.push(`${result.synced} enviado(s)`);
+                        if (result.imported > 0) msgs.push(`${result.imported} importado(s)`);
+                        if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
+                        if (msgs.length > 0) {
+                          toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
+                          window.location.reload();
+                        } else if (result.alreadySynced) {
+                          toast.info('Tudo já está sincronizado!');
                         }
                         if (result.failed > 0) {
                           toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
