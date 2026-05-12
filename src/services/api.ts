@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { requireActiveAccountId } from '@/lib/activeAccount';
 import { 
   Contact, 
   StatMetric, 
@@ -430,6 +431,7 @@ export const api = {
     const { data, error } = await supabase
       .from('team_members')
       .insert({
+        account_id: requireActiveAccountId(),
         name: member.name,
         email: member.email,
         role: member.role,
@@ -525,6 +527,7 @@ export const api = {
     const { data, error } = await supabase
       .from('teams')
       .insert({
+        account_id: requireActiveAccountId(),
         name: team.name,
         description: team.description,
         color: team.color || '#3b82f6',
@@ -598,6 +601,7 @@ export const api = {
     const { data, error } = await supabase
       .from('team_functions')
       .insert({
+        account_id: requireActiveAccountId(),
         name: func.name,
         description: func.description,
         user_id: null
@@ -703,6 +707,7 @@ export const api = {
     const { data, error } = await supabase
       .from('appointments')
       .insert({
+        account_id: requireActiveAccountId(),
         title: appointment.title,
         description: appointment.description,
         date: appointment.date,
@@ -882,6 +887,7 @@ export const api = {
     const { data, error } = await supabase
       .from('pipeline_stages')
       .insert({
+        account_id: requireActiveAccountId(),
         title: stage.title,
         color: stage.color,
         position: nextPosition,
@@ -1206,6 +1212,7 @@ export const api = {
     const { data, error } = await supabase
       .from('deal_activities')
       .insert({
+        account_id: requireActiveAccountId(),
         deal_id: activity.dealId,
         type: activity.type,
         title: activity.title,
@@ -1344,6 +1351,7 @@ export const api = {
     const { data: msgData, error: msgError } = await supabase
       .from('messages')
       .insert({
+        account_id: requireActiveAccountId(),
         conversation_id: conversationId,
         content: content,
         type: 'text',
@@ -1365,6 +1373,7 @@ export const api = {
     const { error: sendError } = await supabase
       .from('send_queue')
       .insert({
+        account_id: requireActiveAccountId(),
         conversation_id: conversationId,
         contact_id: conversation.contact_id,
         content: content,
@@ -1546,6 +1555,7 @@ export const api = {
     const { data, error } = await supabase
       .from('tag_definitions')
       .insert({
+        account_id: requireActiveAccountId(),
         key: tag.key,
         label: tag.label,
         color: tag.color,
