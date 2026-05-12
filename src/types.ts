@@ -334,6 +334,7 @@ export function transformDBToUIConversation(
     assignedTeam: conv.assigned_team,
     assignedUserId: conv.assigned_user_id,
     assignedUserName: null, // Will be populated if needed
+    sessionId: conv.session_id ?? null,
     lastMessage: lastMsg?.content || '',
     lastMessageTime: formatRelativeTime(conv.last_message_at),
     unreadCount,
