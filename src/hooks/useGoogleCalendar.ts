@@ -37,14 +37,48 @@ export function useGoogleCalendar() {
 
   const connect = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth');
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) throw new Error('Not authenticated');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const redirectUri = `${window.location.origin}/scheduling`;
+      const qs = new URLSearchParams({ action: 'authorize', redirect_uri: redirectUri }).toString();
+      const url = `https://${projectId}.supabase.co/functions/v1/google-calendar-auth?${qs}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Authorize failed');
+      window.location.href = data.url;
     } catch (error: any) {
       console.error('Error connecting to Google Calendar:', error);
-      toast.error('Erro ao conectar com Google Agenda');
+      toast.error('Erro ao conectar com Google Agenda: ' + (error.message || 'desconhecido'));
+    }
+  };
+
+  const handleOAuthCallback = async (code: string, state: string): Promise<boolean> => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) throw new Error('Not authenticated');
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/google-calendar-auth?action=callback`;
+      const redirectUri = `${window.location.origin}/scheduling`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code, state, redirect_uri: redirectUri }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Callback failed');
+      setIsConnected(true);
+      toast.success('Google Agenda conectado!');
+      return true;
+    } catch (error: any) {
+      console.error('OAuth callback error:', error);
+      toast.error('Erro ao finalizar conexão: ' + (error.message || 'desconhecido'));
+      return false;
     }
   };
 
