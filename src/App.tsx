@@ -20,6 +20,12 @@ import AccountUsers from './components/account/AccountUsers';
 import AccountPermissions from './components/account/AccountPermissions';
 import AccountIntegrations from './components/account/AccountIntegrations';
 import AccountSecurity from './components/account/AccountSecurity';
+import AccountPlan from './components/account/AccountPlan';
+import AccountAudit from './components/account/AccountAudit';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminAccounts from './components/admin/AdminAccounts';
+import AdminUsers from './components/admin/AdminUsers';
+import AdminAudit from './components/admin/AdminAudit';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
