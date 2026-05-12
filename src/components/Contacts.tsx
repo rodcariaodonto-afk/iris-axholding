@@ -1,30 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreHorizontal, UserPlus, MessageSquare, Loader2, Mail, Phone, Users } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Search, Filter, MoreHorizontal, UserPlus, MessageSquare, Loader2, Mail, Phone, Users, Download, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { api } from '../services/api';
 import { Contact } from '../types';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+const normalizePhone = (raw: string): string => (raw || '').replace(/\D/g, '');
 
 const Contacts: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', email: '', notes: '' });
+  const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadContacts = async () => {
-      try {
-        const data = await api.fetchContacts();
-        setContacts(data);
-      } catch (error) {
-        console.error("Erro ao carregar contatos", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadContacts();
-  }, []);
+  const loadContacts = async () => {
+    setLoading(true);
+    try {
+      const data = await api.fetchContacts();
+      setContacts(data);
+    } catch (error) {
+      console.error('Erro ao carregar contatos', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadContacts(); }, []);
 
   const filteredContacts = contacts.filter(c => {
     const term = searchTerm.toLowerCase();
@@ -48,6 +59,150 @@ const Contacts: React.FC = () => {
     navigate(`/chat?contact=${encodeURIComponent(contact.phone)}`);
   };
 
+  const handleCreate = async () => {
+    const phone = normalizePhone(form.phone);
+    if (!phone) { toast.error('Telefone é obrigatório'); return; }
+    if (!form.name.trim()) { toast.error('Nome é obrigatório'); return; }
+    setCreating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('contacts').insert({
+        name: form.name.trim(),
+        call_name: form.name.trim(),
+        phone_number: phone,
+        email: form.email.trim() || null,
+        notes: form.notes.trim() || null,
+        user_id: user?.id ?? null,
+      });
+      if (error) throw error;
+      toast.success('Contato criado com sucesso');
+      setShowCreate(false);
+      setForm({ name: '', phone: '', email: '', notes: '' });
+      await loadContacts();
+    } catch (e: any) {
+      toast.error('Erro ao criar contato: ' + (e.message || 'desconhecido'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('name, call_name, phone_number, email, notes, tags, created_at, last_activity')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      if (!data || !data.length) { toast.info('Nenhum contato para exportar'); return; }
+      const headers = ['nome', 'telefone', 'email', 'notas', 'tags', 'criado_em', 'ultima_atividade'];
+      const rows = data.map(c => [
+        c.name || c.call_name || '',
+        c.phone_number || '',
+        c.email || '',
+        (c.notes || '').replace(/\n/g, ' '),
+        (c.tags || []).join('|'),
+        c.created_at,
+        c.last_activity,
+      ]);
+      const csv = [headers, ...rows]
+        .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${data.length} contatos exportados`);
+    } catch (e: any) {
+      toast.error('Erro ao exportar: ' + (e.message || 'desconhecido'));
+    }
+  };
+
+  const parseCsv = (text: string): Record<string, string>[] => {
+    const lines = text.replace(/^\ufeff/, '').split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) return [];
+    const parseLine = (line: string): string[] => {
+      const out: string[] = [];
+      let cur = '';
+      let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQ) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') { inQ = false; }
+          else cur += ch;
+        } else {
+          if (ch === '"') inQ = true;
+          else if (ch === ',' || ch === ';') { out.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      out.push(cur);
+      return out;
+    };
+    const headers = parseLine(lines[0]).map(h => h.trim().toLowerCase());
+    return lines.slice(1).map(l => {
+      const cols = parseLine(l);
+      const row: Record<string, string> = {};
+      headers.forEach((h, i) => { row[h] = (cols[i] || '').trim(); });
+      return row;
+    });
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (!rows.length) { toast.error('CSV vazio'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      const records = rows
+        .map(r => {
+          const phone = normalizePhone(r.telefone || r.phone || r.phone_number || r.celular || '');
+          const name = (r.nome || r.name || r.call_name || '').trim();
+          if (!phone) return null;
+          return {
+            name: name || phone,
+            call_name: name || phone,
+            phone_number: phone,
+            email: (r.email || '').trim() || null,
+            notes: (r.notas || r.notes || '').trim() || null,
+            tags: r.tags ? r.tags.split('|').map(t => t.trim()).filter(Boolean) : [],
+            user_id: user?.id ?? null,
+          };
+        })
+        .filter(Boolean) as any[];
+      if (!records.length) { toast.error('Nenhuma linha válida (precisa de telefone)'); return; }
+
+      // Avoid duplicates by phone_number
+      const phones = records.map(r => r.phone_number);
+      const { data: existing } = await supabase
+        .from('contacts')
+        .select('phone_number')
+        .in('phone_number', phones);
+      const existingSet = new Set((existing || []).map(c => c.phone_number));
+      const toInsert = records.filter(r => !existingSet.has(r.phone_number));
+
+      if (!toInsert.length) {
+        toast.info('Todos os contatos já existem');
+      } else {
+        const { error } = await supabase.from('contacts').insert(toInsert);
+        if (error) throw error;
+        toast.success(`${toInsert.length} contatos importados (${records.length - toInsert.length} já existiam)`);
+      }
+      await loadContacts();
+    } catch (e: any) {
+      toast.error('Erro ao importar: ' + (e.message || 'desconhecido'));
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="p-8 h-full overflow-y-auto bg-slate-950 text-slate-50">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -55,13 +210,31 @@ const Contacts: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight text-white">Contatos</h2>
           <p className="text-sm text-slate-400 mt-1">Gerencie sua base de leads e clientes com inteligência.</p>
         </div>
-        <Button 
-          className="shadow-lg shadow-cyan-500/20"
-          onClick={() => toast.info('Funcionalidade de novo contato em desenvolvimento')}
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Novo Contato
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            disabled={importing}
+          >
+            {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+            Importar CSV
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button className="shadow-lg shadow-cyan-500/20" onClick={() => setShowCreate(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Novo Contato
+          </Button>
+        </div>
       </div>
 
       {/* Filters Bar */}
@@ -182,6 +355,44 @@ const Contacts: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Create Contact Modal */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Novo Contato</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="c-name">Nome *</Label>
+              <Input id="c-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="João Silva" className="mt-1 bg-slate-950 border-slate-800" />
+            </div>
+            <div>
+              <Label htmlFor="c-phone">Telefone (com DDI/DDD) *</Label>
+              <Input id="c-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="5511999999999" className="mt-1 bg-slate-950 border-slate-800" />
+              <p className="text-[11px] text-slate-500 mt-1">Apenas números. Ex: 5511987654321</p>
+            </div>
+            <div>
+              <Label htmlFor="c-email">Email</Label>
+              <Input id="c-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" className="mt-1 bg-slate-950 border-slate-800" />
+            </div>
+            <div>
+              <Label htmlFor="c-notes">Notas</Label>
+              <Input id="c-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Observações" className="mt-1 bg-slate-950 border-slate-800" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreate(false)} disabled={creating}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
+              Criar Contato
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
