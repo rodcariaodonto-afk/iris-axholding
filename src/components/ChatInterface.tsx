@@ -1000,6 +1000,15 @@ const ChatInterface: React.FC = () => {
           </div>
         </div>
       )}
+
+      {activeChat && (
+        <TransferConversationDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          conversationId={activeChat.id}
+          currentAssignedUserId={(activeChat as any).assignedUserId ?? null}
+        />
+      )}
     </div>
   );
 };
