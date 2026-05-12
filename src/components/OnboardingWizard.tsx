@@ -639,12 +639,22 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       case 1:
         return (
           <StepWhatsApp
+            provider={whatsappProvider}
+            onProviderChange={setWhatsappProvider}
             evolutionApiUrl={evolutionApiUrl}
             evolutionApiKey={evolutionApiKey}
             evolutionInstanceName={evolutionInstanceName}
             onEvolutionApiUrlChange={setEvolutionApiUrl}
             onEvolutionApiKeyChange={setEvolutionApiKey}
             onEvolutionInstanceNameChange={setEvolutionInstanceName}
+            whatsappAccessToken={whatsappAccessToken}
+            whatsappPhoneNumberId={whatsappPhoneNumberId}
+            whatsappBusinessAccountId={whatsappBusinessAccountId}
+            whatsappVerifyToken={whatsappVerifyToken}
+            onWhatsappAccessTokenChange={setWhatsappAccessToken}
+            onWhatsappPhoneNumberIdChange={setWhatsappPhoneNumberId}
+            onWhatsappBusinessAccountIdChange={setWhatsappBusinessAccountId}
+            onWhatsappVerifyTokenChange={setWhatsappVerifyToken}
             webhookUrl={webhookUrl}
           />
         );
