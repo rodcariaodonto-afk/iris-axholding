@@ -596,9 +596,7 @@ const Scheduling: React.FC = () => {
                         if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
                         if (msgs.length > 0) {
                           toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
-                          // Refresh local appointments list
-                          if (typeof loadAppointments === 'function') loadAppointments();
-                          else window.location.reload();
+                          window.location.reload();
                         } else if (result.alreadySynced) {
                           toast.info('Tudo já está sincronizado!');
                         }
