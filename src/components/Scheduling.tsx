@@ -19,7 +19,7 @@ const Scheduling: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection } = useGoogleCalendar();
+  const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection, handleOAuthCallback } = useGoogleCalendar();
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   
   // Modals state
@@ -53,6 +53,22 @@ const Scheduling: React.FC = () => {
 
   // Handle Google Calendar callback params
   useEffect(() => {
+    // OAuth code/state callback (novo fluxo)
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    if (code && state) {
+      (async () => {
+        const ok = await handleOAuthCallback(code, state);
+        searchParams.delete('code');
+        searchParams.delete('state');
+        searchParams.delete('scope');
+        searchParams.delete('authuser');
+        searchParams.delete('prompt');
+        setSearchParams(searchParams, { replace: true });
+        if (ok) refreshConnection();
+      })();
+      return;
+    }
     if (searchParams.get('gcal_connected') === 'true') {
       toast.success('Google Agenda conectado com sucesso!');
       refreshConnection();
