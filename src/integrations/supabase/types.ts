@@ -1943,6 +1943,114 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_account_settings: {
+        Row: {
+          account_id: string
+          auto_reply_enabled: boolean
+          auto_reply_message: string | null
+          created_at: string
+          evolution_api_key: string | null
+          evolution_api_url: string | null
+          id: string
+          max_sessions: number
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          account_id: string
+          auto_reply_enabled?: boolean
+          auto_reply_message?: string | null
+          created_at?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          id?: string
+          max_sessions?: number
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          account_id?: string
+          auto_reply_enabled?: boolean
+          auto_reply_message?: string | null
+          created_at?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          id?: string
+          max_sessions?: number
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_sessions: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          evolution_instance_id: string | null
+          evolution_instance_name: string | null
+          id: string
+          is_default: boolean
+          last_connected_at: string | null
+          metadata: Json
+          phone_number: string | null
+          provider: Database["public"]["Enums"]["whatsapp_provider"]
+          qr_code: string | null
+          session_name: string
+          status: Database["public"]["Enums"]["whatsapp_session_status"]
+          updated_at: string
+          whatsapp_access_token: string | null
+          whatsapp_business_account_id: string | null
+          whatsapp_phone_number_id: string | null
+          whatsapp_verify_token: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          evolution_instance_id?: string | null
+          evolution_instance_name?: string | null
+          id?: string
+          is_default?: boolean
+          last_connected_at?: string | null
+          metadata?: Json
+          phone_number?: string | null
+          provider: Database["public"]["Enums"]["whatsapp_provider"]
+          qr_code?: string | null
+          session_name: string
+          status?: Database["public"]["Enums"]["whatsapp_session_status"]
+          updated_at?: string
+          whatsapp_access_token?: string | null
+          whatsapp_business_account_id?: string | null
+          whatsapp_phone_number_id?: string | null
+          whatsapp_verify_token?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          evolution_instance_id?: string | null
+          evolution_instance_name?: string | null
+          id?: string
+          is_default?: boolean
+          last_connected_at?: string | null
+          metadata?: Json
+          phone_number?: string | null
+          provider?: Database["public"]["Enums"]["whatsapp_provider"]
+          qr_code?: string | null
+          session_name?: string
+          status?: Database["public"]["Enums"]["whatsapp_session_status"]
+          updated_at?: string
+          whatsapp_access_token?: string | null
+          whatsapp_business_account_id?: string | null
+          whatsapp_phone_number_id?: string | null
+          whatsapp_verify_token?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       contacts_with_stats: {
@@ -2204,6 +2312,13 @@ export type Database = {
       message_type: "text" | "audio" | "image" | "document" | "video"
       queue_status: "pending" | "processing" | "completed" | "failed"
       team_assignment: "mateus" | "igor" | "fe" | "vendas" | "suporte"
+      whatsapp_provider: "evolution" | "meta_cloud"
+      whatsapp_session_status:
+        | "disconnected"
+        | "qr_pending"
+        | "connecting"
+        | "connected"
+        | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2382,6 +2497,14 @@ export const Constants = {
       message_type: ["text", "audio", "image", "document", "video"],
       queue_status: ["pending", "processing", "completed", "failed"],
       team_assignment: ["mateus", "igor", "fe", "vendas", "suporte"],
+      whatsapp_provider: ["evolution", "meta_cloud"],
+      whatsapp_session_status: [
+        "disconnected",
+        "qr_pending",
+        "connecting",
+        "connected",
+        "error",
+      ],
     },
   },
 } as const
