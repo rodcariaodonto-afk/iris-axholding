@@ -1,108 +1,105 @@
-## Objetivo
 
-Permitir que cada Conta conecte **vários números de WhatsApp** simultaneamente (Evolution API e/ou Meta Cloud), gerenciados em uma aba dedicada — exatamente como funciona no projeto Axis Operations Hub, mas adaptado à estrutura multi-tenant da IRIS (`account_id`) e às permissões já existentes (`owner/admin/manager`).
+# Fase B + WhatsApp por usuário, com transferência (modelo Axis)
 
-## Situação atual (IRIS)
+Replicar exatamente o fluxo do Axis Operations Hub: cada membro da equipe conecta o próprio número de WhatsApp, mensagens entram na caixa do dono daquele número, e qualquer atendente pode transferir a conversa para outro usuário ou para uma fila (SDR → Closer, por exemplo).
 
-- WhatsApp é configurado em **`nina_settings`** (1 linha por conta), com colunas inline:
-  - Evolution: `evolution_api_url`, `evolution_api_key`, `evolution_instance_name`
-  - Meta Cloud: `whatsapp_access_token`, `whatsapp_phone_number_id`, `whatsapp_business_account_id`, `whatsapp_verify_token`
-- Conclusão: **só dá para 1 número por Conta**. As Edge Functions (`whatsapp-webhook`, `whatsapp-sender`, `nina-orchestrator`) leem essa única configuração.
+## 1. Mudanças de schema
 
-## Modelo proposto (inspirado no Axis)
+### `whatsapp_sessions` — sessão pertence a um usuário
+- Adicionar `owner_user_id uuid` (FK lógica → `auth.users`)
+- Backfill: sessões existentes ficam com o owner = primeiro `owner/admin` da conta
+- RLS continua por `account_id`, mas leitura/edição de credenciais limita a `owner_user_id = auth.uid()` OR `owner/admin`
 
-### Novas tabelas
+### Roteamento de mensagens (Fase B)
+Adicionar `session_id uuid` em:
+- `conversations`
+- `messages`
+- `send_queue`
+- `nina_processing_queue`
+- `message_processing_queue`
+- `message_grouping_queue`
 
-1. **`whatsapp_sessions`** — uma linha por número conectado
-   - `account_id`, `provider` (`evolution` | `meta_cloud`), `session_name` (label), `status` (`disconnected | qr_pending | connecting | connected | error`), `phone_number`, `qr_code`, `last_connected_at`, `error_message`
-   - Evolution: `evolution_instance_name`, `evolution_instance_id`
-   - Meta Cloud: `whatsapp_phone_number_id`, `whatsapp_business_account_id`, `whatsapp_access_token`, `whatsapp_verify_token`
-   - `is_default` (boolean) — sessão usada por padrão para envio quando não há roteamento explícito
-   - RLS por `account_id` + `has_account_role(account_id, ['owner','admin','manager'])` para escrita
+Backfill: tudo aponta para a sessão `is_default = true` da conta.
 
-2. **`whatsapp_account_settings`** — configurações compartilhadas por Conta
-   - `account_id` (unique), `evolution_api_url`, `evolution_api_key` (servidor Evolution comum), `max_sessions` (default 3, controlado pelo plano), `auto_reply_enabled`, `auto_reply_message`
-   - Migração: copiar `nina_settings.evolution_api_url/key` existentes para esta tabela
+### Atribuição da conversa
+`conversations.assigned_user_id` já existe. Regras:
+- Webhook recebe mensagem → identifica `session_id` pelo `phone_number_id` (Meta) ou `instance_name` (Evolution)
+- Se conversa é nova: `assigned_user_id = whatsapp_sessions.owner_user_id`
+- Se conversa já existe: mantém o `assigned_user_id` atual
 
-### Vínculo com mensagens / contatos
+### Filas de atendimento
+- `whatsapp_queues` (id, account_id, name, description) — ex: "SDR", "Closer", "Suporte"
+- `whatsapp_queue_members` (queue_id, user_id, account_id) — quem participa de cada fila
+- RLS: membros da conta leem; `owner/admin/manager` editam
 
-- Adicionar `session_id uuid REFERENCES whatsapp_sessions(id)` em:
-  - `conversations` (qual número recebeu o lead)
-  - `messages` (qual número enviou/recebeu cada mensagem)
-- Backfill: associar registros existentes à sessão default (criada a partir da config atual de `nina_settings`).
+### Auditoria de transferência
+- `whatsapp_transfer_logs` (account_id, conversation_id, contact_id, from_user_id, to_user_id, to_queue_id, reason, transferred_by, created_at)
+- Append-only, RLS por `account_id`
 
-### Limites por plano
+## 2. Edge Functions
 
-Estender `check_account_limit(_account_id, 'whatsapp_numbers')` usando `account_plans.max_whatsapp_numbers` (já existe no schema).
+### Atualizadas (Fase B routing)
+- **`whatsapp-webhook`** — resolve `session_id` pelo identificador do provider; grava `session_id` em conversation/message; se conversa nova, define `assigned_user_id = session.owner_user_id`. Fallback para sessão default se não resolver.
+- **`whatsapp-sender`** — lê `session_id` da `send_queue`/conversation, busca credenciais da `whatsapp_sessions` correspondente (não mais do `nina_settings`).
+- **`nina-orchestrator`** — propaga `session_id` ao enfileirar resposta.
 
-## Edge Functions
+### Novas
+- **`whatsapp-transfer-conversation`** — body: `{ conversation_id, to_user_id?, to_queue_id?, reason? }`
+  - Valida que o caller é membro da conta
+  - Se `to_queue_id`: escolhe um membro da fila (round-robin simples ou aleatório, como no Axis)
+  - Atualiza `conversations.assigned_user_id`
+  - Insere em `whatsapp_transfer_logs`
+  - Audita em `audit_logs`
 
-- **`whatsapp-webhook`**: identificar `session_id` pela URL (`/whatsapp-webhook/:sessionId`) ou pelo `phone_number_id` recebido no payload Meta / `instance` no payload Evolution. Carregar credenciais da `whatsapp_sessions` correspondente em vez de `nina_settings`.
-- **`whatsapp-sender`**: aceitar `session_id` no payload (ou usar a default da Conta). Buscar credenciais da sessão.
-- **`nina-orchestrator`** e enfileiramento: propagar `session_id` da conversa quando enfileirar resposta.
-- **Novas funções**:
-  - `whatsapp-session-create` — cria sessão (Evolution: cria instância via API + retorna QR; Meta: valida token)
-  - `whatsapp-session-connect` — gera/atualiza QR e faz polling de status (Evolution)
-  - `whatsapp-session-delete` — desconecta e remove instância no servidor Evolution
-  - `whatsapp-session-status` — consulta status atual
+## 3. Frontend
 
-Todas com `verify_jwt = true` exceto o webhook (mantém `false`), validação de membership + role `owner/admin/manager`.
+### Settings → WhatsApp
+- Cada usuário vê **apenas a sua sessão** (e cria a sua)
+- `owner/admin` veem todas as sessões da conta (somente leitura nas alheias)
+- Server settings (URL/key Evolution) continuam compartilhados por conta
 
-## Frontend
+### Settings → Filas (nova aba)
+- CRUD de filas (`owner/admin/manager`)
+- Adicionar/remover membros por fila
 
-### Nova aba `Settings → WhatsApp` (multi-sessão)
+### Chat
+- Lista de conversas filtrada por `assigned_user_id = auth.uid()` por padrão (toggle "Todas" para `owner/admin/manager`)
+- Badge mostrando o número que recebeu a conversa
+- Botão **"Transferir"** no header da conversa:
+  - Modal com tabs **Usuário** | **Fila**
+  - Tab Usuário: lista membros da conta com a sessão WhatsApp deles
+  - Tab Fila: lista filas disponíveis
+  - Campo opcional "Motivo"
+  - Confirma → chama `whatsapp-transfer-conversation`
+- Histórico de transferências (timeline na sidebar do contato)
 
-Layout em duas colunas (estilo Axis):
+## 4. Permissões
 
-```text
-┌─────────────────────────┬──────────────────────────────┐
-│ Sessões (lista)         │ Detalhes da sessão           │
-│ ┌──────────────────┐    │ - Nome / telefone / status   │
-│ │ 📱 Vendas (✓)    │    │ - QR Code (Evolution)        │
-│ │ 📱 Suporte (QR)  │    │ - Credenciais Meta           │
-│ │ 📱 Marketing(✗)  │    │ - Marcar como padrão         │
-│ │ + Nova sessão    │    │ - Reconectar / Excluir       │
-│ └──────────────────┘    │                              │
-│ Servidor Evolution      │ Webhook URL (copiar)         │
-│ (URL + API key global)  │                              │
-└─────────────────────────┴──────────────────────────────┘
-```
+| Ação | sdr | closer | manager | admin/owner |
+|------|-----|--------|---------|-------------|
+| Criar/conectar própria sessão | ✓ | ✓ | ✓ | ✓ |
+| Ver sessão de outros | — | — | ✓ | ✓ |
+| Editar Evolution server settings | — | — | — | ✓ |
+| Ver conversas próprias | ✓ | ✓ | ✓ | ✓ |
+| Ver todas conversas da conta | — | — | ✓ | ✓ |
+| Transferir conversa própria | ✓ | ✓ | ✓ | ✓ |
+| Transferir conversa de outros | — | — | ✓ | ✓ |
+| Gerenciar filas | — | — | ✓ | ✓ |
 
-Componentes (espelhando os do Axis, mas usando nossos design tokens):
-- `WhatsAppSessionList.tsx` — lista com badges de status
-- `WhatsAppSessionDetail.tsx` — painel direito
-- `WhatsAppQRDialog.tsx` — modal com QR + auto-refresh
-- `MetaConnectionDialog.tsx` — formulário Meta Cloud (já existe parcialmente em `StepWhatsApp`)
-- `WhatsAppServerSettings.tsx` — URL/key Evolution compartilhada
+## 5. Limites de plano
+- `account_plans.max_whatsapp_numbers` continua aplicado, mas agora representa **número total de sessões na conta** (= número de usuários conectados simultaneamente).
 
-Botão "Nova sessão" abre escolha entre Evolution / Meta Cloud, depois reaproveita o fluxo de `StepWhatsApp`.
+## 6. Migração / Backfill (sem downtime)
+1. Aplicar schema (colunas novas nullable + tabelas novas)
+2. Backfill `session_id` em todas as filas/conversas/mensagens → sessão default
+3. Backfill `owner_user_id` da sessão default → primeiro owner da conta
+4. Deploy edge functions atualizadas (mantém fallback para default se `session_id` faltar)
+5. Frontend novo
+6. Após validação em produção: tornar `session_id` NOT NULL nas tabelas críticas
 
-### Onboarding
+## 7. Realtime
+Adicionar à publication: `whatsapp_transfer_logs`, `whatsapp_queues`, `whatsapp_queue_members`. (`whatsapp_sessions` já está.)
 
-`StepWhatsApp` continua criando **a primeira sessão** (em vez de gravar em `nina_settings`). Contas existentes recebem a sessão automaticamente via migration de backfill.
-
-### Seleção de sessão em outras telas
-
-- ChatInterface / Conversations: badge mostrando por qual número a conversa entrou
-- CreateDealModal / envio manual: dropdown opcional "Enviar de" (default = sessão padrão)
-
-## Permissões
-
-- Visualizar sessões: qualquer membro ativo da Conta
-- Criar/editar/excluir/conectar: `owner`, `admin`, `manager` (via `RequireRole`)
-
-## Migração
-
-1. Criar tabelas + RLS + triggers `updated_at` + audit triggers
-2. Backfill: para cada `nina_settings` com Evolution ou Meta configurado → criar 1 `whatsapp_sessions` com `is_default = true` + 1 `whatsapp_account_settings`
-3. Backfill `conversations.session_id` e `messages.session_id` apontando para a sessão default
-4. Manter colunas antigas em `nina_settings` por 1 release (deprecated) para rollback seguro
-
-## Entrega faseada sugerida
-
-- **Fase A (este card)**: schema + backfill + UI de gerenciamento + Edge Functions de sessão. Webhook e sender continuam usando a sessão default.
-- **Fase B**: roteamento real por sessão no webhook/sender + seleção de sessão no chat e nas campanhas.
-
-## Confirmação necessária
-
-Quer que eu já implemente a **Fase A completa** (DB + UI + edge functions de gestão), mantendo o webhook/sender atuais usando a sessão padrão? Ou prefere que eu inclua já o roteamento multi-número (Fase A + B) num único bloco maior?
+## 8. Fora de escopo
+- Atribuição automática round-robin avançada (peso, online/offline) — fica como evolução
+- Notificação push ao usuário que recebeu transferência — pode entrar em iteração seguinte
