@@ -165,11 +165,58 @@ export type Database = {
         }
         Relationships: []
       }
+      account_policies: {
+        Row: {
+          account_id: string
+          audit_retention_days: number
+          default_legal_basis: Database["public"]["Enums"]["legal_basis"] | null
+          dpo_email: string | null
+          privacy_policy_url: string | null
+          require_dsar_approval: boolean
+          retention_days_after_cancel: number
+          terms_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_id: string
+          audit_retention_days?: number
+          default_legal_basis?:
+            | Database["public"]["Enums"]["legal_basis"]
+            | null
+          dpo_email?: string | null
+          privacy_policy_url?: string | null
+          require_dsar_approval?: boolean
+          retention_days_after_cancel?: number
+          terms_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string
+          audit_retention_days?: number
+          default_legal_basis?:
+            | Database["public"]["Enums"]["legal_basis"]
+            | null
+          dpo_email?: string | null
+          privacy_policy_url?: string | null
+          require_dsar_approval?: boolean
+          retention_days_after_cancel?: number
+          terms_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           cancelled_at: string | null
           created_at: string
           delete_after: string | null
+          deleted_at: string | null
+          deletion_reason: string | null
+          deletion_scheduled_at: string | null
+          deletion_status: Database["public"]["Enums"]["account_deletion_status"]
           domain: string | null
           id: string
           is_internal: boolean
@@ -177,6 +224,7 @@ export type Database = {
           logo_url: string | null
           name: string
           plan: Database["public"]["Enums"]["account_plan"]
+          retention_until: string | null
           settings: Json
           slug: string
           status: Database["public"]["Enums"]["account_status"]
@@ -187,6 +235,10 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           delete_after?: string | null
+          deleted_at?: string | null
+          deletion_reason?: string | null
+          deletion_scheduled_at?: string | null
+          deletion_status?: Database["public"]["Enums"]["account_deletion_status"]
           domain?: string | null
           id?: string
           is_internal?: boolean
@@ -194,6 +246,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           plan?: Database["public"]["Enums"]["account_plan"]
+          retention_until?: string | null
           settings?: Json
           slug: string
           status?: Database["public"]["Enums"]["account_status"]
@@ -204,6 +257,10 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           delete_after?: string | null
+          deleted_at?: string | null
+          deletion_reason?: string | null
+          deletion_scheduled_at?: string | null
+          deletion_status?: Database["public"]["Enums"]["account_deletion_status"]
           domain?: string | null
           id?: string
           is_internal?: boolean
@@ -211,6 +268,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           plan?: Database["public"]["Enums"]["account_plan"]
+          retention_until?: string | null
           settings?: Json
           slug?: string
           status?: Database["public"]["Enums"]["account_status"]
@@ -308,12 +366,20 @@ export type Database = {
           actor_email: string | null
           actor_user_id: string | null
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string | null
           id: string
           impersonated_by: string | null
           ip: string | null
+          ip_address: string | null
           metadata: Json
+          new_values: Json | null
+          old_values: Json | null
           resource_id: string | null
           resource_type: string
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
         }
         Insert: {
           account_id: string
@@ -321,12 +387,20 @@ export type Database = {
           actor_email?: string | null
           actor_user_id?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string | null
           id?: string
           impersonated_by?: string | null
           ip?: string | null
+          ip_address?: string | null
           metadata?: Json
+          new_values?: Json | null
+          old_values?: Json | null
           resource_id?: string | null
           resource_type: string
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          user_agent?: string | null
         }
         Update: {
           account_id?: string
@@ -334,12 +408,20 @@ export type Database = {
           actor_email?: string | null
           actor_user_id?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string | null
           id?: string
           impersonated_by?: string | null
           ip?: string | null
+          ip_address?: string | null
           metadata?: Json
+          new_values?: Json | null
+          old_values?: Json | null
           resource_id?: string | null
           resource_type?: string
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          user_agent?: string | null
         }
         Relationships: []
       }
@@ -350,16 +432,24 @@ export type Database = {
           blocked_reason: string | null
           call_name: string | null
           client_memory: Json | null
+          consent_given_at: string | null
+          consent_revoked_at: string | null
+          consent_source: string | null
+          consent_status: Database["public"]["Enums"]["consent_status"]
           created_at: string
+          data_classification: Database["public"]["Enums"]["data_classification"]
+          data_origin: string | null
           email: string | null
           first_contact_date: string
           id: string
           is_blocked: boolean | null
           is_business: boolean | null
           last_activity: string
+          legal_basis: Database["public"]["Enums"]["legal_basis"] | null
           name: string | null
           notes: string | null
           phone_number: string
+          privacy_notes: string | null
           profile_picture_url: string | null
           tags: string[] | null
           updated_at: string
@@ -372,16 +462,24 @@ export type Database = {
           blocked_reason?: string | null
           call_name?: string | null
           client_memory?: Json | null
+          consent_given_at?: string | null
+          consent_revoked_at?: string | null
+          consent_source?: string | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
+          data_origin?: string | null
           email?: string | null
           first_contact_date?: string
           id?: string
           is_blocked?: boolean | null
           is_business?: boolean | null
           last_activity?: string
+          legal_basis?: Database["public"]["Enums"]["legal_basis"] | null
           name?: string | null
           notes?: string | null
           phone_number: string
+          privacy_notes?: string | null
           profile_picture_url?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -394,16 +492,24 @@ export type Database = {
           blocked_reason?: string | null
           call_name?: string | null
           client_memory?: Json | null
+          consent_given_at?: string | null
+          consent_revoked_at?: string | null
+          consent_source?: string | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
+          data_origin?: string | null
           email?: string | null
           first_contact_date?: string
           id?: string
           is_blocked?: boolean | null
           is_business?: boolean | null
           last_activity?: string
+          legal_basis?: Database["public"]["Enums"]["legal_basis"] | null
           name?: string | null
           notes?: string | null
           phone_number?: string
+          privacy_notes?: string | null
           profile_picture_url?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -546,6 +652,168 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      data_deletion_requests: {
+        Row: {
+          account_id: string
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json
+          reason: string | null
+          request_type: string
+          requested_by: string
+          scheduled_for: string | null
+          scope: Json
+          status: Database["public"]["Enums"]["data_deletion_status"]
+        }
+        Insert: {
+          account_id: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          request_type?: string
+          requested_by: string
+          scheduled_for?: string | null
+          scope?: Json
+          status?: Database["public"]["Enums"]["data_deletion_status"]
+        }
+        Update: {
+          account_id?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          request_type?: string
+          requested_by?: string
+          scheduled_for?: string | null
+          scope?: Json
+          status?: Database["public"]["Enums"]["data_deletion_status"]
+        }
+        Relationships: []
+      }
+      data_exports: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          created_at: string
+          download_count: number
+          error_message: string | null
+          expires_at: string | null
+          file_path: string | null
+          file_size: number | null
+          format: string
+          id: string
+          metadata: Json
+          requested_by: string
+          scope: Json
+          status: Database["public"]["Enums"]["data_export_status"]
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          created_at?: string
+          download_count?: number
+          error_message?: string | null
+          expires_at?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string
+          id?: string
+          metadata?: Json
+          requested_by: string
+          scope?: Json
+          status?: Database["public"]["Enums"]["data_export_status"]
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          created_at?: string
+          download_count?: number
+          error_message?: string | null
+          expires_at?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string
+          id?: string
+          metadata?: Json
+          requested_by?: string
+          scope?: Json
+          status?: Database["public"]["Enums"]["data_export_status"]
+        }
+        Relationships: []
+      }
+      data_subject_requests: {
+        Row: {
+          account_id: string
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_at: string
+          id: string
+          metadata: Json
+          priority: string
+          related_contact_id: string | null
+          request_type: Database["public"]["Enums"]["dsar_request_type"]
+          requester_email: string
+          requester_name: string
+          requester_phone: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["dsar_status"]
+        }
+        Insert: {
+          account_id: string
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string
+          id?: string
+          metadata?: Json
+          priority?: string
+          related_contact_id?: string | null
+          request_type: Database["public"]["Enums"]["dsar_request_type"]
+          requester_email: string
+          requester_name: string
+          requester_phone?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["dsar_status"]
+        }
+        Update: {
+          account_id?: string
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string
+          id?: string
+          metadata?: Json
+          priority?: string
+          related_contact_id?: string | null
+          request_type?: Database["public"]["Enums"]["dsar_request_type"]
+          requester_email?: string
+          requester_name?: string
+          requester_phone?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["dsar_status"]
+        }
+        Relationships: []
       }
       deal_activities: {
         Row: {
@@ -716,6 +984,24 @@ export type Database = {
           },
         ]
       }
+      dsar_rate_limit: {
+        Row: {
+          count: number
+          ip: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          ip: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          ip?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       google_calendar_connections: {
         Row: {
           access_token: string
@@ -763,10 +1049,50 @@ export type Database = {
           },
         ]
       }
+      governance_notifications: {
+        Row: {
+          account_id: string
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          severity: Database["public"]["Enums"]["audit_severity"]
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          account_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       media_library: {
         Row: {
           account_id: string
           created_at: string
+          data_classification: Database["public"]["Enums"]["data_classification"]
           description: string | null
           file_name: string | null
           file_size: number | null
@@ -782,6 +1108,7 @@ export type Database = {
         Insert: {
           account_id: string
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
           description?: string | null
           file_name?: string | null
           file_size?: number | null
@@ -797,6 +1124,7 @@ export type Database = {
         Update: {
           account_id?: string
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
           description?: string | null
           file_name?: string | null
           file_size?: number | null
@@ -935,6 +1263,7 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          data_classification: Database["public"]["Enums"]["data_classification"]
           delivered_at: string | null
           from_type: Database["public"]["Enums"]["message_from"]
           id: string
@@ -955,6 +1284,7 @@ export type Database = {
           content?: string | null
           conversation_id: string
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
           delivered_at?: string | null
           from_type: Database["public"]["Enums"]["message_from"]
           id?: string
@@ -975,6 +1305,7 @@ export type Database = {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          data_classification?: Database["public"]["Enums"]["data_classification"]
           delivered_at?: string | null
           from_type?: Database["public"]["Enums"]["message_from"]
           id?: string
@@ -1780,6 +2111,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_audit_v2: {
+        Args: {
+          _account_id: string
+          _action?: string
+          _entity_id?: string
+          _entity_type: string
+          _event_type: string
+          _metadata?: Json
+          _new?: Json
+          _old?: Json
+          _severity: Database["public"]["Enums"]["audit_severity"]
+        }
+        Returns: undefined
+      }
       set_active_account: { Args: { _account_id: string }; Returns: undefined }
       update_client_memory: {
         Args: { p_contact_id: string; p_new_memory: Json }
@@ -1812,13 +2157,46 @@ export type Database = {
       }
     }
     Enums: {
+      account_deletion_status: "none" | "pending" | "scheduled" | "completed"
       account_member_status: "invited" | "active" | "disabled"
       account_plan: "starter" | "pro" | "business" | "enterprise"
       account_status: "active" | "suspended" | "cancelled" | "pending"
       app_account_role: "owner" | "admin" | "manager" | "sdr" | "viewer"
       app_role: "admin" | "user"
       appointment_type: "demo" | "meeting" | "support" | "followup"
+      audit_severity: "info" | "warn" | "critical"
+      consent_status: "granted" | "revoked" | "unknown"
       conversation_status: "nina" | "human" | "paused"
+      data_classification: "public" | "internal" | "confidential" | "restricted"
+      data_deletion_status:
+        | "pending"
+        | "approved"
+        | "scheduled"
+        | "completed"
+        | "cancelled"
+        | "failed"
+      data_export_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired"
+      dsar_request_type:
+        | "access"
+        | "rectification"
+        | "portability"
+        | "erasure"
+        | "anonymization"
+        | "consent_revocation"
+        | "opposition"
+      dsar_status: "open" | "in_progress" | "resolved" | "rejected" | "expired"
+      legal_basis:
+        | "consent"
+        | "contract"
+        | "legitimate_interest"
+        | "legal_obligation"
+        | "vital_interests"
+        | "public_task"
       member_role: "admin" | "manager" | "agent"
       member_status: "active" | "invited" | "disabled"
       message_from: "user" | "nina" | "human"
@@ -1953,13 +2331,50 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_deletion_status: ["none", "pending", "scheduled", "completed"],
       account_member_status: ["invited", "active", "disabled"],
       account_plan: ["starter", "pro", "business", "enterprise"],
       account_status: ["active", "suspended", "cancelled", "pending"],
       app_account_role: ["owner", "admin", "manager", "sdr", "viewer"],
       app_role: ["admin", "user"],
       appointment_type: ["demo", "meeting", "support", "followup"],
+      audit_severity: ["info", "warn", "critical"],
+      consent_status: ["granted", "revoked", "unknown"],
       conversation_status: ["nina", "human", "paused"],
+      data_classification: ["public", "internal", "confidential", "restricted"],
+      data_deletion_status: [
+        "pending",
+        "approved",
+        "scheduled",
+        "completed",
+        "cancelled",
+        "failed",
+      ],
+      data_export_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "expired",
+      ],
+      dsar_request_type: [
+        "access",
+        "rectification",
+        "portability",
+        "erasure",
+        "anonymization",
+        "consent_revocation",
+        "opposition",
+      ],
+      dsar_status: ["open", "in_progress", "resolved", "rejected", "expired"],
+      legal_basis: [
+        "consent",
+        "contract",
+        "legitimate_interest",
+        "legal_obligation",
+        "vital_interests",
+        "public_task",
+      ],
       member_role: ["admin", "manager", "agent"],
       member_status: ["active", "invited", "disabled"],
       message_from: ["user", "nina", "human"],
