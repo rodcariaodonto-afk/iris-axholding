@@ -244,7 +244,10 @@ async function handleEvolutionWebhook(
         contact_id: contact.id,
         status: 'nina',
         is_active: true,
-        user_id: null
+        user_id: null,
+        session_id: sessionId,
+        assigned_user_id: ownerId,
+        ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
       })
       .select()
       .single();
@@ -307,6 +310,8 @@ async function handleEvolutionWebhook(
       status: 'sent',
       media_type: mediaType,
       sent_at: new Date(parseInt(timestamp) * 1000).toISOString(),
+      session_id: sessionId,
+      ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
       metadata: {
         provider: 'evolution',
         instance: instanceName,
