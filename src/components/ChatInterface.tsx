@@ -390,13 +390,25 @@ const ChatInterface: React.FC = () => {
             <audio
               ref={el => { if (el) audioRefs.current[msg.id] = el; }}
               src={msg.mediaUrl}
+              preload="metadata"
+              crossOrigin="anonymous"
               onLoadedMetadata={(e) => {
                 const audio = e.currentTarget;
-                setAudioDurations(prev => ({ ...prev, [msg.id]: audio.duration }));
+                const d = isFinite(audio.duration) ? audio.duration : 0;
+                setAudioDurations(prev => ({ ...prev, [msg.id]: d }));
+              }}
+              onDurationChange={(e) => {
+                const audio = e.currentTarget;
+                if (isFinite(audio.duration)) {
+                  setAudioDurations(prev => ({ ...prev, [msg.id]: audio.duration }));
+                }
               }}
               onTimeUpdate={(e) => {
                 const audio = e.currentTarget;
                 setAudioProgress(prev => ({ ...prev, [msg.id]: audio.currentTime }));
+              }}
+              onError={(e) => {
+                console.error('[Audio] Load error', msg.id, msg.mediaUrl, e.currentTarget.error);
               }}
               onEnded={() => setPlayingAudioId(null)}
             />
