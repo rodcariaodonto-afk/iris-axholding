@@ -30,14 +30,17 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
     try {
       setLoading(true);
       
-      // Check if user is admin
-      const { data: roleData } = await supabase
-        .from('user_roles')
+      // Check if user is admin via account membership (Phase 2+)
+      const { data: memberRow } = await supabase
+        .from('account_members')
         .select('role')
         .eq('user_id', user.id)
+        .eq('status', 'active')
+        .in('role', ['owner', 'admin'])
+        .limit(1)
         .maybeSingle();
-      
-      setIsAdmin(roleData?.role === 'admin');
+
+      setIsAdmin(!!memberRow);
       
       // Fetch global nina_settings (no user_id filter)
       const { data, error } = await supabase
