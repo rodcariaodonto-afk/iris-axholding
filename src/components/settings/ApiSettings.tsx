@@ -223,9 +223,13 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
         .from('nina_settings')
         .update({
           whatsapp_provider: settings.whatsapp_provider,
-          evolution_api_url: settings.evolution_api_url,
-          evolution_api_key: settings.evolution_api_key,
-          evolution_instance_name: settings.evolution_instance_name,
+          evolution_api_url: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_url : null,
+          evolution_api_key: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_key : null,
+          evolution_instance_name: settings.whatsapp_provider === 'evolution' ? settings.evolution_instance_name : null,
+          whatsapp_access_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_access_token : null,
+          whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
+          whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
+          whatsapp_verify_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_verify_token : null,
           elevenlabs_api_key: settings.elevenlabs_api_key,
           elevenlabs_voice_id: settings.elevenlabs_voice_id,
           elevenlabs_model: settings.elevenlabs_model,
