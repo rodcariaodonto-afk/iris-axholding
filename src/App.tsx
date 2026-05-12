@@ -12,7 +12,14 @@ import Kanban from './components/Kanban';
 import Reports from './components/Reports';
 import Auth from './pages/Auth';
 import MeetingRoom from './pages/MeetingRoom';
+import InviteAccept from './pages/InviteAccept';
 import ProtectedRoute from './components/ProtectedRoute';
+import AccountLayout from './components/account/AccountLayout';
+import AccountOverview from './components/account/AccountOverview';
+import AccountUsers from './components/account/AccountUsers';
+import AccountPermissions from './components/account/AccountPermissions';
+import AccountIntegrations from './components/account/AccountIntegrations';
+import AccountSecurity from './components/account/AccountSecurity';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
