@@ -29,29 +29,27 @@ export default function AccountPermissions() {
             </tr>
           </thead>
           <tbody>
-            {PERMISSION_MATRIX.map((group) => (
-              <>
-                <tr key={`group-${group.area}`} className="bg-secondary/10">
-                  <td colSpan={6} className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {group.area}
-                  </td>
+            {PERMISSION_MATRIX.flatMap((group) => [
+              <tr key={`group-${group.area}`} className="bg-secondary/10">
+                <td colSpan={6} className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  {group.area}
+                </td>
+              </tr>,
+              ...group.perms.map((p) => (
+                <tr key={`${group.area}-${p.label}`} className="border-t border-border/30">
+                  <td className="p-3">{p.label}</td>
+                  {ALL_ROLES.map((r) => (
+                    <td key={r} className="p-3 text-center">
+                      {p.roles.includes(r) ? (
+                        <Check className="w-4 h-4 text-emerald-500 inline" />
+                      ) : (
+                        <Minus className="w-4 h-4 text-muted-foreground/40 inline" />
+                      )}
+                    </td>
+                  ))}
                 </tr>
-                {group.perms.map((p) => (
-                  <tr key={`${group.area}-${p.label}`} className="border-t border-border/30">
-                    <td className="p-3">{p.label}</td>
-                    {ALL_ROLES.map((r) => (
-                      <td key={r} className="p-3 text-center">
-                        {p.roles.includes(r) ? (
-                          <Check className="w-4 h-4 text-emerald-500 inline" />
-                        ) : (
-                          <Minus className="w-4 h-4 text-muted-foreground/40 inline" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </>
-            ))}
+              )),
+            ])}
           </tbody>
         </table>
       </div>
