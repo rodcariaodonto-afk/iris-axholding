@@ -38,11 +38,18 @@ Deno.serve(async (req) => {
       function_id,
       weight = 1,
       password: providedPassword,
+      account_id,
     } = body || {};
 
     if (!name || !email) {
       return new Response(
         JSON.stringify({ error: "name e email são obrigatórios" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!account_id) {
+      return new Response(
+        JSON.stringify({ error: "account_id é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
