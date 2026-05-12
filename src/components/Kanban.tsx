@@ -14,6 +14,7 @@ import { PipelineSettingsModal } from './PipelineSettingsModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { RequireRole } from './RequireRole';
 
 const Kanban: React.FC = () => {
   const { sdrName } = useCompanySettings();
@@ -335,18 +336,22 @@ const Kanban: React.FC = () => {
                 className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-200 focus:ring-1 focus:ring-cyan-500 outline-none placeholder:text-slate-600"
              />
           </div>
-          <Button 
-            variant="outline" 
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
-            onClick={() => setIsSettingsModalOpen(true)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Configurar
-          </Button>
-          <Button className="shadow-lg shadow-cyan-500/20" onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Deal
-          </Button>
+          <RequireRole roles={["owner", "admin", "manager"]}>
+            <Button
+              variant="outline"
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              onClick={() => setIsSettingsModalOpen(true)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar
+            </Button>
+          </RequireRole>
+          <RequireRole roles={["owner", "admin", "manager", "sdr"]}>
+            <Button className="shadow-lg shadow-cyan-500/20" onClick={() => setIsCreateModalOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Deal
+            </Button>
+          </RequireRole>
         </div>
       </div>
 
