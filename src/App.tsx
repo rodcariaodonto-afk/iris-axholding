@@ -16,6 +16,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import { CompanySettingsProvider } from './hooks/useCompanySettings';
 import { AuthProvider } from './hooks/useAuth';
+import { ActiveAccountProvider } from './hooks/useActiveAccount';
 import { Toaster } from 'sonner';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { useOnboardingStatus } from './hooks/useOnboardingStatus';
@@ -60,6 +61,7 @@ const AppLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      <ActiveAccountProvider>
       <CompanySettingsProvider>
         <BrowserRouter>
           <Routes>
@@ -94,6 +96,7 @@ const App: React.FC = () => {
           theme="dark"
         />
       </CompanySettingsProvider>
+      </ActiveAccountProvider>
     </AuthProvider>
   );
 };
