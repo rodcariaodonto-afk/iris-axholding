@@ -59,3 +59,9 @@ verify_jwt = false
 [functions.account-invite-accept]
 verify_jwt = false
 
+
+[functions.dsar-create]
+verify_jwt = false
+
+[functions.account-purge]
+verify_jwt = false
