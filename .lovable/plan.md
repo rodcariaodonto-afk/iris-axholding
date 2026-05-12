@@ -1,116 +1,108 @@
-## Fase 4 — Governança de Dados B2B
+## Objetivo
 
-Camada de governança sobre o multi-tenant: exportação controlada, retenção/exclusão auditada, DSAR, consentimentos, conformidade e auditoria expandida. Mantém o que já existe da Fase 3 e fecha as lacunas para venda B2B.
+Permitir que cada Conta conecte **vários números de WhatsApp** simultaneamente (Evolution API e/ou Meta Cloud), gerenciados em uma aba dedicada — exatamente como funciona no projeto Axis Operations Hub, mas adaptado à estrutura multi-tenant da IRIS (`account_id`) e às permissões já existentes (`owner/admin/manager`).
 
-### O que já existe e será preservado
-- `audit_logs` básico + triggers em `account_members` e `accounts` → vamos **expandir** schema (event_type, severity, ip, user_agent, old/new values).
-- `account-export` (síncrono) → vira **assíncrono** com tracking em `data_exports`.
-- `account-cancel` (seta `cancelled_at`/`delete_after`) → integra com novo fluxo de retenção/aprovação.
-- `/account/audit` e `/account/security` → migram para nova área `/account/governance/*`.
-- `/admin/audit` → ganha visão global de governança.
+## Situação atual (IRIS)
 
-### Novas tabelas (todas com RLS rigoroso por `account_id`)
+- WhatsApp é configurado em **`nina_settings`** (1 linha por conta), com colunas inline:
+  - Evolution: `evolution_api_url`, `evolution_api_key`, `evolution_instance_name`
+  - Meta Cloud: `whatsapp_access_token`, `whatsapp_phone_number_id`, `whatsapp_business_account_id`, `whatsapp_verify_token`
+- Conclusão: **só dá para 1 número por Conta**. As Edge Functions (`whatsapp-webhook`, `whatsapp-sender`, `nina-orchestrator`) leem essa única configuração.
 
-**`data_exports`** — fila de exportações
-`id, account_id, requested_by, status (pending|processing|completed|failed|expired), format (json), scope (jsonb: módulos incluídos), file_path, file_size, download_count, expires_at (7d), created_at, completed_at, error_message, metadata`
+## Modelo proposto (inspirado no Axis)
 
-**`data_deletion_requests`** — pedidos de exclusão controlados
-`id, account_id, requested_by, request_type (account|contact|message|custom), status (pending|approved|scheduled|completed|cancelled|failed), reason, scope (jsonb), scheduled_for, approved_by, approved_at, completed_at, error_message, metadata`
+### Novas tabelas
 
-**`data_subject_requests` (DSAR)** — pedidos LGPD/GDPR dos titulares
-`id, account_id, requester_name, requester_email, requester_phone, request_type (access|rectification|portability|erasure|anonymization|consent_revocation|opposition), related_contact_id, status (open|in_progress|resolved|rejected|expired), priority, description, assigned_to, due_at (15d default), resolved_at, resolution_notes, created_by, created_at`
+1. **`whatsapp_sessions`** — uma linha por número conectado
+   - `account_id`, `provider` (`evolution` | `meta_cloud`), `session_name` (label), `status` (`disconnected | qr_pending | connecting | connected | error`), `phone_number`, `qr_code`, `last_connected_at`, `error_message`
+   - Evolution: `evolution_instance_name`, `evolution_instance_id`
+   - Meta Cloud: `whatsapp_phone_number_id`, `whatsapp_business_account_id`, `whatsapp_access_token`, `whatsapp_verify_token`
+   - `is_default` (boolean) — sessão usada por padrão para envio quando não há roteamento explícito
+   - RLS por `account_id` + `has_account_role(account_id, ['owner','admin','manager'])` para escrita
 
-**`account_policies`** — políticas configuráveis por conta
-`account_id (PK), retention_days_after_cancel (default 30), audit_retention_days (default 365), require_dsar_approval, default_legal_basis, dpo_email, privacy_policy_url, terms_url, updated_at, updated_by`
+2. **`whatsapp_account_settings`** — configurações compartilhadas por Conta
+   - `account_id` (unique), `evolution_api_url`, `evolution_api_key` (servidor Evolution comum), `max_sessions` (default 3, controlado pelo plano), `auto_reply_enabled`, `auto_reply_message`
+   - Migração: copiar `nina_settings.evolution_api_url/key` existentes para esta tabela
 
-**`governance_notifications`** — notificações internas
-`id, account_id, user_id (nullable=todos owners/admins), type, severity, title, body, link, read_at, created_at`
+### Vínculo com mensagens / contatos
 
-### Tabelas existentes — extensões
+- Adicionar `session_id uuid REFERENCES whatsapp_sessions(id)` em:
+  - `conversations` (qual número recebeu o lead)
+  - `messages` (qual número enviou/recebeu cada mensagem)
+- Backfill: associar registros existentes à sessão default (criada a partir da config atual de `nina_settings`).
 
-**`audit_logs`** — adicionar `event_type, entity_type, entity_id, severity (info|warn|critical), ip_address, user_agent, old_values jsonb, new_values jsonb`. Manter colunas antigas.
+### Limites por plano
 
-**`accounts`** — adicionar `retention_until, deletion_scheduled_at, deleted_at, deletion_status (none|pending|scheduled|completed), deletion_reason`. Já tem `cancelled_at` e `delete_after` (este vira sinônimo de `retention_until`).
+Estender `check_account_limit(_account_id, 'whatsapp_numbers')` usando `account_plans.max_whatsapp_numbers` (já existe no schema).
 
-**`contacts`** — campos de consentimento: `consent_status (granted|revoked|unknown), consent_source, consent_given_at, consent_revoked_at, legal_basis (consent|contract|legitimate_interest|legal_obligation), privacy_notes, data_origin, data_classification (public|internal|confidential|restricted, default internal)`.
+## Edge Functions
 
-**`media_library` e `messages`** — `data_classification` (default `internal`).
+- **`whatsapp-webhook`**: identificar `session_id` pela URL (`/whatsapp-webhook/:sessionId`) ou pelo `phone_number_id` recebido no payload Meta / `instance` no payload Evolution. Carregar credenciais da `whatsapp_sessions` correspondente em vez de `nina_settings`.
+- **`whatsapp-sender`**: aceitar `session_id` no payload (ou usar a default da Conta). Buscar credenciais da sessão.
+- **`nina-orchestrator`** e enfileiramento: propagar `session_id` da conversa quando enfileirar resposta.
+- **Novas funções**:
+  - `whatsapp-session-create` — cria sessão (Evolution: cria instância via API + retorna QR; Meta: valida token)
+  - `whatsapp-session-connect` — gera/atualiza QR e faz polling de status (Evolution)
+  - `whatsapp-session-delete` — desconecta e remove instância no servidor Evolution
+  - `whatsapp-session-status` — consulta status atual
 
-### Edge Functions novas (todas validam JWT + membership + papel + account_id)
+Todas com `verify_jwt = true` exceto o webhook (mantém `false`), validação de membership + role `owner/admin/manager`.
 
-- **`account-export`** (refactor) — cria registro em `data_exports`, processa em background, gera ZIP/JSON com módulos: `accounts, account_members, contacts, conversations, messages, deals, appointments, pipeline_stages, teams, team_members, team_functions, tag_definitions, media_library (metadados), nina_settings (sem chaves), audit_logs (90d), data_subject_requests`. Exclui binários grandes (áudio/mídia) — só metadados/URLs. Sobe para `account-exports/{account_id}/{export_id}.json`, signed URL 7d. Audita evento `data.exported`.
-- **`account-deletion-request`** — cria `data_deletion_requests` com `scheduled_for = now()+30d`, audita `deletion.requested`. Owner-only.
-- **`account-deletion-approve`** — Owner ou super-admin AXHolding aprova/cancela request. Audita `deletion.approved`.
-- **`account-reactivate`** — durante janela de retenção, owner pode reverter cancelamento. Limpa `cancelled_at, delete_after, deletion_*`.
-- **`account-purge`** (cron diário) — apaga contas com `delete_after < now()` e `deletion_status='scheduled'`. Anonimiza ou hard-delete conforme `account_policies`.
-- **`compliance-report`** — gera JSON com checklist: RLS ativo, exports nos últimos 90d, DSAR pendentes, integrações ativas, eventos críticos 30d, usuários inativos 90d, papéis elevados, riscos.
-- **`dsar-create`** — endpoint público (verify_jwt=false) para titulares submeterem pedido. Validação rigorosa (email, captcha futuro, rate limit). Notifica owners/admins.
+## Frontend
 
-### UI — nova área `/account/governance/*`
+### Nova aba `Settings → WhatsApp` (multi-sessão)
 
-Substitui `/account/audit` e absorve as ações sensíveis hoje em `/account/security`. Acesso só Owner/Admin. Layout com sub-tabs:
+Layout em duas colunas (estilo Axis):
 
-1. **Visão Geral** (`/governance/overview`) — cards de status: retenção configurada, última exportação, pedidos DSAR abertos, eventos críticos 30d, riscos pendentes. Estado vazio profissional (sem dados fictícios).
-2. **Exportações** (`/governance/exports`) — botão "Solicitar exportação" + tabela das exportações com status, tamanho, expires_at e link de download. Owner/Admin.
-3. **Auditoria** (`/governance/audit`) — substitui página atual. Filtros: período, ator, event_type, severity, entity_type. Paginação.
-4. **Retenção e Exclusão** (`/governance/retention`) — política de retenção da conta, fila de `data_deletion_requests`, botão "Cancelar conta" (owner) com confirmação dupla, botão "Reativar" durante janela.
-5. **Conformidade** (`/governance/compliance`) — relatório vivo com bullets verdes/amarelos/vermelhos + botão "Exportar relatório (JSON)".
-6. **Pedidos dos Titulares** (`/governance/dsar`) — kanban simples (open/in_progress/resolved) + criação manual + atribuição. Mostra prazo (15d).
-7. **Consentimentos** (`/governance/consents`) — lista de contatos com filtros por `consent_status`, `legal_basis`, `data_origin`. Bulk actions: revogar consentimento, marcar base legal.
-8. **Políticas** (`/governance/policies`) — formulário para `account_policies` (retenção, DPO, links de privacidade).
+```text
+┌─────────────────────────┬──────────────────────────────┐
+│ Sessões (lista)         │ Detalhes da sessão           │
+│ ┌──────────────────┐    │ - Nome / telefone / status   │
+│ │ 📱 Vendas (✓)    │    │ - QR Code (Evolution)        │
+│ │ 📱 Suporte (QR)  │    │ - Credenciais Meta           │
+│ │ 📱 Marketing(✗)  │    │ - Marcar como padrão         │
+│ │ + Nova sessão    │    │ - Reconectar / Excluir       │
+│ └──────────────────┘    │                              │
+│ Servidor Evolution      │ Webhook URL (copiar)         │
+│ (URL + API key global)  │                              │
+└─────────────────────────┴──────────────────────────────┘
+```
 
-`/account/security` mantém só **trocar senha** + atalho "Ver Governança".
+Componentes (espelhando os do Axis, mas usando nossos design tokens):
+- `WhatsAppSessionList.tsx` — lista com badges de status
+- `WhatsAppSessionDetail.tsx` — painel direito
+- `WhatsAppQRDialog.tsx` — modal com QR + auto-refresh
+- `MetaConnectionDialog.tsx` — formulário Meta Cloud (já existe parcialmente em `StepWhatsApp`)
+- `WhatsAppServerSettings.tsx` — URL/key Evolution compartilhada
 
-### Admin AXHolding — `/admin/governance`
-Nova rota visível só para super-admin:
-- Tabela global de contas com `cancelled_at`, dias até purga, exportações totais, DSAR abertas, eventos críticos.
-- Aprovação de exclusões cross-account.
-- Audit logs agregados com filtros.
+Botão "Nova sessão" abre escolha entre Evolution / Meta Cloud, depois reaproveita o fluxo de `StepWhatsApp`.
 
-### Aplicação dos campos de classificação e consentimento
-- `Contacts.tsx` ganha indicadores visuais de `consent_status` e badge de `data_classification`.
-- Modal de detalhe de contato ganha aba "Privacidade" com campos editáveis (admin/manager+).
-- Export filtra `restricted` se solicitante não for owner/admin.
+### Onboarding
 
-### Notificações
-- Componente `GovernanceNotificationBell` no header (owner/admin) listando `governance_notifications` da conta. Realtime via Supabase channel.
-- Disparadas por: export concluído/falho, DSAR criado, deletion agendada, retenção próxima do fim (7d antes), permissão sensível alterada.
+`StepWhatsApp` continua criando **a primeira sessão** (em vez de gravar em `nina_settings`). Contas existentes recebem a sessão automaticamente via migration de backfill.
 
-### Detalhes técnicos críticos
-- Migration única com: novas tabelas, RLS, índices, extensões em `audit_logs`/`accounts`/`contacts`, função `log_audit_v2(account_id, event_type, severity, entity_type, entity_id, action, old, new, metadata)`.
-- Triggers novos: `contacts` (UPDATE de consent → audit), `nina_settings` (UPDATE → audit), `account_policies` (UPDATE → audit critical), `account_members` já existe (vamos adicionar severity).
-- Bucket `account-exports` já existe; criar bucket `compliance-reports` privado.
-- `cron.schedule('account-purge-daily', '0 3 * * *', ...)` apontando para edge function.
-- Rate limit em `dsar-create` via tabela `dsar_rate_limit (ip, count, window_start)`.
-- Helpers React: `useGovernance()`, `useDataExports()`, `useDSAR()`, `useAuditLogs()`.
+### Seleção de sessão em outras telas
 
-### Não inclui (escopo futuro)
-- PDF do relatório de conformidade (só JSON nesta fase).
-- Captcha no DSAR público (rate limit por IP é suficiente por ora).
-- Anonimização granular por campo (faz hard-delete ou soft-delete completo).
-- 2FA / SSO / IP allowlist (Fase 5 segurança operacional).
+- ChatInterface / Conversations: badge mostrando por qual número a conversa entrou
+- CreateDealModal / envio manual: dropdown opcional "Enviar de" (default = sessão padrão)
 
-### Riscos
-- **Médio-Alto**: muitas migrations e triggers — vou rodar **em uma única migration grande** com transação, e testar imediatamente após.
-- Triggers de auditoria em tabelas quentes (contacts, messages) podem virar gargalo → começam só com SELECT/UPDATE críticos, não em INSERT de mensagens regulares.
-- Edge function `account-export` pode estourar timeout com contas grandes → faz streaming + chunking; se >10k mensagens, parte em arquivos.
-- Bucket `account-exports`: signed URL com TTL 7d, nunca público.
+## Permissões
 
-### Checklist de aceite (será validado ao final)
-- [ ] `/account/governance` acessível só por owner/admin
-- [ ] Export JSON funciona, isolado por `account_id`, sem binários pesados
-- [ ] Conversas e mensagens incluídas; áudios só por referência
-- [ ] Cancelar conta inicia retenção 30d e mostra contagem regressiva
-- [ ] Exclusão definitiva exige aprovação dupla e fica auditada
-- [ ] `audit_logs` registra todos os eventos críticos com novos campos
-- [ ] Relatório de conformidade exportável em JSON
-- [ ] Fluxo DSAR end-to-end (criar, atribuir, resolver)
-- [ ] Filtros de consentimento e base legal em contatos
-- [ ] Todas as novas tabelas têm RLS por `account_id`
-- [ ] Edge functions validam JWT + membership + papel
-- [ ] Admin AXHolding tem visão global isolada de clientes
+- Visualizar sessões: qualquer membro ativo da Conta
+- Criar/editar/excluir/conectar: `owner`, `admin`, `manager` (via `RequireRole`)
 
-### Entrega final
-Relatório técnico no chat após implementação: tabelas criadas/alteradas, edge functions, políticas RLS, páginas, riscos remanescentes e próximos passos.
+## Migração
 
-Confirma para eu começar a implementação?
+1. Criar tabelas + RLS + triggers `updated_at` + audit triggers
+2. Backfill: para cada `nina_settings` com Evolution ou Meta configurado → criar 1 `whatsapp_sessions` com `is_default = true` + 1 `whatsapp_account_settings`
+3. Backfill `conversations.session_id` e `messages.session_id` apontando para a sessão default
+4. Manter colunas antigas em `nina_settings` por 1 release (deprecated) para rollback seguro
+
+## Entrega faseada sugerida
+
+- **Fase A (este card)**: schema + backfill + UI de gerenciamento + Edge Functions de sessão. Webhook e sender continuam usando a sessão default.
+- **Fase B**: roteamento real por sessão no webhook/sender + seleção de sessão no chat e nas campanhas.
+
+## Confirmação necessária
+
+Quer que eu já implemente a **Fase A completa** (DB + UI + edge functions de gestão), mantendo o webhook/sender atuais usando a sessão padrão? Ou prefere que eu inclua já o roteamento multi-número (Fase A + B) num único bloco maior?
