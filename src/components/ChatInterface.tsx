@@ -269,7 +269,24 @@ const ChatInterface: React.FC = () => {
     await updateStatus(activeChat.id, status);
   };
 
-  const filteredConversations = conversations.filter(chat => {
+  // Conversations visible to the current user:
+  // - owner/admin/manager: all conversations of the account
+  // - others: only conversations assigned to themselves
+  const visibleConversations = conversations.filter(chat => {
+    if (canSeeAll) return true;
+    return chat.assignedUserId === currentUserId;
+  });
+
+  // Counts per session (after permission filter, before search/session filter)
+  const conversationCounts: Record<string, number> = { all: visibleConversations.length };
+  for (const c of visibleConversations) {
+    if (c.sessionId) {
+      conversationCounts[c.sessionId] = (conversationCounts[c.sessionId] ?? 0) + 1;
+    }
+  }
+
+  const filteredConversations = visibleConversations.filter(chat => {
+    if (selectedSessionId !== 'all' && chat.sessionId !== selectedSessionId) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
