@@ -29,7 +29,14 @@ export default function GovernanceDSAR() {
 
   const create = async () => {
     if (!activeAccountId) return;
-    const { error } = await supabase.from("data_subject_requests").insert({ account_id: activeAccountId, ...form, status: "open" });
+    const { error } = await supabase.from("data_subject_requests").insert({
+      account_id: activeAccountId,
+      requester_name: form.requester_name,
+      requester_email: form.requester_email,
+      request_type: form.request_type as any,
+      description: form.description,
+      status: "open",
+    } as any);
     if (error) return toast.error(error.message);
     toast.success("Pedido criado"); setOpen(false); setForm({ requester_name: "", requester_email: "", request_type: "access", description: "" });
     await load();
@@ -37,7 +44,8 @@ export default function GovernanceDSAR() {
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("data_subject_requests").update({
-      status, resolved_at: ["resolved", "rejected"].includes(status) ? new Date().toISOString() : null,
+      status: status as any,
+      resolved_at: ["resolved", "rejected"].includes(status) ? new Date().toISOString() : null,
     }).eq("id", id);
     await load();
   };

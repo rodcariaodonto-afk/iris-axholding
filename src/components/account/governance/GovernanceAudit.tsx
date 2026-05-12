@@ -18,7 +18,7 @@ export default function GovernanceAudit() {
     (async () => {
       setLoading(true);
       let q = supabase.from("audit_logs").select("*").eq("account_id", activeAccountId).order("created_at", { ascending: false }).limit(200);
-      if (severity !== "all") q = q.eq("severity", severity);
+      if (severity !== "all") q = q.eq("severity", severity as "info" | "warn" | "critical");
       const { data } = await q;
       setLogs(data ?? []);
       setLoading(false);

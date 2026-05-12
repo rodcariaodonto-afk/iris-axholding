@@ -19,7 +19,7 @@ export default function GovernanceConsents() {
       setLoading(true);
       let q = supabase.from("contacts").select("id, name, phone_number, email, consent_status, legal_basis, data_origin, data_classification, consent_given_at, consent_revoked_at")
         .eq("account_id", activeAccountId).limit(500);
-      if (filter !== "all") q = q.eq("consent_status", filter);
+      if (filter !== "all") q = q.eq("consent_status", filter as "granted" | "revoked" | "unknown");
       const { data } = await q;
       setContacts(data ?? []); setLoading(false);
     })();
