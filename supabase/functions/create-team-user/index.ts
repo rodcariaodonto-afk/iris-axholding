@@ -38,11 +38,18 @@ Deno.serve(async (req) => {
       function_id,
       weight = 1,
       password: providedPassword,
+      account_id,
     } = body || {};
 
     if (!name || !email) {
       return new Response(
         JSON.stringify({ error: "name e email são obrigatórios" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!account_id) {
+      return new Response(
+        JSON.stringify({ error: "account_id é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -103,6 +110,7 @@ Deno.serve(async (req) => {
           weight,
           status: "active",
           user_id: userId,
+          account_id,
         })
         .eq("id", existingMember.id)
         .select()
@@ -121,11 +129,25 @@ Deno.serve(async (req) => {
           weight,
           status: "active",
           user_id: userId,
+          account_id,
         })
         .select()
         .single();
       if (error) throw error;
       memberRow = data;
+    }
+
+    // 2.1) Garante membership na conta (account_members)
+    if (userId) {
+      const accountRole =
+        role === "admin" ? "admin" : role === "manager" ? "manager" : "sdr";
+      const { error: amErr } = await admin
+        .from("account_members")
+        .upsert(
+          { account_id, user_id: userId, role: accountRole, status: "active" },
+          { onConflict: "account_id,user_id" },
+        );
+      if (amErr) console.error("[create-team-user] account_members upsert error", amErr);
     }
 
     // 3) Tenta enviar email com as credenciais via Resend (se configurado)
