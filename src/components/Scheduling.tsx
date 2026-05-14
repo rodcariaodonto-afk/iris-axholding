@@ -21,6 +21,43 @@ const Scheduling: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection, handleOAuthCallback } = useGoogleCalendar();
   const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const autoSyncRef = useRef<number | null>(null);
+
+  const runFullSync = useCallback(async (silent = false) => {
+    if (!gcalConnected) return;
+    setIsSyncingAll(true);
+    try {
+      const result = await syncAllAppointments(appointments);
+      const msgs: string[] = [];
+      if (result.synced > 0) msgs.push(`${result.synced} enviado(s)`);
+      if (result.imported > 0) msgs.push(`${result.imported} importado(s)`);
+      if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
+      if (msgs.length > 0) {
+        if (!silent) toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
+        if (!silent) window.location.reload();
+      } else if (result.alreadySynced && !silent) {
+        toast.info('Tudo já está sincronizado!');
+      }
+      if (result.failed > 0 && !silent) {
+        toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
+      }
+    } catch {
+      if (!silent) toast.error('Erro ao sincronizar agendamentos');
+    } finally {
+      setIsSyncingAll(false);
+    }
+  }, [gcalConnected, appointments, syncAllAppointments]);
+
+  // Auto-sync Google Calendar every 1 hour while connected
+  useEffect(() => {
+    if (!gcalConnected) return;
+    autoSyncRef.current = window.setInterval(() => {
+      runFullSync(true);
+    }, 60 * 60 * 1000);
+    return () => {
+      if (autoSyncRef.current) window.clearInterval(autoSyncRef.current);
+    };
+  }, [gcalConnected, runFullSync]);
   
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
