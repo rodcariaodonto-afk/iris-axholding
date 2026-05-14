@@ -1064,7 +1064,7 @@ const ChatInterface: React.FC = () => {
 
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center bg-[#0B0E14] relative overflow-hidden">
+        <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 flex-col items-center justify-center bg-[#0B0E14] relative overflow-hidden w-full`}>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/20 to-transparent"></div>
           <div className="relative z-10 flex flex-col items-center p-8 text-center max-w-md">
             <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 shadow-2xl border border-slate-800 relative group">
