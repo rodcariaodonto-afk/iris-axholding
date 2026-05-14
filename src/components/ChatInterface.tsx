@@ -649,27 +649,35 @@ const ChatInterface: React.FC = () => {
 
       {/* Right Area: Chat Window & Profile */}
       {activeChat ? (
-        <div className="flex-1 flex overflow-hidden bg-[#0B0E14]">
+        <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 overflow-hidden bg-[#0B0E14] w-full`}>
           {/* Main Chat Content */}
           <div className="flex-1 flex flex-col min-w-0 relative">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
 
             {/* Chat Header */}
-            <div className="h-16 px-6 flex items-center justify-between bg-slate-900/80 backdrop-blur-md border-b border-slate-800 z-10 shrink-0">
-              <div 
-                className="flex items-center cursor-pointer hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-lg transition-colors pr-3"
+            <div className="h-16 px-3 sm:px-6 flex items-center justify-between bg-slate-900/80 backdrop-blur-md border-b border-slate-800 z-10 shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileView('list')}
+                className="lg:hidden inline-flex items-center justify-center w-9 h-9 -ml-1 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors shrink-0"
+                aria-label="Voltar"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div
+                className="flex items-center cursor-pointer hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-lg transition-colors pr-3 min-w-0 flex-1"
                 onClick={() => setShowProfileInfo(!showProfileInfo)}
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img src={activeChat.contactAvatar} alt={activeChat.contactName} className="w-9 h-9 rounded-full ring-2 ring-slate-800" />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
                 </div>
-                <div className="ml-3">
-                  <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    {activeChat.contactName}
-                    {renderStatusBadge(activeChat.status)}
+                <div className="ml-3 min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2 truncate">
+                    <span className="truncate">{activeChat.contactName}</span>
+                    <span className="hidden sm:inline-flex">{renderStatusBadge(activeChat.status)}</span>
                   </h2>
-                  <p className="text-xs text-cyan-500 font-medium">{activeChat.contactPhone}</p>
+                  <p className="text-xs text-cyan-500 font-medium truncate">{activeChat.contactPhone}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
