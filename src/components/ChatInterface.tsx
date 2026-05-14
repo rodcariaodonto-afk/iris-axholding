@@ -86,13 +86,20 @@ const ChatInterface: React.FC = () => {
     // Check for conversation param in URL
     const urlParams = new URLSearchParams(window.location.search);
     const conversationParam = urlParams.get('conversation');
-    
+
     if (conversationParam && conversations.some(c => c.id === conversationParam)) {
       setSelectedChatId(conversationParam);
-    } else if (conversations.length > 0 && !selectedChatId) {
+      if (isMobile) setMobileView('chat');
+    } else if (!isMobile && conversations.length > 0 && !selectedChatId) {
       setSelectedChatId(conversations[0].id);
     }
-  }, [conversations, selectedChatId]);
+  }, [conversations, selectedChatId, isMobile]);
+
+  // Sync mobile view when chat is selected/cleared
+  useEffect(() => {
+    if (!isMobile) return;
+    if (selectedChatId) setMobileView('chat');
+  }, [selectedChatId, isMobile]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
