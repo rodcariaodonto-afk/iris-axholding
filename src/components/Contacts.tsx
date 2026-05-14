@@ -206,8 +206,8 @@ const Contacts: React.FC = () => {
   };
 
   return (
-    <div className="p-8 h-full overflow-y-auto bg-slate-950 text-slate-50">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+    <div className="p-4 sm:p-8 h-full overflow-y-auto bg-slate-950 text-slate-50">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-white">Contatos</h2>
           <p className="text-sm text-slate-400 mt-1">Gerencie sua base de leads e clientes com inteligência.</p>
@@ -278,7 +278,38 @@ const Contacts: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-slate-800/50">
+              {filteredContacts.map((contact) => (
+                <div key={contact.id} className="p-4 flex items-start gap-3 hover:bg-slate-800/30 transition-colors">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-cyan-400 shrink-0">
+                    {(contact.name || contact.phone || '?').substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-slate-200 truncate">{contact.name || 'Sem nome'}</div>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${getStatusColor(contact.status)}`}>
+                        {contact.status === 'customer' ? 'Cliente' : contact.status === 'lead' ? 'Lead' : 'Churn'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5"><Phone className="w-3 h-3" />{contact.phone}</div>
+                    {contact.email && (
+                      <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 truncate"><Mail className="w-3 h-3" />{contact.email}</div>
+                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-600">{new Date(contact.lastContact).toLocaleDateString('pt-BR')}</span>
+                      <Button size="sm" variant="primary" className="h-9 px-3 rounded-lg" onClick={() => handleStartConversation(contact)}>
+                        <MessageSquare className="w-4 h-4 mr-1.5" /> Conversar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-medium text-xs uppercase tracking-wider">
                 <tr>
@@ -354,7 +385,8 @@ const Contacts: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
