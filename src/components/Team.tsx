@@ -433,6 +433,7 @@ const Team: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+          </>
         )}
       </div>
 
