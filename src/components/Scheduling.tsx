@@ -353,12 +353,22 @@ const Scheduling: React.FC = () => {
                     <div 
                         key={day} 
                         onClick={() => handleDateClick(day)}
-                        className={`border-b border-r border-slate-800/50 p-2 min-h-[120px] cursor-pointer transition-colors hover:bg-slate-800/30 group relative ${isToday ? 'bg-cyan-950/10' : ''}`}
+                        className={`border-b border-r border-slate-800/50 p-1 sm:p-2 min-h-[64px] sm:min-h-[120px] cursor-pointer transition-colors hover:bg-slate-800/30 group relative ${isToday ? 'bg-cyan-950/10' : ''}`}
                     >
-                        <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-2 ${isToday ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40' : 'text-slate-400 group-hover:text-white'}`}>
+                        <span className={`text-[11px] sm:text-sm font-medium w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full mb-1 sm:mb-2 ${isToday ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40' : 'text-slate-400 group-hover:text-white'}`}>
                             {day}
                         </span>
-                        <div className="space-y-1">
+                        {/* Mobile: dots only */}
+                        <div className="flex sm:hidden flex-wrap gap-0.5">
+                            {dayAppointments.slice(0, 4).map(app => (
+                                <span key={app.id} className={`w-1.5 h-1.5 rounded-full ${getEventTypeColor(app.type).split(' ')[0].replace('/10','')}`} />
+                            ))}
+                            {dayAppointments.length > 4 && (
+                                <span className="text-[8px] text-slate-400 leading-none">+{dayAppointments.length - 4}</span>
+                            )}
+                        </div>
+                        {/* Desktop: full event chips */}
+                        <div className="hidden sm:block space-y-1">
                             {dayAppointments.map(app => (
                                 <div 
                                     key={app.id} 
