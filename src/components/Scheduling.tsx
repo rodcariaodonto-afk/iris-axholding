@@ -376,7 +376,7 @@ const Scheduling: React.FC = () => {
     const firstDay = firstDayOfMonth(year, month);
 
     return (
-        <div className="grid grid-cols-7 flex-1 auto-rows-fr">
+        <div className="grid grid-cols-7">
             {Array.from({ length: firstDay }).map((_, index) => (
                 <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[64px] sm:min-h-[100px]" />
             ))}
