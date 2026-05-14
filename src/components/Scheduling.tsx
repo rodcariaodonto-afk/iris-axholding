@@ -341,7 +341,7 @@ const Scheduling: React.FC = () => {
     return (
         <div className="grid grid-cols-7 flex-1 auto-rows-fr">
             {Array.from({ length: firstDay }).map((_, index) => (
-                <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[100px]" />
+                <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[64px] sm:min-h-[100px]" />
             ))}
             {Array.from({ length: days }).map((_, index) => {
                 const day = index + 1;
