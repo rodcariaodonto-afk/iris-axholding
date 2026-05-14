@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, MoreVertical, Phone, Paperclip, Send, Check, CheckCheck, 
   Smile, Play, Loader2, MessageSquare, Info, X, Mail, 
-  Tag, Bot, User, Pause, Brain, Plus, Image, FileText, ArrowRightLeft
+  Tag, Bot, User, Pause, Brain, Plus, Image, FileText, ArrowRightLeft,
+  ArrowLeft, Smartphone
 } from 'lucide-react';
 import { MessageDirection, MessageType, UIConversation, UIMessage, ConversationStatus, TagDefinition } from '../types';
 import { Button } from './Button';
@@ -18,6 +19,8 @@ import { requireActiveAccountId } from '@/lib/activeAccount';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import TransferConversationDialog from './chat/TransferConversationDialog';
 import SessionsSidebar from './chat/SessionsSidebar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
