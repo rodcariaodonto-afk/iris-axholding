@@ -637,7 +637,7 @@ const Scheduling: React.FC = () => {
                     title="Sincronizar agora (auto a cada 1h)"
                     disabled={isSyncingAll}
                     className="flex items-center gap-1.5 px-2.5 py-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
-                    title="Sincronizar todos os agendamentos com Google Agenda"
+                    
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
                     <span className="hidden sm:inline">{isSyncingAll ? 'Sincronizando...' : 'Sync Todos'}</span>
