@@ -261,6 +261,7 @@ Deno.serve(async (req) => {
         const payload: any = {
           google_event_id: ev.id,
           user_id: user.id,
+          account_id: connection.account_id,
           title: ev.summary || '(Sem título)',
           description: ev.description || null,
           date: dateStr,
