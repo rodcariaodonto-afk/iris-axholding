@@ -376,7 +376,7 @@ const Scheduling: React.FC = () => {
     const firstDay = firstDayOfMonth(year, month);
 
     return (
-        <div className="grid grid-cols-7 flex-1 auto-rows-fr">
+        <div className="grid grid-cols-7">
             {Array.from({ length: firstDay }).map((_, index) => (
                 <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[64px] sm:min-h-[100px]" />
             ))}
@@ -680,8 +680,8 @@ const Scheduling: React.FC = () => {
         ) : (
             <>
                 {viewMode === 'month' && (
-                    <>
-                        <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900">
+                    <div className="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                                 <div key={day} className="py-2 sm:py-3 text-center text-[10px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">
                                     <span className="sm:hidden">{day.charAt(0)}</span>
@@ -690,7 +690,7 @@ const Scheduling: React.FC = () => {
                             ))}
                         </div>
                         {renderMonthView()}
-                    </>
+                    </div>
                 )}
                 {viewMode === 'week' && renderWeekView()}
                 {viewMode === 'day' && renderDayView()}
