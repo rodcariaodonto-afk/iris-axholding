@@ -274,11 +274,13 @@ Deno.serve(async (req) => {
         };
 
         if (existing) {
-          await supabase.from('appointments').update(payload).eq('id', existing.id);
-          updated++;
+          const { error: upErr } = await supabase.from('appointments').update(payload).eq('id', existing.id);
+          if (upErr) { console.error('[import] update failed', ev.id, upErr); skipped++; }
+          else updated++;
         } else {
-          await supabase.from('appointments').insert(payload);
-          imported++;
+          const { error: insErr } = await supabase.from('appointments').insert(payload);
+          if (insErr) { console.error('[import] insert failed', ev.id, insErr); skipped++; }
+          else imported++;
         }
       }
 
