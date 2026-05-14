@@ -211,7 +211,7 @@ const Team: React.FC = () => {
   };
 
   return (
-    <div className="p-8 h-full overflow-y-auto bg-slate-950 text-slate-50 relative custom-scrollbar">
+    <div className="p-4 sm:p-8 h-full overflow-y-auto bg-slate-950 text-slate-50 relative custom-scrollbar">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
@@ -284,7 +284,7 @@ const Team: React.FC = () => {
                 </Button>
             </div>
         ) : (
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-slate-800/50">
