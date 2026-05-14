@@ -115,7 +115,7 @@ export default function InviteAccept() {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -123,7 +123,7 @@ export default function InviteAccept() {
 
   if (error || !preview) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-6">
         <div className="max-w-md w-full p-8 rounded-2xl bg-card border border-destructive/30 text-center">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h1 className="text-xl font-bold mb-2">Convite inválido</h1>
@@ -135,7 +135,7 @@ export default function InviteAccept() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-6">
       <div className="max-w-md w-full">
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-4">
