@@ -633,29 +633,8 @@ const Scheduling: React.FC = () => {
               gcalConnected ? (
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={async () => {
-                      setIsSyncingAll(true);
-                      try {
-                        const result = await syncAllAppointments(appointments);
-                        const msgs: string[] = [];
-                        if (result.synced > 0) msgs.push(`${result.synced} enviado(s)`);
-                        if (result.imported > 0) msgs.push(`${result.imported} importado(s)`);
-                        if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
-                        if (msgs.length > 0) {
-                          toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
-                          window.location.reload();
-                        } else if (result.alreadySynced) {
-                          toast.info('Tudo já está sincronizado!');
-                        }
-                        if (result.failed > 0) {
-                          toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
-                        }
-                      } catch {
-                        toast.error('Erro ao sincronizar agendamentos');
-                      } finally {
-                        setIsSyncingAll(false);
-                      }
-                    }}
+                    onClick={() => runFullSync(false)}
+                    title="Sincronizar agora (auto a cada 1h)"
                     disabled={isSyncingAll}
                     className="flex items-center gap-1.5 px-2.5 py-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
                     title="Sincronizar todos os agendamentos com Google Agenda"
