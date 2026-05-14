@@ -356,8 +356,8 @@ const Kanban: React.FC = () => {
       </div>
 
       {/* Board Scroll Container */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-        <div className="flex h-full gap-4 min-w-max">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4 snap-x snap-mandatory md:snap-none">
+        <div className="flex h-full gap-4 min-w-max px-3 md:px-0">
           {stages.map((column) => {
             const columnDeals = filteredDeals.filter(d => d.stageId === column.id);
             const totalValue = columnDeals.reduce((acc, curr) => acc + curr.value, 0);
