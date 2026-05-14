@@ -144,11 +144,14 @@ const App: React.FC = () => {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster 
-          position="top-right"
+        <Toaster
+          position="top-center"
           richColors
           theme="dark"
+          toastOptions={{ className: 'md:!mr-2' }}
+          className="md:!top-4 md:!right-4 md:!left-auto"
         />
+        {/* sonner already adapts; top-center is a safe mobile default */}
       </CompanySettingsProvider>
       </ActiveAccountProvider>
     </AuthProvider>
