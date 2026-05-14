@@ -64,7 +64,7 @@ const AppLayout: React.FC = () => {
 
       <Sidebar />
 
-      <main className="flex-1 min-h-0 overflow-hidden relative z-10 flex flex-col pb-safe">
+      <main className="flex-1 min-h-0 overflow-hidden relative z-10 flex flex-col pb-safe bg-background">
         {/* Top Border Gradient */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent opacity-50 z-20"></div>
 

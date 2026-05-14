@@ -207,7 +207,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="justify-between gap-10 bg-card/50 backdrop-blur-xl border-r border-border/50">
+      <SidebarBody className="justify-between gap-10 bg-card md:bg-card/50 md:backdrop-blur-xl border-r border-border/50">
         <SidebarContent />
       </SidebarBody>
     </Sidebar>
