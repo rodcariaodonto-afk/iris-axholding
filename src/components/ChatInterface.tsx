@@ -521,24 +521,56 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <div className="flex h-full bg-slate-950 rounded-tl-2xl overflow-hidden border-t border-l border-slate-800/50 shadow-2xl">
+    <div className="flex h-full bg-slate-950 md:rounded-tl-2xl overflow-hidden md:border-t md:border-l md:border-slate-800/50 shadow-2xl">
 
-      {/* Sessions Sidebar (WhatsApp numbers) */}
-      <SessionsSidebar
-        selected={selectedSessionId}
-        onSelect={setSelectedSessionId}
-        conversationCounts={conversationCounts}
-      />
+      {/* Sessions Sidebar (WhatsApp numbers) - desktop/tablet */}
+      <div className="hidden lg:flex">
+        <SessionsSidebar
+          selected={selectedSessionId}
+          onSelect={setSelectedSessionId}
+          conversationCounts={conversationCounts}
+        />
+      </div>
+
+      {/* Sessions Sheet - mobile */}
+      <Sheet open={sessionsOpen} onOpenChange={setSessionsOpen}>
+        <SheetContent side="left" className="p-0 w-[280px] sm:w-[320px]">
+          <SheetHeader className="p-4 border-b border-slate-800">
+            <SheetTitle>Sessões WhatsApp</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(100dvh-80px)]">
+            <SessionsSidebar
+              selected={selectedSessionId}
+              onSelect={(id) => { setSelectedSessionId(id); setSessionsOpen(false); }}
+              conversationCounts={conversationCounts}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Left Sidebar: Chat List */}
-      <div className="w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0">
+      <div
+        className={`${
+          mobileView === 'chat' ? 'hidden lg:flex' : 'flex'
+        } w-full lg:w-96 lg:border-r lg:border-slate-800 flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0`}
+      >
         {/* Search Header */}
         <div className="p-4 border-b border-slate-800/50">
-          <h2 className="text-lg font-bold text-white mb-4 px-1">Chats Ativos</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white px-1">Chats Ativos</h2>
+            <button
+              type="button"
+              onClick={() => setSessionsOpen(true)}
+              className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              Sessões
+            </button>
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Buscar conversa..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
