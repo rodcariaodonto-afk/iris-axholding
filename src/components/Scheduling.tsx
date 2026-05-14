@@ -667,8 +667,9 @@ const Scheduling: React.FC = () => {
                     <>
                         <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                <div key={day} className="py-3 text-center text-sm font-semibold text-slate-500 uppercase tracking-wider">
-                                    {day}
+                                <div key={day} className="py-2 sm:py-3 text-center text-[10px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                                    <span className="sm:hidden">{day.charAt(0)}</span>
+                                    <span className="hidden sm:inline">{day}</span>
                                 </div>
                             ))}
                         </div>
