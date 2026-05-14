@@ -53,7 +53,7 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -66,8 +66,8 @@ const Reports: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1 overflow-x-auto no-scrollbar">
             {PERIODS.map((p) => (
               <button
                 key={p.id}

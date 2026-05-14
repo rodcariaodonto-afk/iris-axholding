@@ -531,9 +531,9 @@ const Scheduling: React.FC = () => {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col bg-slate-950 text-slate-50">
+    <div className="p-3 sm:p-6 h-full flex flex-col bg-slate-950 text-slate-50">
       {/* Header */}
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
         <div>
            <h2 className="text-3xl font-bold text-white flex items-center gap-2">
             <CalendarIcon className="w-8 h-8 text-cyan-500" />
@@ -542,7 +542,7 @@ const Scheduling: React.FC = () => {
            <p className="text-slate-400 text-sm mt-1">Gerencie demos, reuniões e suporte técnico.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full xl:w-auto">
             {/* View Switcher */}
             <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
                 <button 

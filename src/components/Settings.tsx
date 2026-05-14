@@ -53,8 +53,8 @@ const Settings: React.FC = () => {
     : apiRef.current?.isSaving;
   
   return (
-    <div className="p-8 max-w-5xl mx-auto h-full overflow-y-auto bg-slate-950 text-slate-50 custom-scrollbar">
-      <div className="mb-10 flex items-center justify-between">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto h-full overflow-y-auto bg-slate-950 text-slate-50 custom-scrollbar">
+      <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-white">Configurações</h2>
           <p className="text-sm text-slate-400 mt-1">
@@ -91,7 +91,7 @@ const Settings: React.FC = () => {
       </div>
 
       <Tabs defaultValue="agent" className="w-full" onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-3">
           <TabsList>
             <TabsTrigger value="agent" className="gap-2">
               <Bot className="w-4 h-4" />
