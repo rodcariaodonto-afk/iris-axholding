@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink, RefreshCw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from './Button';
@@ -21,6 +21,43 @@ const Scheduling: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { isConnected: gcalConnected, loading: gcalLoading, connect: connectGcal, disconnect: disconnectGcal, syncAppointment, syncAllAppointments, refreshConnection, handleOAuthCallback } = useGoogleCalendar();
   const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const autoSyncRef = useRef<number | null>(null);
+
+  const runFullSync = useCallback(async (silent = false) => {
+    if (!gcalConnected) return;
+    setIsSyncingAll(true);
+    try {
+      const result = await syncAllAppointments(appointments);
+      const msgs: string[] = [];
+      if (result.synced > 0) msgs.push(`${result.synced} enviado(s)`);
+      if (result.imported > 0) msgs.push(`${result.imported} importado(s)`);
+      if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
+      if (msgs.length > 0) {
+        if (!silent) toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
+        if (!silent) window.location.reload();
+      } else if (result.alreadySynced && !silent) {
+        toast.info('Tudo já está sincronizado!');
+      }
+      if (result.failed > 0 && !silent) {
+        toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
+      }
+    } catch {
+      if (!silent) toast.error('Erro ao sincronizar agendamentos');
+    } finally {
+      setIsSyncingAll(false);
+    }
+  }, [gcalConnected, appointments, syncAllAppointments]);
+
+  // Auto-sync Google Calendar every 1 hour while connected
+  useEffect(() => {
+    if (!gcalConnected) return;
+    autoSyncRef.current = window.setInterval(() => {
+      runFullSync(true);
+    }, 60 * 60 * 1000);
+    return () => {
+      if (autoSyncRef.current) window.clearInterval(autoSyncRef.current);
+    };
+  }, [gcalConnected, runFullSync]);
   
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -341,7 +378,7 @@ const Scheduling: React.FC = () => {
     return (
         <div className="grid grid-cols-7 flex-1 auto-rows-fr">
             {Array.from({ length: firstDay }).map((_, index) => (
-                <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[100px]" />
+                <div key={`empty-${index}`} className="border-b border-r border-slate-800/50 bg-slate-950/30 min-h-[64px] sm:min-h-[100px]" />
             ))}
             {Array.from({ length: days }).map((_, index) => {
                 const day = index + 1;
@@ -353,12 +390,22 @@ const Scheduling: React.FC = () => {
                     <div 
                         key={day} 
                         onClick={() => handleDateClick(day)}
-                        className={`border-b border-r border-slate-800/50 p-2 min-h-[120px] cursor-pointer transition-colors hover:bg-slate-800/30 group relative ${isToday ? 'bg-cyan-950/10' : ''}`}
+                        className={`border-b border-r border-slate-800/50 p-1 sm:p-2 min-h-[64px] sm:min-h-[120px] cursor-pointer transition-colors hover:bg-slate-800/30 group relative ${isToday ? 'bg-cyan-950/10' : ''}`}
                     >
-                        <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-2 ${isToday ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40' : 'text-slate-400 group-hover:text-white'}`}>
+                        <span className={`text-[11px] sm:text-sm font-medium w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full mb-1 sm:mb-2 ${isToday ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40' : 'text-slate-400 group-hover:text-white'}`}>
                             {day}
                         </span>
-                        <div className="space-y-1">
+                        {/* Mobile: dots only */}
+                        <div className="flex sm:hidden flex-wrap gap-0.5">
+                            {dayAppointments.slice(0, 4).map(app => (
+                                <span key={app.id} className={`w-1.5 h-1.5 rounded-full ${getEventTypeColor(app.type).split(' ')[0].replace('/10','')}`} />
+                            ))}
+                            {dayAppointments.length > 4 && (
+                                <span className="text-[8px] text-slate-400 leading-none">+{dayAppointments.length - 4}</span>
+                            )}
+                        </div>
+                        {/* Desktop: full event chips */}
+                        <div className="hidden sm:block space-y-1">
                             {dayAppointments.map(app => (
                                 <div 
                                     key={app.id} 
@@ -586,32 +633,11 @@ const Scheduling: React.FC = () => {
               gcalConnected ? (
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={async () => {
-                      setIsSyncingAll(true);
-                      try {
-                        const result = await syncAllAppointments(appointments);
-                        const msgs: string[] = [];
-                        if (result.synced > 0) msgs.push(`${result.synced} enviado(s)`);
-                        if (result.imported > 0) msgs.push(`${result.imported} importado(s)`);
-                        if (result.updated > 0) msgs.push(`${result.updated} atualizado(s)`);
-                        if (msgs.length > 0) {
-                          toast.success(`Sincronização concluída: ${msgs.join(', ')}`);
-                          window.location.reload();
-                        } else if (result.alreadySynced) {
-                          toast.info('Tudo já está sincronizado!');
-                        }
-                        if (result.failed > 0) {
-                          toast.error(`${result.failed} agendamento(s) falharam ao sincronizar.`);
-                        }
-                      } catch {
-                        toast.error('Erro ao sincronizar agendamentos');
-                      } finally {
-                        setIsSyncingAll(false);
-                      }
-                    }}
+                    onClick={() => runFullSync(false)}
+                    title="Sincronizar agora (auto a cada 1h)"
                     disabled={isSyncingAll}
                     className="flex items-center gap-1.5 px-2.5 py-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
-                    title="Sincronizar todos os agendamentos com Google Agenda"
+                    
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
                     <span className="hidden sm:inline">{isSyncingAll ? 'Sincronizando...' : 'Sync Todos'}</span>
@@ -657,8 +683,9 @@ const Scheduling: React.FC = () => {
                     <>
                         <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                <div key={day} className="py-3 text-center text-sm font-semibold text-slate-500 uppercase tracking-wider">
-                                    {day}
+                                <div key={day} className="py-2 sm:py-3 text-center text-[10px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                                    <span className="sm:hidden">{day.charAt(0)}</span>
+                                    <span className="hidden sm:inline">{day}</span>
                                 </div>
                             ))}
                         </div>
