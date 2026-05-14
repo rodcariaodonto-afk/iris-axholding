@@ -142,7 +142,7 @@ export const MobileSidebar = ({
       {/* Mobile TopBar */}
       <div
         className={cn(
-          "h-14 px-4 pt-safe flex flex-row md:hidden items-center justify-between bg-slate-950/90 backdrop-blur-xl w-full border-b border-slate-800/50 sticky top-0 z-30 shrink-0"
+          "h-14 px-4 pt-safe flex flex-row md:hidden items-center justify-between bg-slate-950 w-full border-b border-slate-800/50 sticky top-0 z-30 shrink-0"
         )}
         {...props}
       >
@@ -164,7 +164,7 @@ export const MobileSidebar = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/60 z-[90]"
+                className="fixed inset-0 bg-background z-[90] md:bg-black/60"
                 onClick={() => setOpen(false)}
               />
               <motion.div
@@ -175,10 +175,7 @@ export const MobileSidebar = ({
                   duration: 0.25,
                   ease: "easeInOut",
                 }}
-                className={cn(
-                  "fixed top-0 left-0 h-[100dvh] w-[85%] max-w-[320px] bg-slate-950 px-5 pt-safe pb-safe z-[100] flex flex-col overflow-y-auto border-r border-slate-800/60 shadow-2xl",
-                  className
-                )}
+                className="fixed top-0 left-0 h-[100dvh] w-[86vw] max-w-[320px] bg-slate-950 px-5 pt-safe pb-safe z-[100] flex flex-col overflow-y-auto border-r border-slate-800/60 shadow-2xl"
               >
                 <div
                   className="absolute right-3 top-3 z-50 p-2 rounded-lg text-slate-300 cursor-pointer hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
