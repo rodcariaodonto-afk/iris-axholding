@@ -29,7 +29,10 @@ const ChatInterface: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
   const { sdrName, companyName } = useCompanySettings();
+  const isMobile = useIsMobile();
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [showProfileInfo, setShowProfileInfo] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
