@@ -12,7 +12,7 @@ const TABS: { to: string; label: string; icon: ReactNode }[] = [
 
 export default function AdminLayout() {
   const { isSuperAdmin, loading } = useActiveAccount();
-  if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-[100dvh]"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
 
   return (

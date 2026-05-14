@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, MoreVertical, Phone, Paperclip, Send, Check, CheckCheck, 
   Smile, Play, Loader2, MessageSquare, Info, X, Mail, 
-  Tag, Bot, User, Pause, Brain, Plus, Image, FileText, ArrowRightLeft
+  Tag, Bot, User, Pause, Brain, Plus, Image, FileText, ArrowRightLeft,
+  ArrowLeft, Smartphone
 } from 'lucide-react';
 import { MessageDirection, MessageType, UIConversation, UIMessage, ConversationStatus, TagDefinition } from '../types';
 import { Button } from './Button';
@@ -18,6 +19,8 @@ import { requireActiveAccountId } from '@/lib/activeAccount';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import TransferConversationDialog from './chat/TransferConversationDialog';
 import SessionsSidebar from './chat/SessionsSidebar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
@@ -26,7 +29,10 @@ const ChatInterface: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
   const { sdrName, companyName } = useCompanySettings();
+  const isMobile = useIsMobile();
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [showProfileInfo, setShowProfileInfo] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,13 +86,20 @@ const ChatInterface: React.FC = () => {
     // Check for conversation param in URL
     const urlParams = new URLSearchParams(window.location.search);
     const conversationParam = urlParams.get('conversation');
-    
+
     if (conversationParam && conversations.some(c => c.id === conversationParam)) {
       setSelectedChatId(conversationParam);
-    } else if (conversations.length > 0 && !selectedChatId) {
+      if (isMobile) setMobileView('chat');
+    } else if (!isMobile && conversations.length > 0 && !selectedChatId) {
       setSelectedChatId(conversations[0].id);
     }
-  }, [conversations, selectedChatId]);
+  }, [conversations, selectedChatId, isMobile]);
+
+  // Sync mobile view when chat is selected/cleared
+  useEffect(() => {
+    if (!isMobile) return;
+    if (selectedChatId) setMobileView('chat');
+  }, [selectedChatId, isMobile]);
 
   // Mark as read when selecting conversation
   useEffect(() => {
@@ -508,24 +521,56 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <div className="flex h-full bg-slate-950 rounded-tl-2xl overflow-hidden border-t border-l border-slate-800/50 shadow-2xl">
+    <div className="flex h-full bg-slate-950 md:rounded-tl-2xl overflow-hidden md:border-t md:border-l md:border-slate-800/50 shadow-2xl">
 
-      {/* Sessions Sidebar (WhatsApp numbers) */}
-      <SessionsSidebar
-        selected={selectedSessionId}
-        onSelect={setSelectedSessionId}
-        conversationCounts={conversationCounts}
-      />
+      {/* Sessions Sidebar (WhatsApp numbers) - desktop/tablet */}
+      <div className="hidden lg:flex">
+        <SessionsSidebar
+          selected={selectedSessionId}
+          onSelect={setSelectedSessionId}
+          conversationCounts={conversationCounts}
+        />
+      </div>
+
+      {/* Sessions Sheet - mobile */}
+      <Sheet open={sessionsOpen} onOpenChange={setSessionsOpen}>
+        <SheetContent side="left" className="p-0 w-[280px] sm:w-[320px]">
+          <SheetHeader className="p-4 border-b border-slate-800">
+            <SheetTitle>Sessões WhatsApp</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(100dvh-80px)]">
+            <SessionsSidebar
+              selected={selectedSessionId}
+              onSelect={(id) => { setSelectedSessionId(id); setSessionsOpen(false); }}
+              conversationCounts={conversationCounts}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Left Sidebar: Chat List */}
-      <div className="w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0">
+      <div
+        className={`${
+          mobileView === 'chat' ? 'hidden lg:flex' : 'flex'
+        } w-full lg:w-96 lg:border-r lg:border-slate-800 flex-col bg-slate-900/50 backdrop-blur-md z-20 flex-shrink-0`}
+      >
         {/* Search Header */}
         <div className="p-4 border-b border-slate-800/50">
-          <h2 className="text-lg font-bold text-white mb-4 px-1">Chats Ativos</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white px-1">Chats Ativos</h2>
+            <button
+              type="button"
+              onClick={() => setSessionsOpen(true)}
+              className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              Sessões
+            </button>
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Buscar conversa..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -604,27 +649,35 @@ const ChatInterface: React.FC = () => {
 
       {/* Right Area: Chat Window & Profile */}
       {activeChat ? (
-        <div className="flex-1 flex overflow-hidden bg-[#0B0E14]">
+        <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 overflow-hidden bg-[#0B0E14] w-full`}>
           {/* Main Chat Content */}
           <div className="flex-1 flex flex-col min-w-0 relative">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
 
             {/* Chat Header */}
-            <div className="h-16 px-6 flex items-center justify-between bg-slate-900/80 backdrop-blur-md border-b border-slate-800 z-10 shrink-0">
-              <div 
-                className="flex items-center cursor-pointer hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-lg transition-colors pr-3"
+            <div className="h-16 px-3 sm:px-6 flex items-center justify-between bg-slate-900/80 backdrop-blur-md border-b border-slate-800 z-10 shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileView('list')}
+                className="lg:hidden inline-flex items-center justify-center w-9 h-9 -ml-1 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors shrink-0"
+                aria-label="Voltar"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div
+                className="flex items-center cursor-pointer hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-lg transition-colors pr-3 min-w-0 flex-1"
                 onClick={() => setShowProfileInfo(!showProfileInfo)}
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img src={activeChat.contactAvatar} alt={activeChat.contactName} className="w-9 h-9 rounded-full ring-2 ring-slate-800" />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
                 </div>
-                <div className="ml-3">
-                  <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    {activeChat.contactName}
-                    {renderStatusBadge(activeChat.status)}
+                <div className="ml-3 min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2 truncate">
+                    <span className="truncate">{activeChat.contactName}</span>
+                    <span className="hidden sm:inline-flex">{renderStatusBadge(activeChat.status)}</span>
                   </h2>
-                  <p className="text-xs text-cyan-500 font-medium">{activeChat.contactPhone}</p>
+                  <p className="text-xs text-cyan-500 font-medium truncate">{activeChat.contactPhone}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -814,9 +867,9 @@ const ChatInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Profile Sidebar (CRM View) */}
-          <div 
-            className={`${showProfileInfo ? 'w-80 border-l border-slate-800 opacity-100' : 'w-0 opacity-0 border-none'} transition-all duration-300 ease-in-out bg-slate-900/95 flex-shrink-0 flex flex-col overflow-hidden`}
+          {/* Right Profile Sidebar (CRM View) - desktop/tablet */}
+          <div
+            className={`hidden lg:flex ${showProfileInfo ? 'lg:w-80 border-l border-slate-800 opacity-100' : 'lg:w-0 opacity-0 border-none'} transition-all duration-300 ease-in-out bg-slate-900/95 flex-shrink-0 flex-col overflow-hidden`}
           >
             <div className="w-80 h-full flex flex-col">
               {/* Header */}
@@ -1011,7 +1064,7 @@ const ChatInterface: React.FC = () => {
 
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center bg-[#0B0E14] relative overflow-hidden">
+        <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 flex-col items-center justify-center bg-[#0B0E14] relative overflow-hidden w-full`}>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/20 to-transparent"></div>
           <div className="relative z-10 flex flex-col items-center p-8 text-center max-w-md">
             <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 shadow-2xl border border-slate-800 relative group">

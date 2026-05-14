@@ -57,25 +57,25 @@ const AppLayout: React.FC = () => {
   }, [loading, isComplete, hasSeenWizard]);
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-      {/* Background Ambient Glows */}
-      <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[128px] pointer-events-none -translate-x-1/2 -translate-y-1/2 z-0"></div>
-      <div className="fixed bottom-0 right-0 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[128px] pointer-events-none translate-x-1/2 translate-y-1/2 z-0"></div>
-      
+    <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-background text-foreground overflow-hidden">
+      {/* Background Ambient Glows (desktop only - perf on mobile) */}
+      <div className="hidden md:block fixed top-0 left-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[128px] pointer-events-none -translate-x-1/2 -translate-y-1/2 z-0"></div>
+      <div className="hidden md:block fixed bottom-0 right-0 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[128px] pointer-events-none translate-x-1/2 translate-y-1/2 z-0"></div>
+
       <Sidebar />
-      
-      <main className="flex-1 h-full overflow-hidden relative z-10 flex flex-col">
+
+      <main className="flex-1 min-h-0 overflow-hidden relative z-10 flex flex-col pb-safe">
         {/* Top Border Gradient */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent opacity-50 z-20"></div>
-        
-        <div className="flex-1 w-full h-full relative">
+
+        <div className="flex-1 w-full h-full relative min-h-0">
           <Outlet context={{ showOnboarding, setShowOnboarding }} />
         </div>
       </main>
 
-      <OnboardingWizard 
-        isOpen={showOnboarding} 
-        onClose={() => setShowOnboarding(false)} 
+      <OnboardingWizard
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
       />
     </div>
   );
@@ -144,11 +144,14 @@ const App: React.FC = () => {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster 
-          position="top-right"
+        <Toaster
+          position="top-center"
           richColors
           theme="dark"
+          toastOptions={{ className: 'md:!mr-2' }}
+          className="md:!top-4 md:!right-4 md:!left-auto"
         />
+        {/* sonner already adapts; top-center is a safe mobile default */}
       </CompanySettingsProvider>
       </ActiveAccountProvider>
     </AuthProvider>

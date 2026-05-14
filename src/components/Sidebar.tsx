@@ -187,6 +187,23 @@ const SidebarContent = () => {
 
 const AppSidebar: React.FC = () => {
   const [open, setOpen] = useState(true);
+  // Auto-close drawer on mobile route changes
+  const location = useLocation();
+  const isMobileRef = React.useRef<boolean>(false);
+  React.useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      isMobileRef.current = mql.matches;
+      // Start closed on mobile, open on desktop
+      setOpen(!mql.matches);
+    };
+    sync();
+    mql.addEventListener('change', sync);
+    return () => mql.removeEventListener('change', sync);
+  }, []);
+  React.useEffect(() => {
+    if (isMobileRef.current) setOpen(false);
+  }, [location.pathname]);
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
