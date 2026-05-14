@@ -251,12 +251,24 @@ Deno.serve(async (req) => {
 
         const attendees = (ev.attendees || []).map((a: any) => a.email).filter(Boolean);
 
-        // Check if already exists
-        const { data: existing } = await supabase
+        // Check if already exists by google_event_id OR by exact slot+title (dedupe)
+        let { data: existing } = await supabase
           .from('appointments')
           .select('id')
           .eq('google_event_id', ev.id)
           .maybeSingle();
+
+        if (!existing) {
+          const { data: slotMatch } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('account_id', connection.account_id)
+            .eq('date', dateStr)
+            .eq('time', timeStr)
+            .eq('title', ev.summary || '(Sem título)')
+            .maybeSingle();
+          if (slotMatch) existing = slotMatch;
+        }
 
         const payload: any = {
           google_event_id: ev.id,
