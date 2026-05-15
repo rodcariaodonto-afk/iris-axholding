@@ -116,7 +116,7 @@ const Auth: React.FC = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent mb-4">
             <img 
-              src="/src/assets/icon-axhub.png" 
+              src="/src/assets/icon-iris.png" 
               alt="Logo" 
               className="w-10 h-10"
               onError={(e) => {
