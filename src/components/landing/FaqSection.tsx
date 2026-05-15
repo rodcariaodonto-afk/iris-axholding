@@ -12,7 +12,11 @@ const FAQ = [
   },
   {
     q: "O que está incluído no setup de R$ 2.500?",
-    a: "O setup inclui configuração inicial, personalização do agente, preparação do fluxo comercial, apoio na integração com o WhatsApp e orientação para o início da operação.",
+    a: "O setup inclui configuração inicial, personalização do agente, preparação do fluxo comercial, apoio na integração com o WhatsApp e orientação para o início da operação. É um pagamento único, obrigatório para qualquer plano mensal.",
+  },
+  {
+    q: "Quais são os planos mensais?",
+    a: "Starter (R$ 120/mês): 1 usuário e 1 sessão de WhatsApp. Pro (R$ 297/mês): até 5 usuários e 5 sessões. Business (R$ 997/mês): até 30 usuários e 30 sessões. Enterprise: sob consulta, com usuários e sessões ilimitados. Todos os planos incluem contatos e mensagens ilimitados.",
   },
   {
     q: "Quanto tempo leva para começar a operar?",
