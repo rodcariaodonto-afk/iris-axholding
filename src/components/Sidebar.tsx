@@ -28,7 +28,7 @@ const Logo = ({ companyName, companyLogoUrl }: { companyName: string; companyLog
   return (
     <Link to="/dashboard" className="flex items-center space-x-3 py-1">
       <div className="relative flex items-center justify-center flex-shrink-0">
-        <img src={companyLogoUrl || axhubIcon} alt={companyName || 'AXHUB'} className="h-10 w-auto object-contain rounded-lg" />
+        <img src={companyLogoUrl || axhubIcon} alt={companyName || 'IRIS'} className="h-10 w-auto object-contain rounded-lg" />
       </div>
       <motion.div
         initial={{ opacity: 0 }}
