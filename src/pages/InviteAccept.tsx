@@ -82,6 +82,10 @@ export default function InviteAccept() {
           body: { token, action: "signup", password, full_name: fullName },
         });
         if (error || data?.error) { toast.error(data?.error || error?.message || "Erro ao criar conta"); return; }
+        if (data?.account_id) {
+          setActiveAccountId(data.account_id);
+          try { await supabase.rpc("set_active_account", { _account_id: data.account_id }); } catch {}
+        }
         const { data: sd, error: se } = await supabase.auth.signInWithPassword({ email: preview.email, password });
         if (se) { toast.error(se.message); return; }
         userId = sd.user?.id || data?.user_id || null;
@@ -96,7 +100,7 @@ export default function InviteAccept() {
 
       if (!userId) { toast.error("Não foi possível identificar o usuário"); return; }
 
-      const ok = await acceptWithUser(userId);
+      const ok = mode === "signup" ? true : await acceptWithUser(userId);
       if (ok) {
         setAccepted(true);
         toast.success("Convite aceito! Redirecionando...");
