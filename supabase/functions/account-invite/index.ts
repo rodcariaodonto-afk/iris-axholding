@@ -121,8 +121,9 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin
       .from("profiles").select("full_name").eq("user_id", user.id).maybeSingle();
 
-    const origin = req.headers.get("origin") || "https://www.axiris.com.br";
-    const acceptUrl = `${origin}/invite/${inviteToken}`;
+    // Sempre usar domínio público (preview da Lovable exige login na Lovable)
+    const publicBase = Deno.env.get("PUBLIC_APP_URL") || "https://www.axiris.com.br";
+    const acceptUrl = `${publicBase}/invite/${inviteToken}`;
 
     // Envia email via send-transactional-email (Lovable Emails)
     let emailSent = false;
