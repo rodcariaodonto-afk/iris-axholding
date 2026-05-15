@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.account-purge]
 verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
