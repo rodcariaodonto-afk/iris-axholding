@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const body = await req.json();
-    const { token, user_id, action = "accept" } = body || {};
+    const { token, user_id, action = "accept", password, full_name } = body || {};
 
     if (!token) {
       return new Response(JSON.stringify({ error: "token é obrigatório" }), {
