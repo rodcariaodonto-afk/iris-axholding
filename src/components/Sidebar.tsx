@@ -10,8 +10,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { AccountSwitcher } from '@/components/AccountSwitcher';
-import axhubIcon from '@/assets/icon-axhub.png';
-import axhubLogo from '@/assets/logo-axhub.png';
+import axhubIcon from '@/assets/icon-iris.png';
+import axhubLogo from '@/assets/icon-iris.png';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
