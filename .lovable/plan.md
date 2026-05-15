@@ -1,81 +1,75 @@
-# Landing Page IRIS — Plano de Implementação
-
 ## Objetivo
 
-Criar landing page pública premium na rota `/` da plataforma IRIS, mantendo `/auth` como login para clientes existentes. Seguir o mesmo padrão modular das landings dos projetos **RH AXHolding** e **Axis Operations Hub** (header → hero → módulos/benefícios → como funciona → preço → FAQ → contato → footer + WhatsApp FAB).
+Permitir que o Super Admin **suspenda** (bloqueia acesso + pausa IA) ou **exclua** (soft delete com 30 dias para reverter) qualquer conta cliente diretamente da tela `Admin → Contas`.
 
-## Roteamento
+## Escopo
 
-- `/` → nova `LandingPage` (pública, sem ProtectedRoute)
-- `/auth` → preservada como está
-- `/dashboard` e demais rotas → permanecem protegidas
-- Atualizar redirect do catch-all e do `/` para apontar para a landing em vez de `/dashboard`
-- Usuário autenticado que acessa `/` continua vendo a landing (pode ter botão "Acessar plataforma" → `/dashboard`)
+### 1. UI — `AdminAccounts.tsx`
+Adicionar menu de ações (`⋯`) em cada linha da lista de contas com 3 opções dinâmicas conforme o status atual:
 
-## Estrutura de arquivos (novo)
+- **Conta `active`** → "Suspender conta" + "Excluir conta"
+- **Conta `suspended`** → "Reativar conta" + "Excluir conta"
+- **Conta `cancelled` (com exclusão agendada)** → "Cancelar exclusão" + badge mostrando dias restantes
 
-```
-src/pages/LandingPage.tsx
-src/components/landing/
-  LandingHeader.tsx       — logo IRIS + nav (Benefícios, Como funciona, Preço, FAQ) + CTAs
-  LandingHero.tsx         — headline, subtítulo, badges, CTAs primário/secundário
-  ProofSection.tsx        — 4 cards de prova de valor (Atendimento, Qualificação, Centralização, Próxima ação)
-  PainSection.tsx         — dores que a IRIS resolve
-  TransformSection.tsx    — antes/depois em 2 colunas
-  ProductShowcase.tsx     — mockups: Chat, Dashboard, Kanban, Lead score
-  FeaturesSection.tsx     — cards de funcionalidades → benefícios comerciais
-  HowItWorksSection.tsx   — 5 passos (Diagnóstico → Operação)
-  PricingSection.tsx      — Plano único: Setup R$ 2.500 + R$ 120/mês
-  FaqSection.tsx          — perguntas frequentes do PDF
-  ContactSection.tsx      — CTA final + link WhatsApp
-  LandingFooter.tsx       — institucional + links
-  WhatsAppFAB.tsx         — botão flutuante WhatsApp
-  whatsappLink.ts         — helper com número e mensagem pré-definida
-```
+Proteções:
+- Conta `is_internal: true` (AXHolding) não mostra ações destrutivas — não pode ser suspensa nem excluída
+- Diálogo de confirmação obrigatório em todas as ações
+- Para excluir: campo de motivo opcional + checkbox "Entendo que após 30 dias a exclusão é permanente"
 
-## CTA WhatsApp
+### 2. Edge function — `super-admin-account-action`
+Nova função única que centraliza as 4 operações (suspend / reactivate / delete / cancel-deletion):
 
-Helper único `whatsappLink.ts`:
+- Valida JWT + super admin (mesma lógica do `super-admin-create-client`)
+- Bloqueia ações em contas internas
+- Registra tudo em `audit_logs` com `severity: warn|critical`
 
-```text
-Número: 5511939171383
-Mensagem: "Olá, quero implementar a IRIS Agente de IA na minha empresa. Pode me apresentar a plataforma?"
-URL: https://wa.me/5511939171383?text=<mensagem url-encoded>
-```
+**Suspender (`suspend`):**
+- `accounts.status = 'suspended'`
+- `nina_settings.is_active = false` (pausa IA — não responde novas mensagens)
+- `nina_settings.auto_response_enabled = false`
 
-Todos os botões "Quero implementar a IRIS" / "Agendar demonstração" / FAB usam esse helper. Botão secundário "Já sou cliente / Acessar plataforma" → `/auth`.
+**Reativar (`reactivate`):**
+- `accounts.status = 'active'`
+- `nina_settings.is_active = true`
+- `nina_settings.auto_response_enabled = true`
 
-## Identidade visual
+**Excluir (soft delete, `delete`):**
+- `accounts.status = 'cancelled'`
+- `accounts.deletion_status = 'scheduled'`
+- `accounts.deletion_scheduled_at = now()`
+- `accounts.delete_after = now() + 30 days`
+- `accounts.deletion_reason = motivo`
+- `accounts.cancelled_at = now()`
+- Pausa IA também (igual suspend)
 
-Reaproveitar tokens do `index.css` atual (dark premium: `--background` slate-950, `--primary` ciano #22d3ee, `--accent` violeta). Cards `bg-slate-900/60` com borda `slate-700/40`, blur, glow ciano/roxo. Framer Motion já está no projeto — usar para entrada de seções e hover sutil. Mesma estrutura visual e densidade das landings de referência.
+**Cancelar exclusão (`cancel_deletion`):**
+- Reverte campos de exclusão para NULL
+- `status = 'active'`, reativa IA
 
-## Conteúdo (do PDF anexo)
+### 3. Efeito do bloqueio no login do cliente
+Atualizar `useAuth.tsx` (ou criar guard no `ProtectedRoute`) para, após o login, checar se alguma `account_member` ativa do usuário pertence a uma conta com `status != 'active'`. Se TODAS estiverem suspensas/canceladas:
+- Faz `signOut` automático
+- Mostra toast: "Sua conta está suspensa. Entre em contato com o suporte."
 
-- **Hero**: "Transforme conversas do WhatsApp em vendas com uma Agente SDR de IA trabalhando por você."
-- **Plano único**: Setup R$ 2.500 + R$ 120/mês, observação sobre integrações extras
-- **5 passos**: Diagnóstico → Setup → Integração WhatsApp → Treinamento do agente → Operação
-- **FAQ**: substitui vendedor? funciona com WhatsApp? o que está incluso? quanto tempo? etc.
-- **SEO**: title "IRIS Agente de IA SDR — Atendimento e Vendas pelo WhatsApp"; description e keywords conforme PDF; atualizar `index.html` + meta dinâmica via useEffect
+### 4. Indicador visual na lista
+- Badge `status` já existe (active/suspended/cancelled) — manter
+- Para contas `cancelled`: mostrar "Exclusão em X dias" em vermelho ao lado do badge
 
 ## Detalhes técnicos
 
-- Toda a landing é client-side React (sem backend novo)
-- `App.tsx`: adicionar `<Route path="/" element={<LandingPage />} />` **fora** do `ProtectedRoute`; mover redirect atual para `/dashboard` apenas no catch-all autenticado
-- Mobile-first: hero empilhado, nav vira menu hamburguer, mockups responsivos
-- Sem alterações em Supabase, Edge Functions ou lógica de negócio
-- Sem mudanças nas demais páginas/componentes do app
+**Arquivos novos:**
+- `supabase/functions/super-admin-account-action/index.ts`
 
-## Critérios de aceite
+**Arquivos modificados:**
+- `src/components/admin/AdminAccounts.tsx` — menu de ações + diálogos
+- `src/hooks/useAuth.tsx` — verificação de status pós-login (ou novo hook `useAccountStatusGuard`)
 
-- `https://www.axiris.com.br/` exibe a landing (não redireciona para login)
-- `/auth` continua funcionando para login
-- CTAs primários abrem WhatsApp `(11) 93917-1383` com mensagem pré-preenchida
-- "Já sou cliente" leva para `/auth`
-- Layout responsivo, sem quebrar nenhuma rota existente
-- Mesma linguagem visual das landings AXHolding e AXIS
+**Não precisa migration de schema** — todos os campos necessários já existem em `accounts` (`status`, `deletion_status`, `deletion_scheduled_at`, `delete_after`, `deletion_reason`, `cancelled_at`).
 
-## Dúvidas antes de implementar
+**Fluxo de purge real após 30 dias:** já existe `account-purge` edge function. Fica como melhoria futura agendar via cron — por enquanto pode ser disparado manualmente quando necessário.
 
-1. **Logo da IRIS**: uso o nome em texto com gradiente ciano→violeta (mesmo estilo do AXHUB no app), ou você tem um arquivo de logo para eu usar?
-2. **Mockups do produto**: gero screenshots ilustrativos dos painéis (chat / dashboard / kanban) usando componentes mock estilizados, ou prefere que eu reutilize screenshots reais do app atual?
-3. **Domínio do CTA secundário**: confirmo que "Já sou cliente" deve ir para `/auth` (mesmo domínio) e não abrir uma nova aba?
+## Fora do escopo
+
+- Cron automático para purge definitivo (fica para depois)
+- Notificação por email ao cliente sobre suspensão/exclusão
+- Histórico visual de todas as ações na linha da conta (já fica em `audit_logs`, basta consultar se necessário)
