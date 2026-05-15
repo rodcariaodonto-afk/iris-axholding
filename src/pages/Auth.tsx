@@ -213,17 +213,31 @@ const Auth: React.FC = () => {
 
           <div className="mt-6 pt-6 border-t border-border text-center">
             <p className="text-muted-foreground text-sm">
-              {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="ml-1 text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                {isLogin ? 'Criar conta' : 'Fazer login'}
-              </button>
+              {isLogin ? 'Quer criar uma conta?' : 'Já tem uma conta?'}
+              {isLogin ? (
+                <a
+                  href={`https://wa.me/5511939171383?text=${encodeURIComponent('Olá! Quero criar minha conta na IRIS. Pode liberar meu acesso?')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Falar com o admin
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLogin(true);
+                    setErrors({});
+                  }}
+                  className="ml-1 text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Fazer login
+                </button>
+              )}
+            </p>
+            <p className="text-[11px] text-muted-foreground/70 mt-2">
+              Novas contas são liberadas manualmente pelo administrador.
             </p>
           </div>
         </div>
