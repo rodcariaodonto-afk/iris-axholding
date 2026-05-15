@@ -14,6 +14,7 @@ import Auth from './pages/Auth';
 import LandingPage from './pages/LandingPage';
 import MeetingRoom from './pages/MeetingRoom';
 import InviteAccept from './pages/InviteAccept';
+import Unsubscribe from './pages/Unsubscribe';
 import ProtectedRoute from './components/ProtectedRoute';
 import AccountLayout from './components/account/AccountLayout';
 import AccountOverview from './components/account/AccountOverview';
@@ -93,6 +94,7 @@ const App: React.FC = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
 
             {/* Protected Routes (With Sidebar) */}
             <Route element={

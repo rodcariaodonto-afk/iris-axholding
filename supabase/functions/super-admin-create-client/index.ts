@@ -85,34 +85,34 @@ Deno.serve(async (req) => {
       .single();
     if (invErr) throw invErr;
 
-    const origin = req.headers.get("origin") || "";
+    const origin = req.headers.get("origin") || "https://www.axiris.com.br";
     const acceptUrl = `${origin}/invite/${inviteToken}`;
 
-    // Tenta enviar email se Resend estiver configurado (best-effort)
+    // Envia email via send-transactional-email (Lovable Emails)
     let emailSent = false;
     let emailError: string | null = null;
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (resendKey) {
-      try {
-        const html = `<!doctype html><html><body style="margin:0;background:#fff;font-family:Arial,sans-serif;color:#0f172a">
-          <div style="max-width:560px;margin:0 auto;padding:32px 24px">
-            <h1 style="font-size:22px;margin:0 0 8px">Bem-vindo(a) à IRIS</h1>
-            <p style="color:#475569;margin:0 0 20px">Sua conta <b>${name}</b> foi criada. Clique abaixo para definir sua senha e acessar a plataforma.</p>
-            <a href="${acceptUrl}" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Definir minha senha</a>
-            <p style="color:#94a3b8;font-size:12px;margin-top:24px">Este link expira em 7 dias.</p>
-          </div></body></html>`;
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: "IRIS <onboarding@resend.dev>", to: [email], subject: `Bem-vindo(a) à IRIS - ${name}`, html }),
-        });
-        if (r.ok) emailSent = true;
-        else emailError = (await r.json())?.message || "Falha no envio";
-      } catch (e) {
-        emailError = (e as Error).message;
-      }
-    } else {
-      emailError = "RESEND_API_KEY não configurada — use o link manualmente";
+    try {
+      const { data: emailResp, error: invokeErr } = await admin.functions.invoke(
+        "send-transactional-email",
+        {
+          body: {
+            templateName: "account-invite",
+            recipientEmail: email,
+            idempotencyKey: `account-invite-${invite.id}`,
+            templateData: {
+              accountName: name,
+              acceptUrl,
+              role,
+              brandName: "AXHUB",
+            },
+          },
+        },
+      );
+      if (invokeErr) emailError = invokeErr.message || String(invokeErr);
+      else if (emailResp?.error) emailError = emailResp.error;
+      else emailSent = true;
+    } catch (e) {
+      emailError = (e as Error).message;
     }
 
     return new Response(JSON.stringify({ success: true, account, invite, acceptUrl, emailSent, emailError }), {

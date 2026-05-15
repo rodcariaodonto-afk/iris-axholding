@@ -121,53 +121,35 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin
       .from("profiles").select("full_name").eq("user_id", user.id).maybeSingle();
 
-    const origin = req.headers.get("origin") || "";
+    const origin = req.headers.get("origin") || "https://www.axiris.com.br";
     const acceptUrl = `${origin}/invite/${inviteToken}`;
 
+    // Envia email via send-transactional-email (Lovable Emails)
     let emailSent = false;
     let emailError: string | null = null;
-
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (resendKey) {
-      try {
-        const { data: settings } = await admin
-          .from("nina_settings")
-          .select("invite_from_email, invite_from_name, company_name")
-          .eq("account_id", account_id)
-          .maybeSingle();
-        const fromEmail = settings?.invite_from_email;
-        const fromName = settings?.invite_from_name || settings?.company_name || account?.name || "AXHUB";
-
-        if (fromEmail) {
-          const html = inviteEmailHtml({
-            accountName: account?.name || "AXHUB",
-            inviterName: profile?.full_name || user.email || "Sua equipe",
-            role,
-            acceptUrl,
-          });
-          const resendResp = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendKey}`,
-              "Content-Type": "application/json",
+    try {
+      const { data: emailResp, error: invokeErr } = await admin.functions.invoke(
+        "send-transactional-email",
+        {
+          body: {
+            templateName: "account-invite",
+            recipientEmail: email,
+            idempotencyKey: `account-invite-${invite.id}`,
+            templateData: {
+              accountName: account?.name || "sua conta",
+              inviterName: profile?.full_name || user.email || undefined,
+              acceptUrl,
+              role,
+              brandName: "AXHUB",
             },
-            body: JSON.stringify({
-              from: `${fromName} <${fromEmail}>`,
-              to: [email],
-              subject: `Convite para ${account?.name || "AXHUB"}`,
-              html,
-            }),
-          });
-          if (resendResp.ok) emailSent = true;
-          else emailError = (await resendResp.json())?.message || "Falha no envio";
-        } else {
-          emailError = "invite_from_email não configurado em nina_settings";
-        }
-      } catch (e) {
-        emailError = (e as Error).message;
-      }
-    } else {
-      emailError = "RESEND_API_KEY não configurada";
+          },
+        },
+      );
+      if (invokeErr) emailError = invokeErr.message || String(invokeErr);
+      else if (emailResp?.error) emailError = emailResp.error;
+      else emailSent = true;
+    } catch (e) {
+      emailError = (e as Error).message;
     }
 
     return new Response(
