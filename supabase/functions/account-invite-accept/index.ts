@@ -70,33 +70,56 @@ Deno.serve(async (req) => {
       );
     }
 
-    // signup: cria user via admin (bypassa "signups disabled") e retorna user_id
+    // signup: cria user via admin (bypassa "signups disabled") e já aceita o convite.
+    // Se o usuário já existir por uma tentativa anterior interrompida, não falha: deixa o frontend fazer login e concluir.
     if (action === "signup") {
       if (!password || password.length < 6) {
         return new Response(JSON.stringify({ error: "Senha deve ter ao menos 6 caracteres" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Verifica se já existe user com esse email
+      let targetUserId: string | null = null;
       const { data: existing } = await admin.auth.admin.listUsers();
       const found = existing?.users?.find(u => (u.email || "").toLowerCase() === invite.email.toLowerCase());
-      if (found) {
-        return new Response(JSON.stringify({ error: "Já existe uma conta com esse email. Use 'Já tenho conta'." }), {
-          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (found?.id) {
+        targetUserId = found.id;
+      } else {
+        const { data: created, error: createErr } = await admin.auth.admin.createUser({
+          email: invite.email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: full_name || invite.email },
         });
+        if (createErr || !created?.user) {
+          return new Response(JSON.stringify({ error: createErr?.message || "Erro ao criar usuário" }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        targetUserId = created.user.id;
       }
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: invite.email,
-        password,
-        email_confirm: true,
-        user_metadata: { full_name: full_name || invite.email },
-      });
-      if (createErr || !created?.user) {
-        return new Response(JSON.stringify({ error: createErr?.message || "Erro ao criar usuário" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ success: true, user_id: created.user.id }), {
+
+      const { error: memberErr } = await admin
+        .from("account_members")
+        .upsert(
+          {
+            account_id: invite.account_id,
+            user_id: targetUserId,
+            role: invite.role,
+            status: "active",
+            invited_by: null,
+            invited_at: new Date().toISOString(),
+            joined_at: new Date().toISOString(),
+          },
+          { onConflict: "account_id,user_id" },
+        );
+      if (memberErr) throw memberErr;
+
+      await admin
+        .from("account_invites")
+        .update({ accepted_at: new Date().toISOString() })
+        .eq("id", invite.id);
+
+      return new Response(JSON.stringify({ success: true, user_id: targetUserId, account_id: invite.account_id, account: invite.accounts, user_exists: !!found }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
