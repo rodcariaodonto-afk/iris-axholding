@@ -103,7 +103,7 @@ function HeroMockup() {
           </div>
           <div className="flex items-start gap-2 justify-end">
             <div className="bg-gradient-to-r from-[#06B6D4] to-[#0EA5E9] text-white rounded-2xl rounded-tr-none px-3 py-2 text-sm max-w-[75%]">
-              Olá, João! Sou a IRIS 🤖. Faço sim, posso entender melhor sua operação para te enviar
+              Olá, João! Sou a IRIS. Faço sim, posso entender melhor sua operação para te enviar
               uma proposta agora?
             </div>
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#06B6D4] to-[#7C3AED] flex items-center justify-center">
