@@ -1,80 +1,81 @@
-# Plano: Responsividade Mobile Completa (Android/iOS)
+# Landing Page IRIS — Plano de Implementação
 
-Objetivo: tornar toda a UI da Iris utilizável e elegante em telas <768px (smartphones), com adaptações intermediárias para tablet (768–1024px), mantendo o design system atual (dark theme, tokens semânticos, brand AXHUB).
+## Objetivo
 
-## Escopo (somente frontend/UI)
+Criar landing page pública premium na rota `/` da plataforma IRIS, mantendo `/auth` como login para clientes existentes. Seguir o mesmo padrão modular das landings dos projetos **RH AXHolding** e **Axis Operations Hub** (header → hero → módulos/benefícios → como funciona → preço → FAQ → contato → footer + WhatsApp FAB).
 
-### 1. Shell da aplicação (`App.tsx` + `Sidebar.tsx`)
-- Substituir o sidebar fixo por **drawer mobile** (`Sheet` do shadcn) abaixo de `md`.
-- Adicionar **TopBar mobile** (logo + botão menu hambúrguer + AccountSwitcher compacto) visível só em `<md`.
-- `AppLayout`: empilhar verticalmente em mobile (TopBar acima, conteúdo abaixo); manter sidebar lateral em ≥md.
-- Reduzir os "ambient glows" em mobile (perf + visual).
+## Roteamento
 
-### 2. Chat ao Vivo (`ChatInterface.tsx` + `chat/SessionsSidebar.tsx`)
-Hoje são 3 colunas (Sessões | Conversas | Mensagens). Em mobile vira **navegação por etapas**:
-- Tela 1: Sessões WhatsApp (lista cheia)
-- Tela 2: Conversas da sessão escolhida (com botão voltar)
-- Tela 3: Janela de mensagens (com botão voltar + nome do contato no header)
-- Em ≥lg manter as 3 colunas atuais.
-- Tornar input de mensagem, anexos, emoji picker e modal de transferência mobile-friendly (botões ≥44px, teclado virtual ok, `dvh` no container).
+- `/` → nova `LandingPage` (pública, sem ProtectedRoute)
+- `/auth` → preservada como está
+- `/dashboard` e demais rotas → permanecem protegidas
+- Atualizar redirect do catch-all e do `/` para apontar para a landing em vez de `/dashboard`
+- Usuário autenticado que acessa `/` continua vendo a landing (pode ter botão "Acessar plataforma" → `/dashboard`)
 
-### 3. Pipeline / Kanban (`Kanban.tsx`)
-- Em mobile: scroll horizontal por colunas com **snap** (`snap-x snap-mandatory`), cada coluna ocupa ~85vw.
-- Cards do deal otimizados (padding/typography reduzidos, ações em menu).
-- Modais (`CreateDealModal`, `LostReasonModal`, `PipelineSettingsModal`) em fullscreen no mobile.
+## Estrutura de arquivos (novo)
 
-### 4. Dashboard (`Dashboard.tsx`)
-- Já parcialmente responsivo. Ajustar grid para 1 coluna em mobile, KPIs em 2 colunas, gráficos full-width com altura reduzida.
+```
+src/pages/LandingPage.tsx
+src/components/landing/
+  LandingHeader.tsx       — logo IRIS + nav (Benefícios, Como funciona, Preço, FAQ) + CTAs
+  LandingHero.tsx         — headline, subtítulo, badges, CTAs primário/secundário
+  ProofSection.tsx        — 4 cards de prova de valor (Atendimento, Qualificação, Centralização, Próxima ação)
+  PainSection.tsx         — dores que a IRIS resolve
+  TransformSection.tsx    — antes/depois em 2 colunas
+  ProductShowcase.tsx     — mockups: Chat, Dashboard, Kanban, Lead score
+  FeaturesSection.tsx     — cards de funcionalidades → benefícios comerciais
+  HowItWorksSection.tsx   — 5 passos (Diagnóstico → Operação)
+  PricingSection.tsx      — Plano único: Setup R$ 2.500 + R$ 120/mês
+  FaqSection.tsx          — perguntas frequentes do PDF
+  ContactSection.tsx      — CTA final + link WhatsApp
+  LandingFooter.tsx       — institucional + links
+  WhatsAppFAB.tsx         — botão flutuante WhatsApp
+  whatsappLink.ts         — helper com número e mensagem pré-definida
+```
 
-### 5. Contatos (`Contacts.tsx`)
-- Tabela vira **cards empilhados** em mobile (avatar + nome + telefone + tags + menu de ações).
-- Filtros e busca colapsáveis num `Sheet` "Filtros".
+## CTA WhatsApp
 
-### 6. Agendamentos (`Scheduling.tsx`)
-- Calendário: alternar para visão "Lista/Agenda" por padrão em mobile (mês full ocupa demais).
-- Form de novo agendamento em `Sheet`/Dialog fullscreen.
+Helper único `whatsappLink.ts`:
 
-### 7. Relatórios (`Reports.tsx` + `reports/*`)
-- Tabs roláveis horizontalmente.
-- KPIs em 2 colunas no mobile, gráficos com `ResponsiveContainer` e altura mínima 240px.
+```text
+Número: 5511939171383
+Mensagem: "Olá, quero implementar a IRIS Agente de IA na minha empresa. Pode me apresentar a plataforma?"
+URL: https://wa.me/5511939171383?text=<mensagem url-encoded>
+```
 
-### 8. Configurações (`Settings.tsx` + `settings/*`)
-- Tabs verticais → `Select` no mobile (padrão shadcn) ou tabs horizontais com scroll.
-- Forms: inputs full-width, agrupamentos em accordions.
+Todos os botões "Quero implementar a IRIS" / "Agendar demonstração" / FAB usam esse helper. Botão secundário "Já sou cliente / Acessar plataforma" → `/auth`.
 
-### 9. Equipe / Conta / Admin / Governança
-- Tabelas viram cards em mobile.
-- Layouts secundários (`AccountLayout`, `AdminLayout`, `GovernanceLayout`) ganham menu lateral colapsável em `Sheet`.
+## Identidade visual
 
-### 10. Auth, Onboarding, MeetingRoom, InviteAccept
-- Validar paddings, alturas (`min-h-dvh`), formulários e wizard `OnboardingWizard` (já é dialog, mas precisa de fullscreen no mobile).
-- `MeetingRoom` (Jitsi iframe): garantir 100dvh sem barras quebradas.
+Reaproveitar tokens do `index.css` atual (dark premium: `--background` slate-950, `--primary` ciano #22d3ee, `--accent` violeta). Cards `bg-slate-900/60` com borda `slate-700/40`, blur, glow ciano/roxo. Framer Motion já está no projeto — usar para entrada de seções e hover sutil. Mesma estrutura visual e densidade das landings de referência.
 
-### 11. Cross-cutting (utilitários)
-- Hook `useIsMobile` já existe — usar consistentemente.
-- Trocar `h-screen` crítico por `h-dvh`/`min-h-dvh` (resolve barra do Safari iOS).
-- Garantir tap targets ≥44px (`min-h-11 min-w-11` em botões `size="icon"` principais).
-- Adicionar `viewport-fit=cover` no `index.html` + `safe-area-inset-*` para iPhone com notch.
-- Toaster (sonner): posição `top-center` em mobile.
+## Conteúdo (do PDF anexo)
+
+- **Hero**: "Transforme conversas do WhatsApp em vendas com uma Agente SDR de IA trabalhando por você."
+- **Plano único**: Setup R$ 2.500 + R$ 120/mês, observação sobre integrações extras
+- **5 passos**: Diagnóstico → Setup → Integração WhatsApp → Treinamento do agente → Operação
+- **FAQ**: substitui vendedor? funciona com WhatsApp? o que está incluso? quanto tempo? etc.
+- **SEO**: title "IRIS Agente de IA SDR — Atendimento e Vendas pelo WhatsApp"; description e keywords conforme PDF; atualizar `index.html` + meta dinâmica via useEffect
 
 ## Detalhes técnicos
-- Breakpoints Tailwind padrão: `sm 640`, `md 768`, `lg 1024`, `xl 1280`.
-- Sem novas dependências — `Sheet`, `Dialog`, `Tabs`, `Select` do shadcn já disponíveis.
-- Sem mudança de lógica de negócio, RLS, edge functions ou schema. Apenas camada de apresentação.
-- Tokens HSL semânticos do `index.css` mantidos; nenhuma cor hardcoded nova.
 
-## Entrega sugerida (ordem)
-1. Shell + Sidebar drawer + TopBar mobile + safe-area  
-2. Chat (maior impacto UX)  
-3. Kanban  
-4. Dashboard + Reports  
-5. Contatos + Agendamentos  
-6. Configurações + Equipe + Conta/Admin/Governança  
-7. Polimento (Auth, Onboarding fullscreen, MeetingRoom, Toaster)
+- Toda a landing é client-side React (sem backend novo)
+- `App.tsx`: adicionar `<Route path="/" element={<LandingPage />} />` **fora** do `ProtectedRoute`; mover redirect atual para `/dashboard` apenas no catch-all autenticado
+- Mobile-first: hero empilhado, nav vira menu hamburguer, mockups responsivos
+- Sem alterações em Supabase, Edge Functions ou lógica de negócio
+- Sem mudanças nas demais páginas/componentes do app
 
-## Fora de escopo
-- PWA / instalação no home screen (posso adicionar depois se quiser).
-- Capacitor / build nativo iOS/Android (idem).
-- Mudanças de backend/Cloud, novas features ou refatoração de dados.
+## Critérios de aceite
 
-Quer que eu inclua **PWA instalável** já nesta entrega (manifest + ícones + service worker), ou mantemos só responsividade web pura?
+- `https://www.axiris.com.br/` exibe a landing (não redireciona para login)
+- `/auth` continua funcionando para login
+- CTAs primários abrem WhatsApp `(11) 93917-1383` com mensagem pré-preenchida
+- "Já sou cliente" leva para `/auth`
+- Layout responsivo, sem quebrar nenhuma rota existente
+- Mesma linguagem visual das landings AXHolding e AXIS
+
+## Dúvidas antes de implementar
+
+1. **Logo da IRIS**: uso o nome em texto com gradiente ciano→violeta (mesmo estilo do AXHUB no app), ou você tem um arquivo de logo para eu usar?
+2. **Mockups do produto**: gero screenshots ilustrativos dos painéis (chat / dashboard / kanban) usando componentes mock estilizados, ou prefere que eu reutilize screenshots reais do app atual?
+3. **Domínio do CTA secundário**: confirmo que "Já sou cliente" deve ir para `/auth` (mesmo domínio) e não abrir uma nova aba?
