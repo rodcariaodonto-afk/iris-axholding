@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (invite.accepted_at) {
+    if (invite.accepted_at && action !== "accept") {
       return new Response(JSON.stringify({ error: "Convite já aceito" }), {
         status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -144,6 +144,26 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Email do convite não confere com o usuário logado" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    if (invite.accepted_at) {
+      const { data: existingMember } = await admin
+        .from("account_members")
+        .select("id")
+        .eq("account_id", invite.account_id)
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      if (existingMember) {
+        return new Response(
+          JSON.stringify({ success: true, account_id: invite.account_id, role: invite.role, account: invite.accounts }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: "Convite já aceito" }), {
+        status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Upsert membership
