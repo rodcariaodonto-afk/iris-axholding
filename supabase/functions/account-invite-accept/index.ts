@@ -78,6 +78,25 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Valida limite de usuários do plano (membros ativos)
+      const { data: planRow } = await admin
+        .from("accounts").select("plan").eq("id", invite.account_id).maybeSingle();
+      if (planRow?.plan) {
+        const { data: planLimits } = await admin
+          .from("account_plans").select("max_users").eq("code", planRow.plan).maybeSingle();
+        const { count: activeMembers } = await admin
+          .from("account_members").select("id", { count: "exact", head: true })
+          .eq("account_id", invite.account_id).eq("status", "active");
+        if (planLimits && (activeMembers ?? 0) >= (planLimits.max_users ?? 0)) {
+          return new Response(JSON.stringify({
+            error: "limit_reached",
+            message: `Limite de usuários do plano ${planRow.plan} atingido (${activeMembers}/${planLimits.max_users}).`,
+            current: activeMembers, limit: planLimits.max_users, plan: planRow.plan,
+          }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       let targetUserId: string | null = null;
       const { data: existing } = await admin.auth.admin.listUsers();
       const found = existing?.users?.find(u => (u.email || "").toLowerCase() === invite.email.toLowerCase());
