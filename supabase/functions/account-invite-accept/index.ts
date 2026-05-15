@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const body = await req.json();
-    const { token, user_id, action = "accept" } = body || {};
+    const { token, user_id, action = "accept", password, full_name } = body || {};
 
     if (!token) {
       return new Response(JSON.stringify({ error: "token é obrigatório" }), {
@@ -68,6 +68,37 @@ Deno.serve(async (req) => {
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // signup: cria user via admin (bypassa "signups disabled") e retorna user_id
+    if (action === "signup") {
+      if (!password || password.length < 6) {
+        return new Response(JSON.stringify({ error: "Senha deve ter ao menos 6 caracteres" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Verifica se já existe user com esse email
+      const { data: existing } = await admin.auth.admin.listUsers();
+      const found = existing?.users?.find(u => (u.email || "").toLowerCase() === invite.email.toLowerCase());
+      if (found) {
+        return new Response(JSON.stringify({ error: "Já existe uma conta com esse email. Use 'Já tenho conta'." }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: invite.email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: full_name || invite.email },
+      });
+      if (createErr || !created?.user) {
+        return new Response(JSON.stringify({ error: createErr?.message || "Erro ao criar usuário" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, user_id: created.user.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!user_id) {
