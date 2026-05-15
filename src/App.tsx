@@ -11,6 +11,7 @@ import Scheduling from './components/Scheduling';
 import Kanban from './components/Kanban';
 import Reports from './components/Reports';
 import Auth from './pages/Auth';
+import LandingPage from './pages/LandingPage';
 import MeetingRoom from './pages/MeetingRoom';
 import InviteAccept from './pages/InviteAccept';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -89,6 +90,7 @@ const App: React.FC = () => {
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
 
@@ -98,7 +100,6 @@ const App: React.FC = () => {
                 <AppLayout />
               </ProtectedRoute>
             }>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/pipeline" element={<Kanban />} />
               <Route path="/chat" element={<ChatInterface />} />
