@@ -69,12 +69,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return { error: error as Error | null };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error as Error };
+
+    // Verifica se o usuário tem ao menos uma conta ativa (não suspensa nem cancelada)
+    if (data.user) {
+      const { data: memberships } = await supabase
+        .from('account_members')
+        .select('account_id, status, account:accounts!inner(status)')
+        .eq('user_id', data.user.id)
+        .eq('status', 'active');
+
+      const hasActiveAccount = (memberships || []).some(
+        (m: any) => m.account?.status === 'active'
+      );
+
+      if (memberships && memberships.length > 0 && !hasActiveAccount) {
+        await supabase.auth.signOut();
+        return { error: new Error('Sua conta está suspensa ou foi cancelada. Entre em contato com o suporte.') };
+      }
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
