@@ -1,75 +1,37 @@
-## Objetivo
+## Atualizar planos (Starter, Pro, Business, Enterprise)
 
-Permitir que o Super Admin **suspenda** (bloqueia acesso + pausa IA) ou **exclua** (soft delete com 30 dias para reverter) qualquer conta cliente diretamente da tela `Admin → Contas`.
+### Nova estrutura
 
-## Escopo
+| Plano | Preço/mês | Usuários | WhatsApp | Contatos | Mensagens |
+|---|---|---|---|---|---|
+| Starter | R$ 120 | 1 | 1 | ilimitado | ilimitado |
+| Pro | R$ 297 | 5 | 5 | ilimitado | ilimitado |
+| Business | R$ 997 | 30 | 30 | ilimitado | ilimitado |
+| Enterprise | sob consulta | ilimitado | ilimitado | ilimitado | ilimitado |
 
-### 1. UI — `AdminAccounts.tsx`
-Adicionar menu de ações (`⋯`) em cada linha da lista de contas com 3 opções dinâmicas conforme o status atual:
+Setup único de R$ 2.500 continua valendo para qualquer plano.
 
-- **Conta `active`** → "Suspender conta" + "Excluir conta"
-- **Conta `suspended`** → "Reativar conta" + "Excluir conta"
-- **Conta `cancelled` (com exclusão agendada)** → "Cancelar exclusão" + badge mostrando dias restantes
+### Mudanças
 
-Proteções:
-- Conta `is_internal: true` (AXHolding) não mostra ações destrutivas — não pode ser suspensa nem excluída
-- Diálogo de confirmação obrigatório em todas as ações
-- Para excluir: campo de motivo opcional + checkbox "Entendo que após 30 dias a exclusão é permanente"
+**1. Banco de dados (`account_plans`)** — UPDATE nas 4 linhas:
+- `starter`: price=120, max_users=1, max_whatsapp_numbers=1, max_contacts=999999, max_messages_month=999999
+- `pro`: price=297, max_users=5, max_whatsapp_numbers=5, max_contacts=999999, max_messages_month=999999
+- `business`: price=997, max_users=30, max_whatsapp_numbers=30, max_contacts=999999, max_messages_month=999999
+- `enterprise`: price=0 (sob consulta), todos limites = 999999
 
-### 2. Edge function — `super-admin-account-action`
-Nova função única que centraliza as 4 operações (suspend / reactivate / delete / cancel-deletion):
+**2. Landing page — `PricingSection.tsx`**
+Reestruturar para mostrar:
+- Bloco superior: Setup único R$ 2.500 (mantém checklist atual)
+- Grid abaixo com 4 cards de planos mensais (Starter R$120, Pro R$297, Business R$997, Enterprise sob consulta), destacando usuários + sessões WhatsApp + recursos ilimitados
+- Atualizar `WPP_URL` para mensagem genérica de interesse nos planos
 
-- Valida JWT + super admin (mesma lógica do `super-admin-create-client`)
-- Bloqueia ações em contas internas
-- Registra tudo em `audit_logs` com `severity: warn|critical`
+**3. FAQ — `FaqSection.tsx`**
+Revisar pergunta sobre "setup R$ 2.500" e adicionar/atualizar resposta para refletir os 3 planos mensais + setup único.
 
-**Suspender (`suspend`):**
-- `accounts.status = 'suspended'`
-- `nina_settings.is_active = false` (pausa IA — não responde novas mensagens)
-- `nina_settings.auto_response_enabled = false`
+**4. AccountPlan.tsx (área logada)**
+Já lê dinamicamente de `account_plans`, então não precisa de mudança de código — só refletirá os novos limites/preços automaticamente. Os bars de "ilimitado" vão usar o threshold `>= 999999` (que já está implementado e mostra "∞").
 
-**Reativar (`reactivate`):**
-- `accounts.status = 'active'`
-- `nina_settings.is_active = true`
-- `nina_settings.auto_response_enabled = true`
-
-**Excluir (soft delete, `delete`):**
-- `accounts.status = 'cancelled'`
-- `accounts.deletion_status = 'scheduled'`
-- `accounts.deletion_scheduled_at = now()`
-- `accounts.delete_after = now() + 30 days`
-- `accounts.deletion_reason = motivo`
-- `accounts.cancelled_at = now()`
-- Pausa IA também (igual suspend)
-
-**Cancelar exclusão (`cancel_deletion`):**
-- Reverte campos de exclusão para NULL
-- `status = 'active'`, reativa IA
-
-### 3. Efeito do bloqueio no login do cliente
-Atualizar `useAuth.tsx` (ou criar guard no `ProtectedRoute`) para, após o login, checar se alguma `account_member` ativa do usuário pertence a uma conta com `status != 'active'`. Se TODAS estiverem suspensas/canceladas:
-- Faz `signOut` automático
-- Mostra toast: "Sua conta está suspensa. Entre em contato com o suporte."
-
-### 4. Indicador visual na lista
-- Badge `status` já existe (active/suspended/cancelled) — manter
-- Para contas `cancelled`: mostrar "Exclusão em X dias" em vermelho ao lado do badge
-
-## Detalhes técnicos
-
-**Arquivos novos:**
-- `supabase/functions/super-admin-account-action/index.ts`
-
-**Arquivos modificados:**
-- `src/components/admin/AdminAccounts.tsx` — menu de ações + diálogos
-- `src/hooks/useAuth.tsx` — verificação de status pós-login (ou novo hook `useAccountStatusGuard`)
-
-**Não precisa migration de schema** — todos os campos necessários já existem em `accounts` (`status`, `deletion_status`, `deletion_scheduled_at`, `delete_after`, `deletion_reason`, `cancelled_at`).
-
-**Fluxo de purge real após 30 dias:** já existe `account-purge` edge function. Fica como melhoria futura agendar via cron — por enquanto pode ser disparado manualmente quando necessário.
-
-## Fora do escopo
-
-- Cron automático para purge definitivo (fica para depois)
-- Notificação por email ao cliente sobre suspensão/exclusão
-- Histórico visual de todas as ações na linha da conta (já fica em `audit_logs`, basta consultar se necessário)
+### Não muda
+- `super-admin-create-client` (continua aceitando qualquer plan)
+- Lógica de gating por limites (já lê de `account_plans`)
+- Setup R$ 2.500 (texto e processo permanecem iguais)
