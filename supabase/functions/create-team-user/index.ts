@@ -54,6 +54,29 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Valida limite de usuários do plano (a função SQL já soma ativos + convites pendentes)
+    const { data: limitCheck } = await admin.rpc("check_account_limit", {
+      _account_id: account_id,
+      _resource: "users",
+    });
+    if (limitCheck && limitCheck.allowed === false) {
+      // Se o email já é membro ativo, permite (é update, não cria novo "slot")
+      const { data: existingActive } = await admin
+        .from("team_members")
+        .select("id, status")
+        .eq("account_id", account_id)
+        .eq("email", email)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!existingActive) {
+        return new Response(JSON.stringify({
+          error: "limit_reached",
+          message: `Limite de usuários do plano ${limitCheck.plan} atingido (${limitCheck.current}/${limitCheck.limit}). Faça upgrade para criar mais usuários.`,
+          ...limitCheck,
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const tempPassword = providedPassword || generateTempPassword();
 
     // 1) Cria o usuário no auth (ou recupera se já existe)

@@ -77,6 +77,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Valida limite de usuários do plano (membros ativos + convites pendentes)
+    const { data: limitCheck } = await admin.rpc("check_account_limit", {
+      _account_id: account_id,
+      _resource: "users",
+    });
+    if (limitCheck && limitCheck.allowed === false) {
+      return new Response(JSON.stringify({
+        error: "limit_reached",
+        message: `Limite de usuários do plano ${limitCheck.plan} atingido (${limitCheck.current}/${limitCheck.limit}). Faça upgrade para convidar mais pessoas.`,
+        ...limitCheck,
+      }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const inviteToken = generateToken();
 
     // Revoga convites pendentes anteriores para o mesmo email/conta
