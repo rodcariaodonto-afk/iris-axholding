@@ -78,19 +78,13 @@ export default function InviteAccept() {
         }
         userId = user.id;
       } else if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: preview.email,
-          password,
-          options: { data: { full_name: fullName }, emailRedirectTo: `${window.location.origin}/dashboard` },
+        const { data, error } = await supabase.functions.invoke("account-invite-accept", {
+          body: { token, action: "signup", password, full_name: fullName },
         });
-        if (error) { toast.error(error.message); return; }
-        userId = data.user?.id || null;
-        // Faz login imediato (caso confirm-email esteja off)
-        if (!data.session) {
-          const { data: sd, error: se } = await supabase.auth.signInWithPassword({ email: preview.email, password });
-          if (se) { toast.error("Conta criada. Confirme seu email e faça login."); return; }
-          userId = sd.user?.id || userId;
-        }
+        if (error || data?.error) { toast.error(data?.error || error?.message || "Erro ao criar conta"); return; }
+        const { data: sd, error: se } = await supabase.auth.signInWithPassword({ email: preview.email, password });
+        if (se) { toast.error(se.message); return; }
+        userId = sd.user?.id || data?.user_id || null;
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: preview.email,
