@@ -767,6 +767,24 @@ const Scheduling: React.FC = () => {
                          </select>
                     </div>
 
+                    {coworkingEnabled && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                          <Building2 className="w-3 h-3" /> Sala (opcional)
+                        </label>
+                        <select
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-cyan-500 outline-none appearance-none"
+                          value={formData.resource_id}
+                          onChange={e => setFormData({...formData, resource_id: e.target.value})}
+                        >
+                          <option value="">Sem sala</option>
+                          {coworkingResources.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}{r.capacity ? ` · ${r.capacity}p` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Título do Evento</label>
                         <input 
