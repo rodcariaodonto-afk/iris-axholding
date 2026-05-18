@@ -74,8 +74,11 @@ const Scheduling: React.FC = () => {
     time: '09:00',
     type: 'demo',
     description: '',
-    duration: 60
+    duration: 60,
+    resource_id: '' as string,
   });
+  const { enabled: coworkingEnabled } = useCoworkingEnabled();
+  const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
 
   // Edit Form State
   const [editFormData, setEditFormData] = useState({
