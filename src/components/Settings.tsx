@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare } from 'lucide-react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare, Building2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
@@ -9,9 +9,11 @@ import AccountSettings from './settings/AccountSettings';
 import EmailSettings from './settings/EmailSettings';
 import WhatsAppSessions from './settings/WhatsAppSessions';
 import WhatsAppQueues from './settings/WhatsAppQueues';
+import CoworkingSettings from './settings/CoworkingSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useCoworkingModuleAvailable } from '@/hooks/useCoworking';
 import { useOutletContext } from 'react-router-dom';
 
 interface OutletContext {
