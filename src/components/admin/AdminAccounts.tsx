@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 const Badge = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border border-border/40 ${className}`}>{children}</span>
@@ -26,6 +27,7 @@ interface AccountRow {
   created_at: string;
   delete_after?: string | null;
   deletion_status?: string | null;
+  settings?: any;
   member_count?: number;
 }
 
@@ -129,6 +131,19 @@ export default function AdminAccounts() {
     } finally { setActionLoading(false); }
   };
 
+  const toggleCoworkingModule = async (account: AccountRow, enabled: boolean) => {
+    const prev = accounts;
+    setAccounts(prev.map(a => a.id === account.id ? { ...a, settings: { ...(a.settings || {}), coworking_module_available: enabled } } : a));
+    const newSettings = { ...(account.settings || {}), coworking_module_available: enabled };
+    const { error } = await supabase.from("accounts").update({ settings: newSettings }).eq("id", account.id);
+    if (error) {
+      setAccounts(prev);
+      toast.error("Falha ao atualizar módulo Coworking");
+    } else {
+      toast.success(enabled ? "Módulo Coworking liberado" : "Módulo Coworking desabilitado");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
@@ -187,6 +202,15 @@ export default function AdminAccounts() {
                 <Badge className="bg-destructive/10 text-destructive border-destructive/30">
                   {daysLeft > 0 ? `Exclusão em ${daysLeft}d` : "Exclusão iminente"}
                 </Badge>
+              )}
+              {!a.is_internal && (
+                <div className="flex items-center gap-2 px-2 border-l border-border/40" title="Liberar módulo Coworking para esta conta">
+                  <span className="text-[11px] text-muted-foreground">Coworking</span>
+                  <Switch
+                    checked={!!a.settings?.coworking_module_available}
+                    onCheckedChange={(v) => toggleCoworkingModule(a, v)}
+                  />
+                </div>
               )}
               {!a.is_internal && (
                 <Popover>
