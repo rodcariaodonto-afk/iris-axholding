@@ -204,6 +204,15 @@ export default function AdminAccounts() {
                 </Badge>
               )}
               {!a.is_internal && (
+                <div className="flex items-center gap-2 px-2 border-l border-border/40" title="Liberar módulo Coworking para esta conta">
+                  <span className="text-[11px] text-muted-foreground">Coworking</span>
+                  <Switch
+                    checked={!!a.settings?.coworking_module_available}
+                    onCheckedChange={(v) => toggleCoworkingModule(a, v)}
+                  />
+                </div>
+              )}
+              {!a.is_internal && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
