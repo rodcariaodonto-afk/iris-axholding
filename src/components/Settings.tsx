@@ -28,6 +28,7 @@ const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('agent');
   const { resetWizard } = useOnboardingStatus();
   const { setShowOnboarding } = useOutletContext<OutletContext>();
+  const { available: coworkingAvailable } = useCoworkingModuleAvailable();
 
   const handleReopenOnboarding = () => {
     resetWizard();
