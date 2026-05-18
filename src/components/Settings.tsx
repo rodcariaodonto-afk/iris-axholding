@@ -139,7 +139,7 @@ const Settings: React.FC = () => {
           </div>
 
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && isAdmin && (
             <div className="flex gap-3">
               <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
               <Button variant="primary" onClick={handleSave} disabled={isSaving} className="gap-2">
