@@ -249,7 +249,8 @@ const Scheduling: React.FC = () => {
         duration: formData.duration,
         type: formData.type as 'demo' | 'meeting' | 'support' | 'followup',
         attendees: attendeesArray,
-        contact_id: selectedContactId || undefined
+        contact_id: selectedContactId || undefined,
+        resource_id: formData.resource_id || null,
       });
 
       // Sync with Google Calendar if connected
@@ -266,12 +267,12 @@ const Scheduling: React.FC = () => {
 
       toast.success('Agendamento criado com sucesso!');
       setShowCreateModal(false);
-      setFormData({ title: '', time: '09:00', type: 'demo', description: '', duration: 60 });
+      setFormData({ title: '', time: '09:00', type: 'demo', description: '', duration: 60, resource_id: '' });
       setSelectedDate(null);
       setSelectedContactId(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating appointment:', error);
-      toast.error('Erro ao criar agendamento');
+      toast.error(error?.message || 'Erro ao criar agendamento');
     } finally {
       setIsSaving(false);
     }
