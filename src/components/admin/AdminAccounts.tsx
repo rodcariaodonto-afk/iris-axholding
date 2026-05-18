@@ -27,6 +27,7 @@ interface AccountRow {
   created_at: string;
   delete_after?: string | null;
   deletion_status?: string | null;
+  settings?: any;
   member_count?: number;
 }
 
