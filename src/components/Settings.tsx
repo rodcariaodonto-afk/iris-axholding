@@ -92,7 +92,7 @@ const Settings: React.FC = () => {
 
       <Tabs defaultValue="agent" className="w-full" onValueChange={setActiveTab}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-3">
-          <TabsList>
+          <TabsList className="w-full overflow-x-auto overflow-y-hidden flex justify-start scrollbar-thin">
             <TabsTrigger value="agent" className="gap-2">
               <Bot className="w-4 h-4" />
               Agente
