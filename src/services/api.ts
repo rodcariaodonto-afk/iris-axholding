@@ -701,6 +701,7 @@ export const api = {
     attendees?: string[];
     contact_id?: string;
     meeting_url?: string;
+    resource_id?: string | null;
   }): Promise<Appointment> => {
     const userId = await getCurrentUserId();
     
@@ -718,13 +719,17 @@ export const api = {
         contact_id: appointment.contact_id,
         meeting_url: appointment.meeting_url || null,
         status: 'scheduled',
-        user_id: userId
-      })
+        user_id: userId,
+        resource_id: appointment.resource_id || null,
+      } as any)
       .select()
       .single();
 
     if (error) {
       console.error('[API] Error creating appointment:', error);
+      if ((error as any).code === '23P01') {
+        throw new Error('Sala já reservada nesse horário');
+      }
       throw error;
     }
 

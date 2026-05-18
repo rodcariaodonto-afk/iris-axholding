@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare } from 'lucide-react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare, Building2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
@@ -9,9 +9,11 @@ import AccountSettings from './settings/AccountSettings';
 import EmailSettings from './settings/EmailSettings';
 import WhatsAppSessions from './settings/WhatsAppSessions';
 import WhatsAppQueues from './settings/WhatsAppQueues';
+import CoworkingSettings from './settings/CoworkingSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Button } from './Button';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useCoworkingModuleAvailable } from '@/hooks/useCoworking';
 import { useOutletContext } from 'react-router-dom';
 
 interface OutletContext {
@@ -26,6 +28,7 @@ const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('agent');
   const { resetWizard } = useOnboardingStatus();
   const { setShowOnboarding } = useOutletContext<OutletContext>();
+  const { available: coworkingAvailable } = useCoworkingModuleAvailable();
 
   const handleReopenOnboarding = () => {
     resetWizard();
@@ -126,11 +129,17 @@ const Settings: React.FC = () => {
                 <Mail className="w-4 h-4" />
                 Email
               </TabsTrigger>
+              {coworkingAvailable && (
+                <TabsTrigger value="coworking" className="gap-2 shrink-0">
+                  <Building2 className="w-4 h-4" />
+                  Coworking
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && isAdmin && (
             <div className="flex gap-3">
               <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
               <Button variant="primary" onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -139,7 +148,7 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -178,6 +187,12 @@ const Settings: React.FC = () => {
         <TabsContent value="email">
           <EmailSettings />
         </TabsContent>
+
+        {coworkingAvailable && (
+          <TabsContent value="coworking">
+            <CoworkingSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

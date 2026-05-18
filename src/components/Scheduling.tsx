@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Loader2, LayoutGrid, List, Columns, Video, User, UserCircle, Bot, Pencil, Link, Unlink, RefreshCw, Building2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from './Button';
 import { Appointment, Contact } from '../types';
@@ -7,6 +7,7 @@ import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
+import { useCoworkingEnabled, useBookableResources } from '@/hooks/useCoworking';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -73,8 +74,11 @@ const Scheduling: React.FC = () => {
     time: '09:00',
     type: 'demo',
     description: '',
-    duration: 60
+    duration: 60,
+    resource_id: '' as string,
   });
+  const { enabled: coworkingEnabled } = useCoworkingEnabled();
+  const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
 
   // Edit Form State
   const [editFormData, setEditFormData] = useState({
@@ -245,7 +249,8 @@ const Scheduling: React.FC = () => {
         duration: formData.duration,
         type: formData.type as 'demo' | 'meeting' | 'support' | 'followup',
         attendees: attendeesArray,
-        contact_id: selectedContactId || undefined
+        contact_id: selectedContactId || undefined,
+        resource_id: formData.resource_id || null,
       });
 
       // Sync with Google Calendar if connected
@@ -262,12 +267,12 @@ const Scheduling: React.FC = () => {
 
       toast.success('Agendamento criado com sucesso!');
       setShowCreateModal(false);
-      setFormData({ title: '', time: '09:00', type: 'demo', description: '', duration: 60 });
+      setFormData({ title: '', time: '09:00', type: 'demo', description: '', duration: 60, resource_id: '' });
       setSelectedDate(null);
       setSelectedContactId(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating appointment:', error);
-      toast.error('Erro ao criar agendamento');
+      toast.error(error?.message || 'Erro ao criar agendamento');
     } finally {
       setIsSaving(false);
     }
@@ -761,6 +766,24 @@ const Scheduling: React.FC = () => {
                             <option value="followup">Follow-up</option>
                          </select>
                     </div>
+
+                    {coworkingEnabled && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                          <Building2 className="w-3 h-3" /> Sala (opcional)
+                        </label>
+                        <select
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-cyan-500 outline-none appearance-none"
+                          value={formData.resource_id}
+                          onChange={e => setFormData({...formData, resource_id: e.target.value})}
+                        >
+                          <option value="">Sem sala</option>
+                          {coworkingResources.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}{r.capacity ? ` · ${r.capacity}p` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Título do Evento</label>

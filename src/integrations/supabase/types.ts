@@ -281,15 +281,25 @@ export type Database = {
         Row: {
           account_id: string
           attendees: string[] | null
+          booking_source: string
+          booking_status: string
           contact_id: string | null
           created_at: string
+          customer_type: string | null
           date: string
           description: string | null
           duration: number
+          end_at: string | null
           google_event_id: string | null
           id: string
+          internal_notes: string | null
           meeting_url: string | null
           metadata: Json | null
+          payment_status: string
+          requires_human_validation: boolean
+          resource_id: string | null
+          service_modality: string | null
+          start_at: string | null
           status: string | null
           time: string
           title: string
@@ -300,15 +310,25 @@ export type Database = {
         Insert: {
           account_id: string
           attendees?: string[] | null
+          booking_source?: string
+          booking_status?: string
           contact_id?: string | null
           created_at?: string
+          customer_type?: string | null
           date: string
           description?: string | null
           duration?: number
+          end_at?: string | null
           google_event_id?: string | null
           id?: string
+          internal_notes?: string | null
           meeting_url?: string | null
           metadata?: Json | null
+          payment_status?: string
+          requires_human_validation?: boolean
+          resource_id?: string | null
+          service_modality?: string | null
+          start_at?: string | null
           status?: string | null
           time: string
           title: string
@@ -319,15 +339,25 @@ export type Database = {
         Update: {
           account_id?: string
           attendees?: string[] | null
+          booking_source?: string
+          booking_status?: string
           contact_id?: string | null
           created_at?: string
+          customer_type?: string | null
           date?: string
           description?: string | null
           duration?: number
+          end_at?: string | null
           google_event_id?: string | null
           id?: string
+          internal_notes?: string | null
           meeting_url?: string | null
           metadata?: Json | null
+          payment_status?: string
+          requires_human_validation?: boolean
+          resource_id?: string | null
+          service_modality?: string | null
+          start_at?: string | null
           status?: string | null
           time?: string
           title?: string
@@ -355,6 +385,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "bookable_resources"
             referencedColumns: ["id"]
           },
         ]
@@ -422,6 +459,54 @@ export type Database = {
           resource_type?: string
           severity?: Database["public"]["Enums"]["audit_severity"]
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      bookable_resources: {
+        Row: {
+          account_id: string
+          allocation_priority: number
+          capacity: number | null
+          created_at: string
+          description: string | null
+          google_calendar_id: string | null
+          id: string
+          is_active: boolean
+          is_publicly_bookable: boolean
+          metadata: Json
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          allocation_priority?: number
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_active?: boolean
+          is_publicly_bookable?: boolean
+          metadata?: Json
+          name: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          allocation_priority?: number
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_active?: boolean
+          is_publicly_bookable?: boolean
+          metadata?: Json
+          name?: string
+          type?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -659,6 +744,65 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coworking_payments: {
+        Row: {
+          account_id: string
+          amount: number | null
+          appointment_id: string
+          created_at: string
+          currency: string
+          external_id: string | null
+          id: string
+          metadata: Json
+          paid_at: string | null
+          proof_url: string | null
+          provider: string
+          status: string
+          updated_at: string
+          validated_by: string | null
+        }
+        Insert: {
+          account_id: string
+          amount?: number | null
+          appointment_id: string
+          created_at?: string
+          currency?: string
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          proof_url?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number | null
+          appointment_id?: string
+          created_at?: string
+          currency?: string
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          proof_url?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coworking_payments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]
@@ -2375,6 +2519,30 @@ export type Database = {
       account_member_role: {
         Args: { _account_id: string }
         Returns: Database["public"]["Enums"]["app_account_role"]
+      }
+      bootstrap_coworking_defaults: {
+        Args: { _account_id: string }
+        Returns: {
+          account_id: string
+          allocation_priority: number
+          capacity: number | null
+          created_at: string
+          description: string | null
+          google_calendar_id: string | null
+          id: string
+          is_active: boolean
+          is_publicly_bookable: boolean
+          metadata: Json
+          name: string
+          type: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bookable_resources"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       check_account_limit: {
         Args: { _account_id: string; _resource: string }
