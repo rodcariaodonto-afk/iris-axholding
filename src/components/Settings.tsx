@@ -91,41 +91,44 @@ const Settings: React.FC = () => {
       </div>
 
       <Tabs defaultValue="agent" className="w-full" onValueChange={setActiveTab}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-3">
-          <TabsList className="w-full overflow-x-auto overflow-y-hidden flex justify-start scrollbar-thin">
-            <TabsTrigger value="agent" className="gap-2">
-              <Bot className="w-4 h-4" />
-              Agente
-            </TabsTrigger>
-            <TabsTrigger value="apis" className="gap-2">
-              <Plug className="w-4 h-4" />
-              APIs
-            </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              WhatsApp
-            </TabsTrigger>
-            <TabsTrigger value="queues" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Filas
-            </TabsTrigger>
-            <TabsTrigger value="docs" className="gap-2">
-              <BookOpen className="w-4 h-4" />
-              Documentação
-            </TabsTrigger>
-            <TabsTrigger value="media" className="gap-2">
-              <FolderOpen className="w-4 h-4" />
-              Arquivos
-            </TabsTrigger>
-            <TabsTrigger value="account" className="gap-2">
-              <User className="w-4 h-4" />
-              Conta
-            </TabsTrigger>
-            <TabsTrigger value="email" className="gap-2">
-              <Mail className="w-4 h-4" />
-              Email
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col mb-6 sm:mb-8 gap-3">
+          <div className="w-full overflow-x-auto overflow-y-hidden settings-tabs-scroll">
+            <TabsList className="!flex w-max min-w-full justify-start !overflow-visible">
+              <TabsTrigger value="agent" className="gap-2 shrink-0">
+                <Bot className="w-4 h-4" />
+                Agente
+              </TabsTrigger>
+              <TabsTrigger value="apis" className="gap-2 shrink-0">
+                <Plug className="w-4 h-4" />
+                APIs
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="gap-2 shrink-0">
+                <MessageSquare className="w-4 h-4" />
+                WhatsApp
+              </TabsTrigger>
+              <TabsTrigger value="queues" className="gap-2 shrink-0">
+                <MessageSquare className="w-4 h-4" />
+                Filas
+              </TabsTrigger>
+              <TabsTrigger value="docs" className="gap-2 shrink-0">
+                <BookOpen className="w-4 h-4" />
+                Documentação
+              </TabsTrigger>
+              <TabsTrigger value="media" className="gap-2 shrink-0">
+                <FolderOpen className="w-4 h-4" />
+                Arquivos
+              </TabsTrigger>
+              <TabsTrigger value="account" className="gap-2 shrink-0">
+                <User className="w-4 h-4" />
+                Conta
+              </TabsTrigger>
+              <TabsTrigger value="email" className="gap-2 shrink-0">
+                <Mail className="w-4 h-4" />
+                Email
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
 
           {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && isAdmin && (
             <div className="flex gap-3">
