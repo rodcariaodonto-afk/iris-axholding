@@ -131,6 +131,19 @@ export default function AdminAccounts() {
     } finally { setActionLoading(false); }
   };
 
+  const toggleCoworkingModule = async (account: AccountRow, enabled: boolean) => {
+    const prev = accounts;
+    setAccounts(prev.map(a => a.id === account.id ? { ...a, settings: { ...(a.settings || {}), coworking_module_available: enabled } } : a));
+    const newSettings = { ...(account.settings || {}), coworking_module_available: enabled };
+    const { error } = await supabase.from("accounts").update({ settings: newSettings }).eq("id", account.id);
+    if (error) {
+      setAccounts(prev);
+      toast.error("Falha ao atualizar módulo Coworking");
+    } else {
+      toast.success(enabled ? "Módulo Coworking liberado" : "Módulo Coworking desabilitado");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
