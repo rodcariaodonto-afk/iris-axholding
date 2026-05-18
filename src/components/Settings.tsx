@@ -129,6 +129,12 @@ const Settings: React.FC = () => {
                 <Mail className="w-4 h-4" />
                 Email
               </TabsTrigger>
+              {coworkingAvailable && (
+                <TabsTrigger value="coworking" className="gap-2 shrink-0">
+                  <Building2 className="w-4 h-4" />
+                  Coworking
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
