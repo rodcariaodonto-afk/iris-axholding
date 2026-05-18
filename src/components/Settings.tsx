@@ -187,6 +187,12 @@ const Settings: React.FC = () => {
         <TabsContent value="email">
           <EmailSettings />
         </TabsContent>
+
+        {coworkingAvailable && (
+          <TabsContent value="coworking">
+            <CoworkingSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
