@@ -130,3 +130,11 @@
   background: hsl(217.2 32.6% 25%);
   border-radius: 3px;
 }
+
+.settings-tabs-scroll::-webkit-scrollbar { height: 6px; }
+.settings-tabs-scroll::-webkit-scrollbar-track { background: transparent; }
+.settings-tabs-scroll::-webkit-scrollbar-thumb {
+  background: hsl(217.2 32.6% 30%);
+  border-radius: 3px;
+}
+.settings-tabs-scroll::-webkit-scrollbar-thumb:hover { background: hsl(217.2 32.6% 45%); }
