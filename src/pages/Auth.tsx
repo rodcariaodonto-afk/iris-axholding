@@ -290,6 +290,48 @@ const Auth: React.FC = () => {
         </p>
       </div>
     </div>
+
+    <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Recuperar senha</DialogTitle>
+          <DialogDescription>
+            Informe seu email e enviaremos um link para você redefinir sua senha.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email" className="text-foreground">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="pl-10"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setForgotOpen(false)}
+              disabled={forgotSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" disabled={forgotSubmitting}>
+              {forgotSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Enviar link
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
     </>
   );
 };
