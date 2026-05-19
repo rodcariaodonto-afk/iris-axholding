@@ -838,14 +838,11 @@ async function processQueueItem(
       ];
     }
     
-    // For document messages with media_url (PDF), build multimodal content
+    // For document messages with media_url, keep as text context; PDFs are not valid image_url inputs for Gemini
     if (msg.from_type === 'user' && msg.type === 'document' && msg.media_url) {
       const isPdf = msg.media_url.endsWith('.pdf') || msg.media_type === 'application/pdf';
       if (isPdf) {
-        content = [
-          { type: "image_url", image_url: { url: msg.media_url } },
-          { type: "text", text: msg.content || 'O cliente enviou este documento PDF. Analise o conteúdo e responda de acordo.' }
-        ];
+        content = msg.content || 'O cliente enviou um documento PDF.';
       }
     }
     
