@@ -73,6 +73,23 @@ Deno.serve(async (req) => {
       return json({ error: "limit_reached", current: count, limit: effectiveMax }, 409);
     }
 
+    const providedInstanceName = body.evolution_instance_name?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") || null;
+    const evolutionInstanceName = body.provider === "evolution"
+      ? providedInstanceName || `iris-${body.account_id.slice(0, 8)}-${userId.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`
+      : null;
+
+    if (evolutionInstanceName) {
+      const { data: existingSession } = await supabase
+        .from("whatsapp_sessions")
+        .select("id, session_name")
+        .eq("account_id", body.account_id)
+        .ilike("evolution_instance_name", evolutionInstanceName)
+        .maybeSingle();
+      if (existingSession) {
+        return json({ error: "instance_name_in_use", details: `A instância ${evolutionInstanceName} já está em uso por ${existingSession.session_name}` }, 409);
+      }
+    }
+
     // Insert
     const { data: session, error: insErr } = await supabase
       .from("whatsapp_sessions")
@@ -82,7 +99,7 @@ Deno.serve(async (req) => {
         session_name: body.session_name,
         status: "disconnected",
         is_default: body.is_default ?? (count === 0),
-        evolution_instance_name: body.evolution_instance_name ?? null,
+        evolution_instance_name: evolutionInstanceName,
         whatsapp_phone_number_id: body.whatsapp_phone_number_id ?? null,
         whatsapp_business_account_id: body.whatsapp_business_account_id ?? null,
         whatsapp_access_token: body.whatsapp_access_token ?? null,
