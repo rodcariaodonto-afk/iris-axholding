@@ -50,7 +50,15 @@ serve(async (req) => {
     // POST request = Incoming message
     if (req.method === 'POST') {
       const body = await req.json();
-      console.log('[Webhook] Received payload:', JSON.stringify(body, null, 2));
+      console.log('[Webhook] Received payload summary:', {
+        event: body.event,
+        instance: body.instance,
+        hasData: !!body.data,
+        messageId: body.data?.key?.id,
+        remoteJid: body.data?.key?.remoteJid,
+        fromMe: body.data?.key?.fromMe,
+        type: body.data?.messageType || body.data?.message?.messageType || body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.type,
+      });
 
       // Detect provider format
       const isEvolutionAPI = body.event || body.instance;

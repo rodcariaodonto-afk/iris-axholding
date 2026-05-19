@@ -384,7 +384,8 @@ function CreateSessionDialog({ open, onOpenChange, accountId, onCreated }: {
     setCreating(true);
     const body: any = { account_id: accountId, provider, session_name: name.trim() };
     if (provider === "evolution") {
-      body.evolution_instance_name = (instanceName || name).trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      const normalizedInstance = instanceName.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      if (normalizedInstance) body.evolution_instance_name = normalizedInstance;
     } else {
       if (!meta.phone_id || !meta.token) { toast.error("Phone Number ID e Token são obrigatórios"); setCreating(false); return; }
       body.whatsapp_phone_number_id = meta.phone_id;
@@ -433,8 +434,8 @@ function CreateSessionDialog({ open, onOpenChange, accountId, onCreated }: {
             <div>
               <Label>Nome da instância (opcional)</Label>
               <Input value={instanceName} onChange={(e: InputEv) => setInstanceName(e.target.value)}
-                placeholder="auto-gerado a partir do nome" className="font-mono text-xs" />
-              <p className="text-[10px] text-slate-500 mt-1">Será criado automaticamente no servidor Evolution ao conectar.</p>
+                placeholder="deixe vazio para gerar uma instância única" className="font-mono text-xs" />
+              <p className="text-[10px] text-slate-500 mt-1">Use um nome exclusivo. Se deixar vazio, criaremos um nome único automaticamente.</p>
             </div>
           ) : (
             <>
