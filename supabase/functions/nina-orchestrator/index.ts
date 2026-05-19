@@ -1131,6 +1131,7 @@ async function processQueueItem(
         }
       } catch (parseError) {
         console.error('[Nina] Error parsing cancel_appointment arguments:', parseError);
+      }
     }
 
     if (toolCall.function?.name === 'send_file') {
@@ -1157,7 +1158,6 @@ async function processQueueItem(
         console.error('[Nina] Error parsing send_file arguments:', parseError);
       }
     }
-  }
   }
 
   // If no content and we only got tool calls, generate a default response
