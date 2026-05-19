@@ -997,7 +997,7 @@ async function processQueueItem(
   const requestBody: any = {
     model: aiSettings.model,
     messages: [
-      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.' },
+      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.\n\nREGRA CRÍTICA DE AGENDAMENTO: se o cliente confirmar uma data e horário específicos, ou aceitar outro horário após conflito, você DEVE chamar create_appointment na mesma resposta. Nunca diga “vou agendar”, “vou confirmar a agenda” ou “só um momento” sem executar a ferramenta. Só confirme agendamento depois que a ferramenta retornar sucesso.' },
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
