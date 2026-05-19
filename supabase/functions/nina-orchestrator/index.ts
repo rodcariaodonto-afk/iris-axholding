@@ -1110,6 +1110,8 @@ async function processQueueItem(
             media_url: audioUrl,
             priority: 1,
             scheduled_at: new Date(Date.now() + delay).toISOString(),
+            account_id: conversation.account_id,
+            session_id: conversation.session_id,
             metadata: {
               response_to_message_id: message.id,
               ai_model: aiSettings.model,
@@ -1203,6 +1205,8 @@ async function queueTextResponse(
         message_type: 'text',
         priority: 1,
         scheduled_at: new Date(Date.now() + chunkDelay).toISOString(),
+        account_id: conversation.account_id,
+        session_id: conversation.session_id,
         metadata: {
           response_to_message_id: message.id,
           ai_model: aiSettings.model,
