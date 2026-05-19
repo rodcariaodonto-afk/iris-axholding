@@ -239,19 +239,26 @@ async function handleEvolutionWebhook(
     await supabase.from('contacts').update(updates).eq('id', contact.id);
   }
 
-  // Get or create conversation
+  // Get or create conversation — STRICTLY scoped by (contact_id, session_id)
+  // so the same contact across different WhatsApp sessions never shares conversations.
   let convQuery = supabase
     .from('conversations')
     .select('*')
     .eq('contact_id', contact.id)
     .eq('is_active', true);
   if (sessionAccountId) convQuery = convQuery.eq('account_id', sessionAccountId);
+  if (sessionId) {
+    convQuery = convQuery.eq('session_id', sessionId);
+  } else {
+    convQuery = convQuery.is('session_id', null);
+  }
   let { data: conversation } = await convQuery.maybeSingle();
 
-  if (conversation && sessionId && (!conversation.session_id || conversation.session_id !== sessionId || !conversation.assigned_user_id)) {
+  // Backfill assigned_user_id only if missing — never overwrite session_id.
+  if (conversation && ownerId && !conversation.assigned_user_id) {
     const { data: updatedConversation } = await supabase
       .from('conversations')
-      .update({ session_id: sessionId, assigned_user_id: ownerId, ...(sessionAccountId ? { account_id: sessionAccountId } : {}) })
+      .update({ assigned_user_id: ownerId })
       .eq('id', conversation.id)
       .select()
       .single();
@@ -281,7 +288,7 @@ async function handleEvolutionWebhook(
       });
     }
     conversation = newConv;
-    console.log('[Webhook:Evolution] Created conversation:', conversation.id);
+    console.log('[Webhook:Evolution] Created conversation:', conversation.id, 'session:', sessionId);
   }
 
   // Determine message content and type
