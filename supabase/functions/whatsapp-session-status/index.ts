@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
     const state = data?.instance?.state ?? data?.state;
     let newStatus: string = session.status;
     let phoneNumber: string | null = session.phone_number;
-    if (state === "open") {
+    const normalizedState = String(state ?? "").toLowerCase();
+    if (["open", "connected"].includes(normalizedState)) {
       newStatus = "connected";
       // Try fetch profile
       const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${session.evolution_instance_name}`, {
@@ -59,8 +60,8 @@ Deno.serve(async (req) => {
         const inst = Array.isArray(arr) ? arr[0] : arr;
         phoneNumber = inst?.ownerJid?.split("@")[0] ?? inst?.number ?? phoneNumber;
       }
-    } else if (state === "connecting") newStatus = "connecting";
-    else if (state === "close") newStatus = "disconnected";
+    } else if (normalizedState === "connecting") newStatus = "connecting";
+    else if (["close", "closed", "disconnected"].includes(normalizedState)) newStatus = "disconnected";
 
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
