@@ -690,6 +690,7 @@ async function rescheduleAppointmentFromAI(
   }
 ): Promise<any> {
   console.log('[Nina] Rescheduling appointment for contact:', contactId, 'user:', userId, args);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Find the most recent scheduled appointment for this contact
   const query = supabase
@@ -702,8 +703,8 @@ async function rescheduleAppointmentFromAI(
     .order('time', { ascending: true })
     .limit(1);
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
@@ -733,8 +734,8 @@ async function rescheduleAppointmentFromAI(
     .eq('status', 'scheduled')
     .neq('id', appointment.id);
   
-  if (userId) {
-    conflictQuery.eq('user_id', userId);
+  if (schedulingUserId) {
+    conflictQuery.eq('user_id', schedulingUserId);
   }
   
   const { data: conflictingAppointments } = await conflictQuery;
@@ -782,9 +783,7 @@ async function rescheduleAppointmentFromAI(
   }
   
   console.log('[Nina] Appointment rescheduled successfully:', data.id);
-  const calendarSync = data.google_event_id
-    ? { skipped: true, reason: 'existing_calendar_event_update_not_supported_here' }
-    : await syncAppointmentToGoogleCalendar(supabase, data);
+  const calendarSync = await syncAppointmentToGoogleCalendar(supabase, data);
   if (calendarSync?.error) console.error('[Nina] Calendar sync failed after reschedule:', calendarSync.error);
   return { ...data, previous_date: appointment.date, previous_time: appointment.time, calendar_sync: calendarSync };
 }
