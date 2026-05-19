@@ -799,6 +799,7 @@ async function cancelAppointmentFromAI(
   }
 ): Promise<any> {
   console.log('[Nina] Canceling appointment for contact:', contactId, 'user:', userId);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Find the most recent scheduled appointment for this contact
   const query = supabase
@@ -811,8 +812,8 @@ async function cancelAppointmentFromAI(
     .order('time', { ascending: true })
     .limit(1);
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
