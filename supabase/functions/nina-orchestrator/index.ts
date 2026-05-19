@@ -186,8 +186,28 @@ serve(async (req) => {
           continue;
         }
 
-        // Buscar settings com fallback por sessão → conta → user_id → global → any
+        // Buscar settings com fallback por conta → user_id → global → any; sessão só complementa credenciais do WhatsApp
         let settings = null;
+
+        if (conversation.account_id) {
+          const { data: accountSettings } = await supabase
+            .from('nina_settings')
+            .select('*')
+            .eq('account_id', conversation.account_id)
+            .maybeSingle();
+          settings = accountSettings;
+          if (settings) console.log('[Nina] Found settings for account:', conversation.account_id);
+        }
+
+        if (!settings && conversation.user_id) {
+          const { data: userSettings } = await supabase
+            .from('nina_settings')
+            .select('*')
+            .eq('user_id', conversation.user_id)
+            .maybeSingle();
+          settings = userSettings;
+          if (settings) console.log('[Nina] Found settings for user:', conversation.user_id);
+        }
 
         if (conversation.session_id) {
           const { data: waSession } = await supabase
@@ -202,14 +222,15 @@ serve(async (req) => {
               .eq('account_id', waSession.account_id)
               .maybeSingle();
             settings = {
-              is_active: true,
-              auto_response_enabled: true,
-              ai_model_mode: 'flash',
-              response_delay_min: 1000,
-              response_delay_max: 3000,
-              message_breaking_enabled: false,
-              audio_response_enabled: false,
-              ai_scheduling_enabled: true,
+              ...(settings || {}),
+              is_active: settings?.is_active ?? true,
+              auto_response_enabled: settings?.auto_response_enabled ?? true,
+              ai_model_mode: settings?.ai_model_mode || 'flash',
+              response_delay_min: settings?.response_delay_min ?? 1000,
+              response_delay_max: settings?.response_delay_max ?? 3000,
+              message_breaking_enabled: settings?.message_breaking_enabled ?? false,
+              audio_response_enabled: settings?.audio_response_enabled ?? true,
+              ai_scheduling_enabled: settings?.ai_scheduling_enabled ?? true,
               user_id: waSession.owner_user_id,
               account_id: waSession.account_id,
               whatsapp_provider: waSession.provider,
@@ -220,29 +241,6 @@ serve(async (req) => {
               evolution_instance_name: waSession.evolution_instance_name,
             };
             console.log('[Nina] Found settings from WhatsApp session:', conversation.session_id);
-          }
-        }
-        
-        if (!settings && conversation.account_id) {
-          const { data: accountSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .eq('account_id', conversation.account_id)
-            .maybeSingle();
-          settings = accountSettings;
-          if (settings) console.log('[Nina] Found settings for account:', conversation.account_id);
-        }
-        
-        // 1. Tentar buscar por user_id da conversa
-        if (conversation.user_id) {
-          const { data: userSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .eq('user_id', conversation.user_id)
-            .maybeSingle();
-          settings = userSettings;
-          if (settings) {
-            console.log('[Nina] Found settings for user:', conversation.user_id);
           }
         }
         
