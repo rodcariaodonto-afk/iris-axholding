@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import iconIris from '@/assets/icon-iris.png';
 
 
 // Validation schemas
