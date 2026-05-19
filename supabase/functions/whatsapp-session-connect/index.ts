@@ -117,6 +117,54 @@ Deno.serve(async (req) => {
       error_message: null,
     }).eq("id", session_id);
 
+    // Configurar webhook na Evolution para receber mensagens
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-webhook`;
+    const events = [
+      "MESSAGES_UPSERT",
+      "MESSAGES_UPDATE",
+      "CONNECTION_UPDATE",
+      "QRCODE_UPDATED",
+      "SEND_MESSAGE",
+    ];
+    try {
+      // Evolution v2 payload
+      let wr = await fetch(`${baseUrl}/webhook/set/${instanceName}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: apiKey },
+        body: JSON.stringify({
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            byEvents: false,
+            base64: true,
+            events,
+          },
+        }),
+      });
+      if (!wr.ok) {
+        // Fallback Evolution v1 payload
+        wr = await fetch(`${baseUrl}/webhook/set/${instanceName}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: apiKey },
+          body: JSON.stringify({
+            url: webhookUrl,
+            webhook_by_events: false,
+            webhook_base64: true,
+            enabled: true,
+            events,
+          }),
+        });
+      }
+      if (!wr.ok) {
+        const txt = await wr.text();
+        console.error("[connect] Falha ao configurar webhook:", txt);
+      } else {
+        console.log("[connect] Webhook configurado:", webhookUrl);
+      }
+    } catch (e) {
+      console.error("[connect] Erro configurando webhook:", e);
+    }
+
     return json({ ok: true, status: qrCode ? "qr_pending" : "connecting", qr_code: qrCode });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
