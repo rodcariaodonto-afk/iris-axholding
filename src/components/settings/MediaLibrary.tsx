@@ -3,6 +3,8 @@ import { Upload, Trash2, FileText, Image, ToggleLeft, ToggleRight, Loader2, Plus
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Input } from '@/components/ui/input';
+import { getActiveAccountId } from '@/lib/activeAccount';
+import { toast } from 'sonner';
 
 interface MediaItem {
   id: string;
