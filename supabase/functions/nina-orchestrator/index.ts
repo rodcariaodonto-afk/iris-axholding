@@ -8,6 +8,9 @@ const corsHeaders = {
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
+const BRASILIA_OFFSET = '-03:00';
+const MAX_AUDIO_CHARS = 650;
 
 // Helper: get current date/time in Brasília (UTC-3)
 function getNowBrasilia(): Date {
@@ -419,7 +422,7 @@ async function uploadAudioToStorage(
   conversationId: string
 ): Promise<string | null> {
   try {
-    const fileName = `${conversationId}/${Date.now()}.mp3`;
+    const fileName = `${conversationId}/${Date.now()}-${crypto.randomUUID()}.mp3`;
     
     const { data, error } = await supabase.storage
       .from('audio-messages')
@@ -453,11 +456,130 @@ function parseTimeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
+function normalizeTime(time: string): string {
+  const [hours = '0', minutes = '0'] = String(time || '').split(':');
+  return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+}
+
+function addMinutesToTime(time: string, duration: number): string {
+  const total = parseTimeToMinutes(normalizeTime(time)) + duration;
+  const hours = Math.floor(total / 60) % 24;
+  const minutes = total % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function buildLocalIso(date: string, time: string): string {
+  return `${date}T${normalizeTime(time)}:00${BRASILIA_OFFSET}`;
+}
+
+async function syncAppointmentToGoogleCalendar(supabase: any, appointment: any): Promise<any> {
+  if (!appointment?.user_id) return { skipped: true, reason: 'missing_user_id' };
+
+  const { data: connection, error: connError } = await supabase
+    .from('google_calendar_connections')
+    .select('*')
+    .eq('user_id', appointment.user_id)
+    .eq('account_id', appointment.account_id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (connError) return { error: connError.message };
+  if (!connection) return { skipped: true, reason: 'no_calendar_connection' };
+
+  let accessToken = connection.access_token;
+  if (new Date(connection.token_expires_at) <= new Date(Date.now() + 60000)) {
+    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') || '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') || '',
+        refresh_token: connection.refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!refreshResponse.ok) return { error: `token_refresh_failed_${refreshResponse.status}` };
+
+    const refreshResult = await refreshResponse.json();
+    accessToken = refreshResult.access_token;
+    await supabase
+      .from('google_calendar_connections')
+      .update({
+        access_token: accessToken,
+        token_expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString(),
+      })
+      .eq('id', connection.id);
+  }
+
+  const calendarId = connection.calendar_id || 'primary';
+  const duration = appointment.duration || 60;
+  const event: any = {
+    summary: appointment.title,
+    description: appointment.description || '',
+    start: { dateTime: buildLocalIso(appointment.date, appointment.time), timeZone: DEFAULT_TIMEZONE },
+    end: { dateTime: buildLocalIso(appointment.date, addMinutesToTime(appointment.time, duration)), timeZone: DEFAULT_TIMEZONE },
+    conferenceData: {
+      createRequest: {
+        requestId: appointment.id,
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+      },
+    },
+  };
+
+  const eventUrl = appointment.google_event_id
+    ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${appointment.google_event_id}?conferenceDataVersion=1`
+    : `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`;
+
+  const response = await fetch(
+    eventUrl,
+    {
+      method: appointment.google_event_id ? 'PATCH' : 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    }
+  );
+
+  const result = await response.json();
+  if (!response.ok) return { error: JSON.stringify(result) };
+
+  const updates: any = { google_event_id: result.id };
+  if (result.hangoutLink) updates.meeting_url = result.hangoutLink;
+  await supabase.from('appointments').update(updates).eq('id', appointment.id);
+
+  return { success: true, google_event_id: result.id, meeting_url: result.hangoutLink || null };
+}
+
+async function resolveSchedulingUserId(supabase: any, accountId: string, preferredUserId: string | null): Promise<string | null> {
+  if (preferredUserId) {
+    const { data: preferredConnection } = await supabase
+      .from('google_calendar_connections')
+      .select('user_id')
+      .eq('account_id', accountId)
+      .eq('user_id', preferredUserId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (preferredConnection?.user_id) return preferredConnection.user_id;
+  }
+
+  const { data: accountConnection } = await supabase
+    .from('google_calendar_connections')
+    .select('user_id')
+    .eq('account_id', accountId)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return accountConnection?.user_id || preferredUserId;
+}
+
 async function createAppointmentFromAI(
   supabase: any,
   contactId: string,
   conversationId: string,
   userId: string | null,
+  accountId: string,
   args: {
     title: string;
     date: string;
@@ -468,6 +590,7 @@ async function createAppointmentFromAI(
   }
 ): Promise<any> {
   console.log('[Nina] Creating appointment from AI:', args, 'for user:', userId);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Validate date is not in the past (using Brasília timezone)
   const appointmentDate = parseDateTimeBrasilia(args.date, args.time);
@@ -482,11 +605,12 @@ async function createAppointmentFromAI(
   const query = supabase
     .from('appointments')
     .select('id, time, duration, title')
+    .eq('account_id', accountId)
     .eq('date', args.date)
     .eq('status', 'scheduled');
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
@@ -518,6 +642,11 @@ async function createAppointmentFromAI(
     type: args.type,
     description: args.description || null,
     contact_id: contactId,
+    account_id: accountId,
+    start_at: buildLocalIso(args.date, args.time),
+    end_at: buildLocalIso(args.date, addMinutesToTime(args.time, args.duration || 60)),
+    booking_status: 'confirmed',
+    booking_source: 'ai_whatsapp',
     status: 'scheduled',
     metadata: {
       source: 'nina_ai',
@@ -527,8 +656,8 @@ async function createAppointmentFromAI(
   };
   
   // Add user_id if available (for RLS compliance)
-  if (userId) {
-    insertData.user_id = userId;
+  if (schedulingUserId) {
+    insertData.user_id = schedulingUserId;
   }
   
   const { data, error } = await supabase
@@ -543,7 +672,9 @@ async function createAppointmentFromAI(
   }
 
   console.log('[Nina] Appointment created successfully:', data.id);
-  return data;
+  const calendarSync = await syncAppointmentToGoogleCalendar(supabase, data);
+  if (calendarSync?.error) console.error('[Nina] Calendar sync failed:', calendarSync.error);
+  return { ...data, google_event_id: calendarSync?.google_event_id || data.google_event_id, meeting_url: calendarSync?.meeting_url || data.meeting_url, calendar_sync: calendarSync };
 }
 
 // Reschedule an existing appointment
@@ -551,6 +682,7 @@ async function rescheduleAppointmentFromAI(
   supabase: any,
   contactId: string,
   userId: string | null,
+  accountId: string,
   args: {
     new_date: string;
     new_time: string;
@@ -558,19 +690,21 @@ async function rescheduleAppointmentFromAI(
   }
 ): Promise<any> {
   console.log('[Nina] Rescheduling appointment for contact:', contactId, 'user:', userId, args);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Find the most recent scheduled appointment for this contact
   const query = supabase
     .from('appointments')
     .select('*')
+    .eq('account_id', accountId)
     .eq('contact_id', contactId)
     .eq('status', 'scheduled')
     .order('date', { ascending: true })
     .order('time', { ascending: true })
     .limit(1);
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
@@ -595,12 +729,13 @@ async function rescheduleAppointmentFromAI(
   const conflictQuery = supabase
     .from('appointments')
     .select('id, time, duration, title')
+    .eq('account_id', accountId)
     .eq('date', args.new_date)
     .eq('status', 'scheduled')
     .neq('id', appointment.id);
   
-  if (userId) {
-    conflictQuery.eq('user_id', userId);
+  if (schedulingUserId) {
+    conflictQuery.eq('user_id', schedulingUserId);
   }
   
   const { data: conflictingAppointments } = await conflictQuery;
@@ -628,6 +763,8 @@ async function rescheduleAppointmentFromAI(
     .update({
       date: args.new_date,
       time: args.new_time,
+      start_at: buildLocalIso(args.new_date, args.new_time),
+      end_at: buildLocalIso(args.new_date, addMinutesToTime(args.new_time, appointment.duration || 60)),
       metadata: {
         ...appointment.metadata,
         rescheduled_at: new Date().toISOString(),
@@ -646,7 +783,9 @@ async function rescheduleAppointmentFromAI(
   }
   
   console.log('[Nina] Appointment rescheduled successfully:', data.id);
-  return { ...data, previous_date: appointment.date, previous_time: appointment.time };
+  const calendarSync = await syncAppointmentToGoogleCalendar(supabase, data);
+  if (calendarSync?.error) console.error('[Nina] Calendar sync failed after reschedule:', calendarSync.error);
+  return { ...data, previous_date: appointment.date, previous_time: appointment.time, calendar_sync: calendarSync };
 }
 
 // Cancel an existing appointment
@@ -654,24 +793,27 @@ async function cancelAppointmentFromAI(
   supabase: any,
   contactId: string,
   userId: string | null,
+  accountId: string,
   args: {
     reason?: string;
   }
 ): Promise<any> {
   console.log('[Nina] Canceling appointment for contact:', contactId, 'user:', userId);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Find the most recent scheduled appointment for this contact
   const query = supabase
     .from('appointments')
     .select('*')
+    .eq('account_id', accountId)
     .eq('contact_id', contactId)
     .eq('status', 'scheduled')
     .order('date', { ascending: true })
     .order('time', { ascending: true })
     .limit(1);
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
@@ -884,7 +1026,7 @@ async function processQueueItem(
   const requestBody: any = {
     model: aiSettings.model,
     messages: [
-      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.' },
+      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.\n\nREGRA CRÍTICA DE AGENDAMENTO: se o cliente confirmar uma data e horário específicos, ou aceitar outro horário após conflito, você DEVE chamar create_appointment na mesma resposta. Nunca diga “vou agendar”, “vou confirmar a agenda” ou “só um momento” sem executar a ferramenta. Só confirme agendamento depois que a ferramenta retornar sucesso.' },
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
@@ -943,13 +1085,15 @@ async function processQueueItem(
           conversation.contact_id,
           conversation.id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
         // Add confirmation to response if appointment was created successfully
         if (appointmentCreated && !appointmentCreated.error) {
           const dateFormatted = args.date.split('-').reverse().join('/');
-          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!`;
+          const meetInfo = appointmentCreated.meeting_url ? ` Link: ${appointmentCreated.meeting_url}` : '';
+          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!${meetInfo}`;
           aiContent = (aiContent || '') + confirmationMsg;
           console.log('[Nina] Appointment confirmation added to response');
         } else if (appointmentCreated?.error === 'date_in_past') {
@@ -971,6 +1115,7 @@ async function processQueueItem(
           supabase,
           conversation.contact_id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
@@ -1001,6 +1146,7 @@ async function processQueueItem(
           supabase,
           conversation.contact_id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
@@ -1014,6 +1160,7 @@ async function processQueueItem(
         }
       } catch (parseError) {
         console.error('[Nina] Error parsing cancel_appointment arguments:', parseError);
+      }
     }
 
     if (toolCall.function?.name === 'send_file') {
@@ -1040,7 +1187,6 @@ async function processQueueItem(
         console.error('[Nina] Error parsing send_file arguments:', parseError);
       }
     }
-  }
   }
 
   // If no content and we only got tool calls, generate a default response
@@ -1087,46 +1233,9 @@ async function processQueueItem(
 
   if (shouldSendAudio) {
     console.log(`[Nina] Audio response enabled (incoming was audio: ${incomingWasAudio})`);
-    
-    const audioBuffer = await generateAudioElevenLabs(settings, aiContent);
-    
-    if (audioBuffer) {
-      const audioUrl = await uploadAudioToStorage(supabase, audioBuffer, conversation.id);
-      
-      if (audioUrl) {
-        const { error: sendQueueError } = await supabase
-          .from('send_queue')
-          .insert({
-            conversation_id: conversation.id,
-            contact_id: conversation.contact_id,
-            content: aiContent,
-            from_type: 'nina',
-            message_type: 'audio',
-            media_url: audioUrl,
-            priority: 1,
-            scheduled_at: new Date(Date.now() + delay).toISOString(),
-            account_id: conversation.account_id,
-            session_id: conversation.session_id,
-            metadata: {
-              response_to_message_id: message.id,
-              ai_model: aiSettings.model,
-              audio_generated: true,
-              text_content: aiContent,
-              appointment_created: appointmentCreated?.id || null
-            }
-          });
+    const audioQueued = await queueAudioResponses(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
 
-        if (sendQueueError) {
-          console.error('[Nina] Error queuing audio response:', sendQueueError);
-          throw sendQueueError;
-        }
-
-        console.log('[Nina] Audio response queued for sending');
-      } else {
-        console.log('[Nina] Failed to upload audio, falling back to text');
-        await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
-      }
-    } else {
+    if (!audioQueued) {
       console.log('[Nina] Failed to generate audio, falling back to text');
       await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
     }
@@ -1166,6 +1275,57 @@ async function processQueueItem(
       current_memory: clientMemory
     })
   }).catch(err => console.error('[Nina] Error triggering analyze-conversation:', err));
+}
+
+async function queueAudioResponses(
+  supabase: any,
+  conversation: any,
+  message: any,
+  aiContent: string,
+  settings: any,
+  aiSettings: any,
+  delay: number,
+  appointmentCreated?: any
+): Promise<boolean> {
+  const chunks = splitTextForAudio(aiContent);
+  let queued = 0;
+
+  console.log(`[Nina] Generating ${chunks.length} audio chunk(s)`);
+  for (let i = 0; i < chunks.length; i++) {
+    const audioBuffer = await generateAudioElevenLabs(settings, chunks[i]);
+    if (!audioBuffer) break;
+
+    const audioUrl = await uploadAudioToStorage(supabase, audioBuffer, conversation.id);
+    if (!audioUrl) break;
+
+    const { error } = await supabase.from('send_queue').insert({
+      conversation_id: conversation.id,
+      contact_id: conversation.contact_id,
+      content: chunks[i],
+      from_type: 'nina',
+      message_type: 'audio',
+      media_url: audioUrl,
+      priority: 1,
+      scheduled_at: new Date(Date.now() + delay + i * 4500).toISOString(),
+      account_id: conversation.account_id,
+      session_id: conversation.session_id,
+      metadata: {
+        response_to_message_id: message.id,
+        ai_model: aiSettings.model,
+        audio_generated: true,
+        text_content: chunks[i],
+        chunk_index: i,
+        total_chunks: chunks.length,
+        appointment_created: appointmentCreated?.id || null
+      }
+    });
+
+    if (error) throw error;
+    queued++;
+  }
+
+  console.log(`[Nina] Audio response chunks queued: ${queued}/${chunks.length}`);
+  return queued === chunks.length;
 }
 
 // Helper function to queue text response with chunking
@@ -1441,6 +1601,41 @@ function breakMessageIntoChunks(content: string): string[] {
     .map(chunk => chunk.trim())
     .filter(chunk => chunk.length > 0);
   
+  return chunks.length > 0 ? chunks : [content];
+}
+
+function splitTextForAudio(content: string): string[] {
+  const paragraphs = breakMessageIntoChunks(content);
+  const chunks: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    if (paragraph.length <= MAX_AUDIO_CHARS) {
+      chunks.push(paragraph);
+      continue;
+    }
+
+    const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [paragraph];
+    let current = '';
+
+    for (const sentence of sentences.map(s => s.trim()).filter(Boolean)) {
+      if (!current) {
+        current = sentence;
+      } else if ((current + ' ' + sentence).length <= MAX_AUDIO_CHARS) {
+        current += ' ' + sentence;
+      } else {
+        chunks.push(current);
+        current = sentence;
+      }
+
+      while (current.length > MAX_AUDIO_CHARS) {
+        chunks.push(current.slice(0, MAX_AUDIO_CHARS).trim());
+        current = current.slice(MAX_AUDIO_CHARS).trim();
+      }
+    }
+
+    if (current) chunks.push(current);
+  }
+
   return chunks.length > 0 ? chunks : [content];
 }
 
