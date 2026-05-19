@@ -1575,6 +1575,41 @@ function breakMessageIntoChunks(content: string): string[] {
   return chunks.length > 0 ? chunks : [content];
 }
 
+function splitTextForAudio(content: string): string[] {
+  const paragraphs = breakMessageIntoChunks(content);
+  const chunks: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    if (paragraph.length <= MAX_AUDIO_CHARS) {
+      chunks.push(paragraph);
+      continue;
+    }
+
+    const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [paragraph];
+    let current = '';
+
+    for (const sentence of sentences.map(s => s.trim()).filter(Boolean)) {
+      if (!current) {
+        current = sentence;
+      } else if ((current + ' ' + sentence).length <= MAX_AUDIO_CHARS) {
+        current += ' ' + sentence;
+      } else {
+        chunks.push(current);
+        current = sentence;
+      }
+
+      while (current.length > MAX_AUDIO_CHARS) {
+        chunks.push(current.slice(0, MAX_AUDIO_CHARS).trim());
+        current = current.slice(MAX_AUDIO_CHARS).trim();
+      }
+    }
+
+    if (current) chunks.push(current);
+  }
+
+  return chunks.length > 0 ? chunks : [content];
+}
+
 function getModelSettings(
   settings: any,
   conversationHistory: any[],
