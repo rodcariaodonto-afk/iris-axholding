@@ -519,8 +519,12 @@ async function handleCloudAPIWebhook(
         await supabase.from('contacts').update(updates).eq('id', contact.id);
       }
 
-      let { data: conversation } = await supabase
-        .from('conversations').select('*').eq('contact_id', contact.id).eq('is_active', true).maybeSingle();
+      let convCloudQuery = supabase
+        .from('conversations').select('*').eq('contact_id', contact.id).eq('is_active', true);
+      if (sessionAccountId) convCloudQuery = convCloudQuery.eq('account_id', sessionAccountId);
+      if (sessionId) convCloudQuery = convCloudQuery.eq('session_id', sessionId);
+      else convCloudQuery = convCloudQuery.is('session_id', null);
+      let { data: conversation } = await convCloudQuery.maybeSingle();
 
       if (!conversation) {
         const { data: newConv, error: convError } = await supabase
