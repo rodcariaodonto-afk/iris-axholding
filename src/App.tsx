@@ -11,6 +11,7 @@ import Scheduling from './components/Scheduling';
 import Kanban from './components/Kanban';
 import Reports from './components/Reports';
 import Auth from './pages/Auth';
+import ResetPassword from './pages/ResetPassword';
 import LandingPage from './pages/LandingPage';
 import MeetingRoom from './pages/MeetingRoom';
 import InviteAccept from './pages/InviteAccept';
@@ -93,6 +94,7 @@ const App: React.FC = () => {
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
 

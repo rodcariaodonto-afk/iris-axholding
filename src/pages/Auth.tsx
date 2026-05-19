@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { z } from 'zod';
@@ -21,6 +23,9 @@ const Auth: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
   
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
@@ -93,6 +98,29 @@ const Auth: React.FC = () => {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = emailSchema.safeParse(forgotEmail);
+    if (!result.success) {
+      toast.error('Email inválido');
+      return;
+    }
+    setForgotSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success('Enviamos um link de recuperação para seu email.');
+      setForgotOpen(false);
+    } finally {
+      setForgotSubmitting(false);
     }
   };
 
@@ -193,6 +221,20 @@ const Auth: React.FC = () => {
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
+              {isLogin && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotOpen(true);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Esqueceu sua senha?
+                  </button>
+                </div>
+              )}
             </div>
 
             <Button
@@ -248,6 +290,48 @@ const Auth: React.FC = () => {
         </p>
       </div>
     </div>
+
+    <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Recuperar senha</DialogTitle>
+          <DialogDescription>
+            Informe seu email e enviaremos um link para você redefinir sua senha.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email" className="text-foreground">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="pl-10"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setForgotOpen(false)}
+              disabled={forgotSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" disabled={forgotSubmitting}>
+              {forgotSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Enviar link
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
     </>
   );
 };
