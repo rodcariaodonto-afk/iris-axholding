@@ -46,11 +46,16 @@ const MediaLibrary: React.FC = () => {
 
   const handleUpload = async () => {
     if (!selectedFile || !formName) return;
+    const accountId = getActiveAccountId();
+    if (!accountId) {
+      toast.error('Conta ativa não encontrada. Recarregue a página.');
+      return;
+    }
     setUploading(true);
 
     try {
       const ext = selectedFile.name.split('.').pop();
-      const path = `library/${Date.now()}.${ext}`;
+      const path = `library/${accountId}/${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('media-files')
@@ -65,7 +70,8 @@ const MediaLibrary: React.FC = () => {
       const fileType = selectedFile.type.startsWith('image/') ? 'image' : 'document';
       const tags = formTags.split(',').map(t => t.trim()).filter(Boolean);
 
-      await supabase.from('media_library').insert({
+      const { error: insertError } = await supabase.from('media_library').insert({
+        account_id: accountId,
         name: formName,
         description: formDescription || null,
         file_url: urlData.publicUrl,
@@ -75,14 +81,18 @@ const MediaLibrary: React.FC = () => {
         tags,
       } as any);
 
+      if (insertError) throw insertError;
+
+      toast.success('Arquivo adicionado à biblioteca');
       setShowForm(false);
       setFormName('');
       setFormDescription('');
       setFormTags('');
       setSelectedFile(null);
       await fetchItems();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
+      toast.error(err?.message || 'Erro ao salvar arquivo');
     } finally {
       setUploading(false);
     }
