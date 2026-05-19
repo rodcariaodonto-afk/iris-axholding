@@ -63,18 +63,19 @@ serve(async (req) => {
 
       for (const item of queueItems) {
         try {
-          // Get settings with triple fallback
+          // Get settings; prefer the WhatsApp session attached to the outgoing queue item/conversation
           const { data: conversation } = await supabase
-            .from('conversations').select('user_id').eq('id', item.conversation_id).single();
+            .from('conversations').select('user_id, account_id, session_id').eq('id', item.conversation_id).single();
 
           if (!conversation) throw new Error('Conversation not found');
 
+          const sessionId = item.session_id || conversation.session_id || null;
           const userId = conversation.user_id;
-          const cacheKey = userId || 'global';
+          const cacheKey = sessionId || conversation.account_id || userId || 'global';
           let settings = settingsCache[cacheKey];
           
           if (!settings) {
-            settings = await getSettings(supabase, userId);
+            settings = await getSettings(supabase, userId, conversation.account_id, sessionId);
             if (!settings) throw new Error('Settings not found');
             settingsCache[cacheKey] = settings;
           }
@@ -127,8 +128,36 @@ serve(async (req) => {
   }
 });
 
-async function getSettings(supabase: any, userId: string | null) {
+async function getSettings(supabase: any, userId: string | null, accountId: string | null, sessionId: string | null) {
   const selectFields = 'whatsapp_provider, whatsapp_access_token, whatsapp_phone_number_id, evolution_api_url, evolution_api_key, evolution_instance_name';
+  
+  if (sessionId) {
+    const { data: waSession } = await supabase
+      .from('whatsapp_sessions')
+      .select('account_id, provider, evolution_instance_name, whatsapp_access_token, whatsapp_phone_number_id')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if (waSession) {
+      const { data: accountSettings } = await supabase
+        .from('whatsapp_account_settings')
+        .select('evolution_api_url, evolution_api_key')
+        .eq('account_id', waSession.account_id)
+        .maybeSingle();
+      return {
+        whatsapp_provider: waSession.provider,
+        whatsapp_access_token: waSession.whatsapp_access_token,
+        whatsapp_phone_number_id: waSession.whatsapp_phone_number_id,
+        evolution_api_url: accountSettings?.evolution_api_url,
+        evolution_api_key: accountSettings?.evolution_api_key,
+        evolution_instance_name: waSession.evolution_instance_name,
+      };
+    }
+  }
+  
+  if (accountId) {
+    const { data } = await supabase.from('nina_settings').select(selectFields).eq('account_id', accountId).maybeSingle();
+    if (data) return data;
+  }
   
   if (userId) {
     const { data } = await supabase.from('nina_settings').select(selectFields).eq('user_id', userId).maybeSingle();
