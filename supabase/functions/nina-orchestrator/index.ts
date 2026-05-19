@@ -551,6 +551,7 @@ async function createAppointmentFromAI(
   contactId: string,
   conversationId: string,
   userId: string | null,
+  accountId: string,
   args: {
     title: string;
     date: string;
@@ -575,6 +576,7 @@ async function createAppointmentFromAI(
   const query = supabase
     .from('appointments')
     .select('id, time, duration, title')
+    .eq('account_id', accountId)
     .eq('date', args.date)
     .eq('status', 'scheduled');
   
@@ -611,6 +613,11 @@ async function createAppointmentFromAI(
     type: args.type,
     description: args.description || null,
     contact_id: contactId,
+    account_id: accountId,
+    start_at: buildLocalIso(args.date, args.time),
+    end_at: buildLocalIso(args.date, addMinutesToTime(args.time, args.duration || 60)),
+    booking_status: 'confirmed',
+    booking_source: 'ai_whatsapp',
     status: 'scheduled',
     metadata: {
       source: 'nina_ai',
@@ -636,7 +643,9 @@ async function createAppointmentFromAI(
   }
 
   console.log('[Nina] Appointment created successfully:', data.id);
-  return data;
+  const calendarSync = await syncAppointmentToGoogleCalendar(supabase, data);
+  if (calendarSync?.error) console.error('[Nina] Calendar sync failed:', calendarSync.error);
+  return { ...data, calendar_sync: calendarSync };
 }
 
 // Reschedule an existing appointment
