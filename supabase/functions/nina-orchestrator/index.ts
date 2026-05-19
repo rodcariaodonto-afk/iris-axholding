@@ -645,7 +645,7 @@ async function createAppointmentFromAI(
   console.log('[Nina] Appointment created successfully:', data.id);
   const calendarSync = await syncAppointmentToGoogleCalendar(supabase, data);
   if (calendarSync?.error) console.error('[Nina] Calendar sync failed:', calendarSync.error);
-  return { ...data, calendar_sync: calendarSync };
+  return { ...data, google_event_id: calendarSync?.google_event_id || data.google_event_id, meeting_url: calendarSync?.meeting_url || data.meeting_url, calendar_sync: calendarSync };
 }
 
 // Reschedule an existing appointment
