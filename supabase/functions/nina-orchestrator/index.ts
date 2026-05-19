@@ -456,6 +456,96 @@ function parseTimeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
+function normalizeTime(time: string): string {
+  const [hours = '0', minutes = '0'] = String(time || '').split(':');
+  return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+}
+
+function addMinutesToTime(time: string, duration: number): string {
+  const total = parseTimeToMinutes(normalizeTime(time)) + duration;
+  const hours = Math.floor(total / 60) % 24;
+  const minutes = total % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function buildLocalIso(date: string, time: string): string {
+  return `${date}T${normalizeTime(time)}:00${BRASILIA_OFFSET}`;
+}
+
+async function syncAppointmentToGoogleCalendar(supabase: any, appointment: any): Promise<any> {
+  if (!appointment?.user_id) return { skipped: true, reason: 'missing_user_id' };
+
+  const { data: connection, error: connError } = await supabase
+    .from('google_calendar_connections')
+    .select('*')
+    .eq('user_id', appointment.user_id)
+    .eq('account_id', appointment.account_id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (connError) return { error: connError.message };
+  if (!connection) return { skipped: true, reason: 'no_calendar_connection' };
+
+  let accessToken = connection.access_token;
+  if (new Date(connection.token_expires_at) <= new Date(Date.now() + 60000)) {
+    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') || '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') || '',
+        refresh_token: connection.refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!refreshResponse.ok) return { error: `token_refresh_failed_${refreshResponse.status}` };
+
+    const refreshResult = await refreshResponse.json();
+    accessToken = refreshResult.access_token;
+    await supabase
+      .from('google_calendar_connections')
+      .update({
+        access_token: accessToken,
+        token_expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString(),
+      })
+      .eq('id', connection.id);
+  }
+
+  const calendarId = connection.calendar_id || 'primary';
+  const duration = appointment.duration || 60;
+  const event: any = {
+    summary: appointment.title,
+    description: appointment.description || '',
+    start: { dateTime: buildLocalIso(appointment.date, appointment.time), timeZone: DEFAULT_TIMEZONE },
+    end: { dateTime: buildLocalIso(appointment.date, addMinutesToTime(appointment.time, duration)), timeZone: DEFAULT_TIMEZONE },
+    conferenceData: {
+      createRequest: {
+        requestId: appointment.id,
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+      },
+    },
+  };
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    }
+  );
+
+  const result = await response.json();
+  if (!response.ok) return { error: JSON.stringify(result) };
+
+  const updates: any = { google_event_id: result.id };
+  if (result.hangoutLink) updates.meeting_url = result.hangoutLink;
+  await supabase.from('appointments').update(updates).eq('id', appointment.id);
+
+  return { success: true, google_event_id: result.id, meeting_url: result.hangoutLink || null };
+}
+
 async function createAppointmentFromAI(
   supabase: any,
   contactId: string,
