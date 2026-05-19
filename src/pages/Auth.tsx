@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { z } from 'zod';
@@ -21,6 +23,9 @@ const Auth: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
   
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
@@ -192,6 +197,20 @@ const Auth: React.FC = () => {
               </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
+              )}
+              {isLogin && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotOpen(true);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Esqueceu sua senha?
+                  </button>
+                </div>
               )}
             </div>
 
