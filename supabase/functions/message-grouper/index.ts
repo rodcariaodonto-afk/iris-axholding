@@ -71,16 +71,52 @@ serve(async (req) => {
         console.log(`[MessageGrouper] Processing group for ${phoneNumber} with ${messages.length} messages`);
 
         const phoneNumberId = messages[0].phone_number_id;
+        const sessionId = messages[0].session_id || null;
+        const accountId = messages[0].account_id || null;
 
-        // Get owner settings including Evolution API fields
-        const { data: ownerSettings } = await supabase
+        // Get settings including Evolution API fields; prefer the WhatsApp session that received the message
+        let settings = null;
+        if (sessionId) {
+          const { data: waSession } = await supabase
+            .from('whatsapp_sessions')
+            .select('id, account_id, owner_user_id, provider, evolution_instance_name, whatsapp_access_token, whatsapp_phone_number_id')
+            .eq('id', sessionId)
+            .maybeSingle();
+          if (waSession) {
+            const { data: accountSettings } = await supabase
+              .from('whatsapp_account_settings')
+              .select('evolution_api_url, evolution_api_key')
+              .eq('account_id', waSession.account_id)
+              .maybeSingle();
+            settings = {
+              user_id: waSession.owner_user_id,
+              whatsapp_provider: waSession.provider,
+              whatsapp_access_token: waSession.whatsapp_access_token,
+              whatsapp_phone_number_id: waSession.whatsapp_phone_number_id,
+              evolution_api_url: accountSettings?.evolution_api_url,
+              evolution_api_key: accountSettings?.evolution_api_key,
+              evolution_instance_name: waSession.evolution_instance_name,
+            };
+          }
+        }
+
+        if (!settings && accountId) {
+          const { data: accountNinaSettings } = await supabase
+            .from('nina_settings')
+            .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
+            .eq('account_id', accountId)
+            .maybeSingle();
+          settings = accountNinaSettings;
+        }
+
+        const { data: ownerSettings } = !settings ? await supabase
           .from('nina_settings')
           .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
           .eq('whatsapp_phone_number_id', phoneNumberId)
-          .maybeSingle();
+          .maybeSingle() : { data: null };
 
         // If no settings found by phone_number_id, try global settings
-        let settings = ownerSettings;
+        settings = settings || ownerSettings;
         if (!settings) {
           const { data: globalSettings } = await supabase
             .from('nina_settings')
@@ -176,9 +212,12 @@ serve(async (req) => {
                   phone_number_id: phoneNumberId,
                   contact_name: conversation.contacts?.name || conversation.contacts?.call_name,
                   message_type: lastDbMessage.type,
+                  session_id: sessionId,
                   grouped_count: messageIds.length,
                   combined_content: combinedContent
-                }
+                },
+                account_id: accountId || conversation.account_id,
+                session_id: sessionId || conversation.session_id
               });
 
             if (ninaQueueError) {
