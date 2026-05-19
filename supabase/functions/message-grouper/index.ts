@@ -52,13 +52,14 @@ serve(async (req) => {
 
     console.log(`[MessageGrouper] Marked ${readyIds.length} messages as processed`);
 
-    // Group messages by phone number
+    // Group messages by session + phone number to avoid mixing different WhatsApp sessions
     const grouped: Record<string, typeof readyMessages> = {};
     for (const msg of readyMessages) {
       const phone = msg.message_data?.from;
       if (!phone) continue;
-      if (!grouped[phone]) grouped[phone] = [];
-      grouped[phone].push(msg);
+      const groupKey = `${msg.session_id || msg.phone_number_id || 'unknown'}:${phone}`;
+      if (!grouped[groupKey]) grouped[groupKey] = [];
+      grouped[groupKey].push(msg);
     }
 
     const groupCount = Object.keys(grouped).length;
@@ -66,8 +67,9 @@ serve(async (req) => {
 
     let processedCount = 0;
 
-    for (const [phoneNumber, messages] of Object.entries(grouped)) {
+    for (const [groupKey, messages] of Object.entries(grouped)) {
       try {
+        const phoneNumber = messages[0].message_data?.from || groupKey;
         console.log(`[MessageGrouper] Processing group for ${phoneNumber} with ${messages.length} messages`);
 
         const phoneNumberId = messages[0].phone_number_id;
