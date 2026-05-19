@@ -1092,10 +1092,9 @@ async function processQueueItem(
         // Add confirmation to response if appointment was created successfully
         if (appointmentCreated && !appointmentCreated.error) {
           const dateFormatted = args.date.split('-').reverse().join('/');
-          const meetInfo = appointmentCreated.meeting_url ? ` Link: ${appointmentCreated.meeting_url}` : '';
-          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!${meetInfo}`;
+          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!`;
           aiContent = (aiContent || '') + confirmationMsg;
-          console.log('[Nina] Appointment confirmation added to response');
+          console.log('[Nina] Appointment confirmation added to response (link will be sent separately)');
         } else if (appointmentCreated?.error === 'date_in_past') {
           aiContent = (aiContent || '') + '\n\n⚠️ Não foi possível agendar para uma data passada. Por favor, escolha uma data futura.';
         } else if (appointmentCreated?.error === 'time_conflict') {
@@ -1241,6 +1240,29 @@ async function processQueueItem(
     }
   } else {
     await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
+  }
+
+  // If an appointment was created with a meeting link, send the link as a separate text message
+  if (appointmentCreated && !appointmentCreated.error && appointmentCreated.meeting_url) {
+    const linkDelay = delay + (shouldSendAudio ? 8000 : 3000);
+    const { error: linkErr } = await supabase.from('send_queue').insert({
+      conversation_id: conversation.id,
+      contact_id: conversation.contact_id,
+      content: `🔗 Link da reunião: ${appointmentCreated.meeting_url}`,
+      from_type: 'nina',
+      message_type: 'text',
+      priority: 2,
+      scheduled_at: new Date(Date.now() + linkDelay).toISOString(),
+      account_id: conversation.account_id,
+      session_id: conversation.session_id,
+      metadata: {
+        response_to_message_id: message.id,
+        appointment_id: appointmentCreated.id,
+        meeting_link: true,
+      }
+    });
+    if (linkErr) console.error('[Nina] Failed to queue meeting link message:', linkErr);
+    else console.log('[Nina] Meeting link queued as separate text message');
   }
 
   // Trigger whatsapp-sender
