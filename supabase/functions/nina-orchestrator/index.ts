@@ -527,10 +527,14 @@ async function syncAppointmentToGoogleCalendar(supabase: any, appointment: any):
     },
   };
 
+  const eventUrl = appointment.google_event_id
+    ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${appointment.google_event_id}?conferenceDataVersion=1`
+    : `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`;
+
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
+    eventUrl,
     {
-      method: 'POST',
+      method: appointment.google_event_id ? 'PATCH' : 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
     }
@@ -544,6 +548,30 @@ async function syncAppointmentToGoogleCalendar(supabase: any, appointment: any):
   await supabase.from('appointments').update(updates).eq('id', appointment.id);
 
   return { success: true, google_event_id: result.id, meeting_url: result.hangoutLink || null };
+}
+
+async function resolveSchedulingUserId(supabase: any, accountId: string, preferredUserId: string | null): Promise<string | null> {
+  if (preferredUserId) {
+    const { data: preferredConnection } = await supabase
+      .from('google_calendar_connections')
+      .select('user_id')
+      .eq('account_id', accountId)
+      .eq('user_id', preferredUserId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (preferredConnection?.user_id) return preferredConnection.user_id;
+  }
+
+  const { data: accountConnection } = await supabase
+    .from('google_calendar_connections')
+    .select('user_id')
+    .eq('account_id', accountId)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return accountConnection?.user_id || preferredUserId;
 }
 
 async function createAppointmentFromAI(
