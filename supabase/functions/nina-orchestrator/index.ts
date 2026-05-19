@@ -223,14 +223,14 @@ serve(async (req) => {
               .maybeSingle();
             settings = {
               ...(settings || {}),
-              is_active: true,
-              auto_response_enabled: true,
+              is_active: settings?.is_active ?? true,
+              auto_response_enabled: settings?.auto_response_enabled ?? true,
               ai_model_mode: settings?.ai_model_mode || 'flash',
               response_delay_min: settings?.response_delay_min ?? 1000,
               response_delay_max: settings?.response_delay_max ?? 3000,
               message_breaking_enabled: settings?.message_breaking_enabled ?? false,
               audio_response_enabled: settings?.audio_response_enabled ?? true,
-              ai_scheduling_enabled: true,
+              ai_scheduling_enabled: settings?.ai_scheduling_enabled ?? true,
               user_id: waSession.owner_user_id,
               account_id: waSession.account_id,
               whatsapp_provider: waSession.provider,
