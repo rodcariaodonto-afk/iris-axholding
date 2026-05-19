@@ -278,7 +278,10 @@ async function sendMessageCloudAPI(supabase: any, settings: any, queueItem: any)
 async function updateMessageRecord(supabase: any, queueItem: any, whatsappMessageId: string | null) {
   if (queueItem.message_id) {
     const { error } = await supabase.from('messages').update({
-      whatsapp_message_id: whatsappMessageId, status: 'sent', sent_at: new Date().toISOString()
+      whatsapp_message_id: whatsappMessageId,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      session_id: queueItem.session_id || null,
     }).eq('id', queueItem.message_id);
     if (error) throw error;
   } else {
