@@ -166,10 +166,10 @@ serve(async (req) => {
 
     for (const item of queueItems) {
       try {
-        // Get user_id from conversation to fetch correct settings
+        // Get routing data from conversation to fetch correct settings/session
         const { data: conversation } = await supabase
           .from('conversations')
-          .select('user_id')
+          .select('user_id, account_id, session_id')
           .eq('id', item.conversation_id)
           .single();
 
@@ -186,8 +186,52 @@ serve(async (req) => {
           continue;
         }
 
-        // Buscar settings com fallback triplo (user_id → global → any)
+        // Buscar settings com fallback por sessão → conta → user_id → global → any
         let settings = null;
+
+        if (conversation.session_id) {
+          const { data: waSession } = await supabase
+            .from('whatsapp_sessions')
+            .select('id, account_id, owner_user_id, provider, evolution_instance_name, whatsapp_access_token, whatsapp_phone_number_id')
+            .eq('id', conversation.session_id)
+            .maybeSingle();
+          if (waSession) {
+            const { data: accountSettings } = await supabase
+              .from('whatsapp_account_settings')
+              .select('evolution_api_url, evolution_api_key')
+              .eq('account_id', waSession.account_id)
+              .maybeSingle();
+            settings = {
+              is_active: true,
+              auto_response_enabled: true,
+              ai_model_mode: 'flash',
+              response_delay_min: 1000,
+              response_delay_max: 3000,
+              message_breaking_enabled: false,
+              audio_response_enabled: false,
+              ai_scheduling_enabled: true,
+              user_id: waSession.owner_user_id,
+              account_id: waSession.account_id,
+              whatsapp_provider: waSession.provider,
+              whatsapp_access_token: waSession.whatsapp_access_token,
+              whatsapp_phone_number_id: waSession.whatsapp_phone_number_id,
+              evolution_api_url: accountSettings?.evolution_api_url,
+              evolution_api_key: accountSettings?.evolution_api_key,
+              evolution_instance_name: waSession.evolution_instance_name,
+            };
+            console.log('[Nina] Found settings from WhatsApp session:', conversation.session_id);
+          }
+        }
+        
+        if (!settings && conversation.account_id) {
+          const { data: accountSettings } = await supabase
+            .from('nina_settings')
+            .select('*')
+            .eq('account_id', conversation.account_id)
+            .maybeSingle();
+          settings = accountSettings;
+          if (settings) console.log('[Nina] Found settings for account:', conversation.account_id);
+        }
         
         // 1. Tentar buscar por user_id da conversa
         if (conversation.user_id) {
@@ -1066,6 +1110,8 @@ async function processQueueItem(
             media_url: audioUrl,
             priority: 1,
             scheduled_at: new Date(Date.now() + delay).toISOString(),
+            account_id: conversation.account_id,
+            session_id: conversation.session_id,
             metadata: {
               response_to_message_id: message.id,
               ai_model: aiSettings.model,
@@ -1159,6 +1205,8 @@ async function queueTextResponse(
         message_type: 'text',
         priority: 1,
         scheduled_at: new Date(Date.now() + chunkDelay).toISOString(),
+        account_id: conversation.account_id,
+        session_id: conversation.session_id,
         metadata: {
           response_to_message_id: message.id,
           ai_model: aiSettings.model,

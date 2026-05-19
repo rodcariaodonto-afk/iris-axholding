@@ -173,7 +173,7 @@ async function handleEvolutionWebhook(
   const { data: waSession } = await supabase
     .from('whatsapp_sessions')
     .select('id, account_id, owner_user_id')
-    .eq('evolution_instance_name', instanceName)
+    .ilike('evolution_instance_name', instanceName)
     .maybeSingle();
 
   let sessionId: string | null = waSession?.id ?? null;
@@ -192,11 +192,12 @@ async function handleEvolutionWebhook(
   }
 
   // Get or create contact
-  let { data: contact } = await supabase
+  let contactQuery = supabase
     .from('contacts')
     .select('*')
-    .eq('phone_number', phoneNumber)
-    .maybeSingle();
+    .eq('phone_number', phoneNumber);
+  if (sessionAccountId) contactQuery = contactQuery.eq('account_id', sessionAccountId);
+  let { data: contact } = await contactQuery.maybeSingle();
 
   if (!contact) {
     const { data: newContact, error: contactError } = await supabase
@@ -206,7 +207,8 @@ async function handleEvolutionWebhook(
         whatsapp_id: phoneNumber,
         name: contactName,
         call_name: contactName?.split(' ')[0] || null,
-        user_id: null
+        user_id: null,
+        ...(sessionAccountId ? { account_id: sessionAccountId } : {})
       })
       .select()
       .single();
@@ -230,12 +232,23 @@ async function handleEvolutionWebhook(
   }
 
   // Get or create conversation
-  let { data: conversation } = await supabase
+  let convQuery = supabase
     .from('conversations')
     .select('*')
     .eq('contact_id', contact.id)
-    .eq('is_active', true)
-    .maybeSingle();
+    .eq('is_active', true);
+  if (sessionAccountId) convQuery = convQuery.eq('account_id', sessionAccountId);
+  let { data: conversation } = await convQuery.maybeSingle();
+
+  if (conversation && sessionId && (!conversation.session_id || conversation.session_id !== sessionId || !conversation.assigned_user_id)) {
+    const { data: updatedConversation } = await supabase
+      .from('conversations')
+      .update({ session_id: sessionId, assigned_user_id: ownerId, ...(sessionAccountId ? { account_id: sessionAccountId } : {}) })
+      .eq('id', conversation.id)
+      .select()
+      .single();
+    conversation = updatedConversation || conversation;
+  }
 
   if (!conversation) {
     const { data: newConv, error: convError } = await supabase
@@ -362,6 +375,8 @@ async function handleEvolutionWebhook(
       whatsapp_message_id: messageId,
       phone_number_id: instanceName,
       message_id: dbMessage.id,
+      account_id: sessionAccountId,
+      session_id: sessionId,
       message_data: { from: phoneNumber, type: messageType, key: data.key, ...msg },
       contacts_data: { wa_id: phoneNumber, profile: { name: contactName } },
       process_after: processAfter
@@ -462,7 +477,7 @@ async function handleCloudAPIWebhook(
     .maybeSingle();
   const sessionId: string | null = waSession?.id ?? null;
   const sessionAccountId: string | null = waSession?.account_id ?? null;
-  const ownerId: string | null = waSession?.owner_user_id ?? null;
+  ownerId = waSession?.owner_user_id ?? ownerId;
 
   if (messages && messages.length > 0) {
     const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
