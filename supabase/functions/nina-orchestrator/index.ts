@@ -765,6 +765,7 @@ async function cancelAppointmentFromAI(
   supabase: any,
   contactId: string,
   userId: string | null,
+  accountId: string,
   args: {
     reason?: string;
   }
@@ -775,6 +776,7 @@ async function cancelAppointmentFromAI(
   const query = supabase
     .from('appointments')
     .select('*')
+    .eq('account_id', accountId)
     .eq('contact_id', contactId)
     .eq('status', 'scheduled')
     .order('date', { ascending: true })
