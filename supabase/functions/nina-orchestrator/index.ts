@@ -8,6 +8,9 @@ const corsHeaders = {
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
+const BRASILIA_OFFSET = '-03:00';
+const MAX_AUDIO_CHARS = 650;
 
 // Helper: get current date/time in Brasília (UTC-3)
 function getNowBrasilia(): Date {
@@ -419,7 +422,7 @@ async function uploadAudioToStorage(
   conversationId: string
 ): Promise<string | null> {
   try {
-    const fileName = `${conversationId}/${Date.now()}.mp3`;
+    const fileName = `${conversationId}/${Date.now()}-${crypto.randomUUID()}.mp3`;
     
     const { data, error } = await supabase.storage
       .from('audio-messages')
