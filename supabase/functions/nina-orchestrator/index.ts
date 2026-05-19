@@ -1056,13 +1056,15 @@ async function processQueueItem(
           conversation.contact_id,
           conversation.id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
         // Add confirmation to response if appointment was created successfully
         if (appointmentCreated && !appointmentCreated.error) {
           const dateFormatted = args.date.split('-').reverse().join('/');
-          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!`;
+          const meetInfo = appointmentCreated.meeting_url ? ` Link: ${appointmentCreated.meeting_url}` : '';
+          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!${meetInfo}`;
           aiContent = (aiContent || '') + confirmationMsg;
           console.log('[Nina] Appointment confirmation added to response');
         } else if (appointmentCreated?.error === 'date_in_past') {
@@ -1084,6 +1086,7 @@ async function processQueueItem(
           supabase,
           conversation.contact_id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
@@ -1114,6 +1117,7 @@ async function processQueueItem(
           supabase,
           conversation.contact_id,
           settings?.user_id || null,
+          conversation.account_id,
           args
         );
         
