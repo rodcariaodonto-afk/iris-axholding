@@ -590,6 +590,7 @@ async function createAppointmentFromAI(
   }
 ): Promise<any> {
   console.log('[Nina] Creating appointment from AI:', args, 'for user:', userId);
+  const schedulingUserId = await resolveSchedulingUserId(supabase, accountId, userId);
   
   // Validate date is not in the past (using Brasília timezone)
   const appointmentDate = parseDateTimeBrasilia(args.date, args.time);
@@ -608,8 +609,8 @@ async function createAppointmentFromAI(
     .eq('date', args.date)
     .eq('status', 'scheduled');
   
-  if (userId) {
-    query.eq('user_id', userId);
+  if (schedulingUserId) {
+    query.eq('user_id', schedulingUserId);
   }
   
   const { data: existingAppointments } = await query;
@@ -655,8 +656,8 @@ async function createAppointmentFromAI(
   };
   
   // Add user_id if available (for RLS compliance)
-  if (userId) {
-    insertData.user_id = userId;
+  if (schedulingUserId) {
+    insertData.user_id = schedulingUserId;
   }
   
   const { data, error } = await supabase
