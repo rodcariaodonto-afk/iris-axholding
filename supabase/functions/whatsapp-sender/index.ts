@@ -70,6 +70,11 @@ serve(async (req) => {
           if (!conversation) throw new Error('Conversation not found');
 
           const sessionId = item.session_id || conversation.session_id || null;
+          const queueItem = {
+            ...item,
+            account_id: item.account_id || conversation.account_id,
+            session_id: sessionId,
+          };
           const userId = conversation.user_id;
           const cacheKey = sessionId || conversation.account_id || userId || 'global';
           let settings = settingsCache[cacheKey];
@@ -83,9 +88,9 @@ serve(async (req) => {
           const provider = settings.whatsapp_provider || 'evolution';
 
           if (provider === 'evolution') {
-            await sendMessageEvolution(supabase, settings, item);
+            await sendMessageEvolution(supabase, settings, queueItem);
           } else {
-            await sendMessageCloudAPI(supabase, settings, item);
+            await sendMessageCloudAPI(supabase, settings, queueItem);
           }
           
           await supabase
@@ -272,16 +277,20 @@ async function sendMessageCloudAPI(supabase: any, settings: any, queueItem: any)
 
 async function updateMessageRecord(supabase: any, queueItem: any, whatsappMessageId: string | null) {
   if (queueItem.message_id) {
-    await supabase.from('messages').update({
+    const { error } = await supabase.from('messages').update({
       whatsapp_message_id: whatsappMessageId, status: 'sent', sent_at: new Date().toISOString()
     }).eq('id', queueItem.message_id);
+    if (error) throw error;
   } else {
-    await supabase.from('messages').insert({
+    const { error } = await supabase.from('messages').insert({
+      account_id: queueItem.account_id,
       conversation_id: queueItem.conversation_id, whatsapp_message_id: whatsappMessageId,
       content: queueItem.content, type: queueItem.message_type, from_type: queueItem.from_type,
       status: 'sent', media_url: queueItem.media_url || null,
+      session_id: queueItem.session_id || null,
       sent_at: new Date().toISOString(), metadata: queueItem.metadata || {}
     });
+    if (error) throw error;
   }
 
   await supabase.from('conversations')
