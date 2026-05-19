@@ -1347,7 +1347,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          account_id: string
+          account_id?: string
           created_at?: string
           data_classification?: Database["public"]["Enums"]["data_classification"]
           description?: string | null
