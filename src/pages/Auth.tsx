@@ -101,6 +101,29 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = emailSchema.safeParse(forgotEmail);
+    if (!result.success) {
+      toast.error('Email inválido');
+      return;
+    }
+    setForgotSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success('Enviamos um link de recuperação para seu email.');
+      setForgotOpen(false);
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-background flex items-center justify-center">
