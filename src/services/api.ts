@@ -1316,7 +1316,7 @@ export const api = {
           .from('messages')
           .select('*')
           .eq('conversation_id', conv.id)
-          .order('sent_at', { ascending: true })
+          .order('sent_at', { ascending: false })
           .limit(100);
 
         if (msgError) {
