@@ -1242,6 +1242,29 @@ async function processQueueItem(
     await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
   }
 
+  // If an appointment was created with a meeting link, send the link as a separate text message
+  if (appointmentCreated && !appointmentCreated.error && appointmentCreated.meeting_url) {
+    const linkDelay = delay + (shouldSendAudio ? 8000 : 3000);
+    const { error: linkErr } = await supabase.from('send_queue').insert({
+      conversation_id: conversation.id,
+      contact_id: conversation.contact_id,
+      content: `🔗 Link da reunião: ${appointmentCreated.meeting_url}`,
+      from_type: 'nina',
+      message_type: 'text',
+      priority: 2,
+      scheduled_at: new Date(Date.now() + linkDelay).toISOString(),
+      account_id: conversation.account_id,
+      session_id: conversation.session_id,
+      metadata: {
+        response_to_message_id: message.id,
+        appointment_id: appointmentCreated.id,
+        meeting_link: true,
+      }
+    });
+    if (linkErr) console.error('[Nina] Failed to queue meeting link message:', linkErr);
+    else console.log('[Nina] Meeting link queued as separate text message');
+  }
+
   // Trigger whatsapp-sender
   try {
     const senderUrl = `${supabaseUrl}/functions/v1/whatsapp-sender`;
