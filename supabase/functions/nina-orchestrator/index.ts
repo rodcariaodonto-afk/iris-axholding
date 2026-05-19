@@ -1092,10 +1092,9 @@ async function processQueueItem(
         // Add confirmation to response if appointment was created successfully
         if (appointmentCreated && !appointmentCreated.error) {
           const dateFormatted = args.date.split('-').reverse().join('/');
-          const meetInfo = appointmentCreated.meeting_url ? ` Link: ${appointmentCreated.meeting_url}` : '';
-          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!${meetInfo}`;
+          const confirmationMsg = `\n\n✅ Agendamento confirmado para ${dateFormatted} às ${args.time}!`;
           aiContent = (aiContent || '') + confirmationMsg;
-          console.log('[Nina] Appointment confirmation added to response');
+          console.log('[Nina] Appointment confirmation added to response (link will be sent separately)');
         } else if (appointmentCreated?.error === 'date_in_past') {
           aiContent = (aiContent || '') + '\n\n⚠️ Não foi possível agendar para uma data passada. Por favor, escolha uma data futura.';
         } else if (appointmentCreated?.error === 'time_conflict') {
