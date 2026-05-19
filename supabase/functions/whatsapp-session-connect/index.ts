@@ -109,9 +109,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    let resolvedStatus = qrCode ? "qr_pending" : "connecting";
+    let resolvedPhoneNumber = session.phone_number ?? null;
+
+    try {
+      const stateResp = await fetch(`${baseUrl}/instance/connectionState/${instanceName}`, {
+        headers: { apikey: apiKey },
+      });
+      if (stateResp.ok) {
+        const stateData = await stateResp.json();
+        const state = String(stateData?.instance?.state ?? stateData?.state ?? "").toLowerCase();
+        if (["open", "connected"].includes(state)) {
+          resolvedStatus = "connected";
+          qrCode = null;
+          const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${instanceName}`, {
+            headers: { apikey: apiKey },
+          });
+          if (prof.ok) {
+            const arr = await prof.json();
+            const inst = Array.isArray(arr) ? arr[0] : arr;
+            resolvedPhoneNumber = inst?.ownerJid?.split("@")[0] ?? inst?.number ?? resolvedPhoneNumber;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[connect] Erro ao consultar estado da instância:", e);
+    }
+
     await supabase.from("whatsapp_sessions").update({
-      status: qrCode ? "qr_pending" : "connecting",
+      status: resolvedStatus,
       qr_code: qrCode,
+      phone_number: resolvedPhoneNumber,
+      last_connected_at: resolvedStatus === "connected" ? new Date().toISOString() : session.last_connected_at,
       evolution_instance_name: instanceName,
       evolution_instance_id: instanceId,
       error_message: null,
@@ -165,7 +194,7 @@ Deno.serve(async (req) => {
       console.error("[connect] Erro configurando webhook:", e);
     }
 
-    return json({ ok: true, status: qrCode ? "qr_pending" : "connecting", qr_code: qrCode });
+    return json({ ok: true, status: resolvedStatus, qr_code: qrCode, phone_number: resolvedPhoneNumber });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
