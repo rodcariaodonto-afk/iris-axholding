@@ -462,7 +462,7 @@ async function handleCloudAPIWebhook(
     .maybeSingle();
   const sessionId: string | null = waSession?.id ?? null;
   const sessionAccountId: string | null = waSession?.account_id ?? null;
-  const ownerId: string | null = waSession?.owner_user_id ?? null;
+  ownerId = waSession?.owner_user_id ?? ownerId;
 
   if (messages && messages.length > 0) {
     const processAfter = new Date(Date.now() + GROUPING_DELAY_MS).toISOString();
