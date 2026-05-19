@@ -1204,46 +1204,9 @@ async function processQueueItem(
 
   if (shouldSendAudio) {
     console.log(`[Nina] Audio response enabled (incoming was audio: ${incomingWasAudio})`);
-    
-    const audioBuffer = await generateAudioElevenLabs(settings, aiContent);
-    
-    if (audioBuffer) {
-      const audioUrl = await uploadAudioToStorage(supabase, audioBuffer, conversation.id);
-      
-      if (audioUrl) {
-        const { error: sendQueueError } = await supabase
-          .from('send_queue')
-          .insert({
-            conversation_id: conversation.id,
-            contact_id: conversation.contact_id,
-            content: aiContent,
-            from_type: 'nina',
-            message_type: 'audio',
-            media_url: audioUrl,
-            priority: 1,
-            scheduled_at: new Date(Date.now() + delay).toISOString(),
-            account_id: conversation.account_id,
-            session_id: conversation.session_id,
-            metadata: {
-              response_to_message_id: message.id,
-              ai_model: aiSettings.model,
-              audio_generated: true,
-              text_content: aiContent,
-              appointment_created: appointmentCreated?.id || null
-            }
-          });
+    const audioQueued = await queueAudioResponses(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
 
-        if (sendQueueError) {
-          console.error('[Nina] Error queuing audio response:', sendQueueError);
-          throw sendQueueError;
-        }
-
-        console.log('[Nina] Audio response queued for sending');
-      } else {
-        console.log('[Nina] Failed to upload audio, falling back to text');
-        await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
-      }
-    } else {
+    if (!audioQueued) {
       console.log('[Nina] Failed to generate audio, falling back to text');
       await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
     }
