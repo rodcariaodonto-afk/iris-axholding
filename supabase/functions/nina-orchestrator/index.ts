@@ -1248,6 +1248,57 @@ async function processQueueItem(
   }).catch(err => console.error('[Nina] Error triggering analyze-conversation:', err));
 }
 
+async function queueAudioResponses(
+  supabase: any,
+  conversation: any,
+  message: any,
+  aiContent: string,
+  settings: any,
+  aiSettings: any,
+  delay: number,
+  appointmentCreated?: any
+): Promise<boolean> {
+  const chunks = splitTextForAudio(aiContent);
+  let queued = 0;
+
+  console.log(`[Nina] Generating ${chunks.length} audio chunk(s)`);
+  for (let i = 0; i < chunks.length; i++) {
+    const audioBuffer = await generateAudioElevenLabs(settings, chunks[i]);
+    if (!audioBuffer) break;
+
+    const audioUrl = await uploadAudioToStorage(supabase, audioBuffer, conversation.id);
+    if (!audioUrl) break;
+
+    const { error } = await supabase.from('send_queue').insert({
+      conversation_id: conversation.id,
+      contact_id: conversation.contact_id,
+      content: chunks[i],
+      from_type: 'nina',
+      message_type: 'audio',
+      media_url: audioUrl,
+      priority: 1,
+      scheduled_at: new Date(Date.now() + delay + i * 4500).toISOString(),
+      account_id: conversation.account_id,
+      session_id: conversation.session_id,
+      metadata: {
+        response_to_message_id: message.id,
+        ai_model: aiSettings.model,
+        audio_generated: true,
+        text_content: chunks[i],
+        chunk_index: i,
+        total_chunks: chunks.length,
+        appointment_created: appointmentCreated?.id || null
+      }
+    });
+
+    if (error) throw error;
+    queued++;
+  }
+
+  console.log(`[Nina] Audio response chunks queued: ${queued}/${chunks.length}`);
+  return queued === chunks.length;
+}
+
 // Helper function to queue text response with chunking
 async function queueTextResponse(
   supabase: any,
