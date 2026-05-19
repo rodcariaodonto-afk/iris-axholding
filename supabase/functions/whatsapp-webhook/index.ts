@@ -173,7 +173,7 @@ async function handleEvolutionWebhook(
   const { data: waSession } = await supabase
     .from('whatsapp_sessions')
     .select('id, account_id, owner_user_id')
-    .eq('evolution_instance_name', instanceName)
+    .ilike('evolution_instance_name', instanceName)
     .maybeSingle();
 
   let sessionId: string | null = waSession?.id ?? null;
