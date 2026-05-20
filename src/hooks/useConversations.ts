@@ -141,19 +141,29 @@ export function useConversations() {
 
   // Set up real-time subscription
   useEffect(() => {
-    fetchConversations();
+    if (accountLoading) return;
+
+    if (!activeAccountId) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
+
+    hasLoadedRef.current = false;
+    fetchConversations({ showLoading: true });
 
     console.log('[Realtime] Setting up real-time subscriptions...');
 
     // Subscribe to new messages
     const messagesChannel = supabase
-      .channel('messages-realtime')
+      .channel(`messages-realtime-${activeAccountId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages'
+          table: 'messages',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] 📩 New message received:', payload.new);
@@ -292,11 +302,11 @@ export function useConversations() {
             console.log('[Realtime] 🔄 Starting polling fallback (every 10s)...');
             pollingIntervalRef.current = setInterval(() => {
               console.log('[Realtime] 📡 Polling for updates...');
-              fetchConversations();
+              fetchConversations({ showLoading: false });
             }, 10000);
           }
           // Also attempt immediate fetch
-          setTimeout(() => fetchConversations(), 2000);
+          setTimeout(() => fetchConversations({ showLoading: false }), 2000);
         } else if (status === 'TIMED_OUT') {
           console.warn('[Realtime] ⚠️ Connection timed out');
           setRealtimeConnected(false);
@@ -305,22 +315,23 @@ export function useConversations() {
             console.log('[Realtime] 🔄 Starting polling fallback after timeout...');
             pollingIntervalRef.current = setInterval(() => {
               console.log('[Realtime] 📡 Polling for updates...');
-              fetchConversations();
+              fetchConversations({ showLoading: false });
             }, 10000);
           }
-          setTimeout(() => fetchConversations(), 3000);
+          setTimeout(() => fetchConversations({ showLoading: false }), 3000);
         }
       });
 
     // Subscribe to conversation changes
     const conversationsChannel = supabase
-      .channel('conversations-realtime')
+      .channel(`conversations-realtime-${activeAccountId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'conversations'
+          table: 'conversations',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] 🆕 New conversation INSERT detected:', payload.new);
@@ -384,7 +395,7 @@ export function useConversations() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [fetchConversations, fetchAndAddConversation]);
+  }, [activeAccountId, accountLoading, fetchConversations, fetchAndAddConversation]);
 
   // Send message
   const sendMessage = useCallback(async (conversationId: string, content: string) => {
