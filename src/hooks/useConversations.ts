@@ -12,8 +12,10 @@ import {
   MessageType
 } from '@/types';
 import { toast } from 'sonner';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 export function useConversations() {
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [conversations, setConversations] = useState<UIConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,8 @@ export function useConversations() {
   
   // Polling interval ref for fallback mechanism
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchingAllRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
   // Fetch a single conversation and add it to state
   const fetchAndAddConversation = useCallback(async (conversationId: string) => {
@@ -40,11 +44,16 @@ export function useConversations() {
     console.log('[Realtime] 🔍 Fetching new conversation:', conversationId);
     
     try {
-      const { data: convData, error: convError } = await supabase
+      let convQuery = supabase
         .from('conversations')
         .select(`*, contact:contacts(*)`)
-        .eq('id', conversationId)
-        .maybeSingle();
+        .eq('id', conversationId);
+
+      if (activeAccountId) {
+        convQuery = convQuery.eq('account_id', activeAccountId);
+      }
+
+      const { data: convData, error: convError } = await convQuery.maybeSingle();
       
       if (convError || !convData) {
         console.error('[Realtime] Error fetching conversation:', convError);
@@ -85,12 +94,28 @@ export function useConversations() {
     } finally {
       fetchingConversationIds.current.delete(conversationId);
     }
-  }, []);
+  }, [activeAccountId]);
 
   // Initial fetch
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (options?: { showLoading?: boolean }) => {
+    if (!activeAccountId) {
+      if (!accountLoading) {
+        setConversations([]);
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (fetchingAllRef.current) {
+      console.log('[useConversations] Fetch already in progress, skipping duplicate');
+      return;
+    }
+
+    fetchingAllRef.current = true;
     try {
-      setLoading(true);
+      if (options?.showLoading || !hasLoadedRef.current) {
+        setLoading(true);
+      }
       setError(null);
       const data = await api.fetchConversations();
       
@@ -103,14 +128,16 @@ export function useConversations() {
       });
       
       setConversations(data);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error('[useConversations] Error fetching:', err);
       setError('Erro ao carregar conversas');
       toast.error('Erro ao carregar conversas');
     } finally {
       setLoading(false);
+      fetchingAllRef.current = false;
     }
-  }, []);
+  }, [activeAccountId, accountLoading]);
 
   // Set up real-time subscription
   useEffect(() => {
