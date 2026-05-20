@@ -98,25 +98,13 @@ serve(async (req) => {
           message: 'Sessões configuradas, mas nenhuma conectada',
           details: 'Escaneie o QR Code para conectar',
         });
-      } else if (false) {
-        // Cloud API validation (legacy)
-        if (settings.whatsapp_access_token && settings.whatsapp_phone_number_id) {
-          try {
-            const waResponse = await fetch(`https://graph.facebook.com/v18.0/${settings.whatsapp_phone_number_id}`, {
-              headers: { Authorization: `Bearer ${settings.whatsapp_access_token}` },
-            });
-            if (waResponse.ok) {
-              const waData = await waResponse.json();
-              results.push({ component: 'whatsapp', status: 'ok', message: `WhatsApp conectado: ${waData.display_phone_number || 'Ativo'}` });
-            } else {
-              results.push({ component: 'whatsapp', status: 'error', message: 'Token do WhatsApp inválido ou expirado' });
-            }
-          } catch (e) {
-            results.push({ component: 'whatsapp', status: 'warning', message: 'Não foi possível validar WhatsApp' });
-          }
-        } else {
-          results.push({ component: 'whatsapp', status: 'error', message: 'WhatsApp Cloud API não configurada' });
-        }
+      } else {
+        results.push({
+          component: 'whatsapp',
+          status: 'error',
+          message: 'Nenhuma sessão de WhatsApp configurada',
+          details: 'Crie uma sessão em Configurações > WhatsApp',
+        });
       }
 
       // Agent Prompt
