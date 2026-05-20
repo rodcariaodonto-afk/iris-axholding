@@ -298,32 +298,65 @@ async function handleEvolutionWebhook(
   let mediaId = null;
   const msg = data.message;
 
-  if (msg?.conversation) {
-    messageContent = msg.conversation;
-  } else if (msg?.extendedTextMessage?.text) {
-    messageContent = msg.extendedTextMessage.text;
-  } else if (msg?.imageMessage) {
-    messageContent = msg.imageMessage.caption || '[imagem recebida]';
+  // Unwrap ephemeral/view-once/template wrappers (Evolution sometimes nests the real payload)
+  const innerMsg =
+    msg?.ephemeralMessage?.message ||
+    msg?.viewOnceMessage?.message ||
+    msg?.viewOnceMessageV2?.message ||
+    msg?.viewOnceMessageV2Extension?.message ||
+    msg?.templateMessage?.hydratedTemplate ||
+    msg?.templateMessage?.interactiveMessageTemplate ||
+    msg?.interactiveMessage ||
+    msg;
+
+  const pickMedia = (m: any) =>
+    m?.imageMessage || m?.audioMessage || m?.videoMessage || m?.documentMessage ||
+    m?.stickerMessage || m?.locationMessage || m?.contactMessage;
+
+  const effective = pickMedia(innerMsg) ? innerMsg : (pickMedia(msg) ? msg : innerMsg);
+
+  if (effective?.conversation) {
+    messageContent = effective.conversation;
+  } else if (effective?.extendedTextMessage?.text) {
+    messageContent = effective.extendedTextMessage.text;
+  } else if (effective?.imageMessage) {
+    messageContent = effective.imageMessage.caption || '[imagem recebida]';
     messageType = 'image';
     mediaType = 'image';
     mediaId = messageId;
-  } else if (msg?.audioMessage) {
+  } else if (effective?.audioMessage) {
     messageContent = '[áudio - processando transcrição...]';
     messageType = 'audio';
     mediaType = 'audio';
     mediaId = messageId;
-  } else if (msg?.videoMessage) {
-    messageContent = msg.videoMessage.caption || '[vídeo recebido]';
+  } else if (effective?.videoMessage) {
+    messageContent = effective.videoMessage.caption || '[vídeo recebido]';
     messageType = 'video';
     mediaType = 'video';
     mediaId = messageId;
-  } else if (msg?.documentMessage) {
-    messageContent = msg.documentMessage.fileName || '[documento recebido]';
+  } else if (effective?.documentMessage) {
+    messageContent = effective.documentMessage.fileName || '[documento recebido]';
     messageType = 'document';
     mediaType = 'document';
     mediaId = messageId;
+  } else if (effective?.stickerMessage) {
+    messageContent = '[sticker recebido]';
+    messageType = 'image';
+    mediaType = 'image';
+    mediaId = messageId;
+  } else if (effective?.locationMessage) {
+    const loc = effective.locationMessage;
+    messageContent = `[localização recebida] ${loc.degreesLatitude},${loc.degreesLongitude}`;
+  } else if (effective?.contactMessage?.displayName) {
+    messageContent = `[contato recebido] ${effective.contactMessage.displayName}`;
+  } else if (effective?.buttonsResponseMessage?.selectedDisplayText) {
+    messageContent = effective.buttonsResponseMessage.selectedDisplayText;
+  } else if (effective?.listResponseMessage?.title) {
+    messageContent = effective.listResponseMessage.title;
+  } else if (effective?.templateButtonReplyMessage?.selectedDisplayText) {
+    messageContent = effective.templateButtonReplyMessage.selectedDisplayText;
   } else {
-    messageContent = '[mensagem não suportada]';
+    messageContent = '[mensagem recebida]';
   }
 
   // Create message

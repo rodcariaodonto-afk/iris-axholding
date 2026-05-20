@@ -1207,6 +1207,15 @@ async function processQueueItem(
     aiContent = 'Olá! Como posso ajudar você hoje? 😊';
   }
 
+  // Sanitize: strip any control/routing tags the AI may leak from custom prompts
+  // (e.g. [RESPONDER_EM_AUDIO], [RESPONDER_EM_TEXTO], output_type=audio, etc.)
+  aiContent = aiContent
+    .replace(/\[\s*RESPONDER_EM_[A-Z_]+\s*\]/gi, '')
+    .replace(/\[\s*OUTPUT[_\s]?TYPE\s*[:=]\s*[a-z_]+\s*\]/gi, '')
+    .replace(/output_type\s*=\s*[a-z_]+/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
   console.log('[Nina] Final response length:', aiContent.length);
 
   // Calculate response time
