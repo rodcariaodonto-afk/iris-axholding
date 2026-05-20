@@ -259,7 +259,8 @@ export function useConversations() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'messages'
+          table: 'messages',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] Message updated:', payload.new);
@@ -354,7 +355,8 @@ export function useConversations() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'conversations'
+          table: 'conversations',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] Conversation UPDATE:', payload.new);
