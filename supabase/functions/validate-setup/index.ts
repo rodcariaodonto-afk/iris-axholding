@@ -64,36 +64,41 @@ serve(async (req) => {
         results.push({ component: 'identity', status: 'warning', message: 'Identidade não configurada', details: 'Configure nome da empresa e SDR' });
       }
 
-      // Check WhatsApp based on provider
-      const provider = settings.whatsapp_provider || 'evolution';
+      // Check WhatsApp based on whatsapp_sessions (multi-instance, per account)
+      // Resolve user's account(s)
+      const { data: memberships } = await supabase
+        .from('account_members')
+        .select('account_id')
+        .eq('user_id', user.id);
+      const accountIds = (memberships || []).map((m: any) => m.account_id);
 
-      if (provider === 'evolution') {
-        if (settings.evolution_api_url && settings.evolution_api_key && settings.evolution_instance_name) {
-          // Test Evolution API connection
-          try {
-            const baseUrl = settings.evolution_api_url.replace(/\/$/, '');
-            const response = await fetch(`${baseUrl}/instance/connectionState/${settings.evolution_instance_name}`, {
-              headers: { 'apikey': settings.evolution_api_key },
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              const state = data.instance?.state || data.state || 'unknown';
-              if (state === 'open' || state === 'connected') {
-                results.push({ component: 'whatsapp', status: 'ok', message: `Evolution API conectada (${settings.evolution_instance_name})` });
-              } else {
-                results.push({ component: 'whatsapp', status: 'warning', message: `Evolution API: instância ${state}`, details: 'Verifique se o QR Code foi escaneado' });
-              }
-            } else {
-              results.push({ component: 'whatsapp', status: 'error', message: 'Erro ao conectar com Evolution API', details: 'Verifique URL e API Key' });
-            }
-          } catch (e) {
-            results.push({ component: 'whatsapp', status: 'warning', message: 'Não foi possível validar Evolution API', details: 'Erro de conexão' });
-          }
-        } else {
-          results.push({ component: 'whatsapp', status: 'error', message: 'Evolution API não configurada', details: 'Configure URL, API Key e nome da instância' });
-        }
-      } else {
+      let sessions: any[] = [];
+      if (accountIds.length > 0) {
+        const { data: sess } = await supabase
+          .from('whatsapp_sessions')
+          .select('id, session_name, status, provider, phone_number, evolution_instance_name')
+          .in('account_id', accountIds);
+        sessions = sess || [];
+      }
+
+      const connectedSessions = sessions.filter((s) => s.status === 'connected');
+      if (connectedSessions.length > 0) {
+        const names = connectedSessions.map((s) => s.session_name).join(', ');
+        results.push({
+          component: 'whatsapp',
+          status: 'ok',
+          message: connectedSessions.length === 1
+            ? `WhatsApp conectado (${names})`
+            : `${connectedSessions.length} sessões conectadas (${names})`,
+        });
+      } else if (sessions.length > 0) {
+        results.push({
+          component: 'whatsapp',
+          status: 'warning',
+          message: 'Sessões configuradas, mas nenhuma conectada',
+          details: 'Escaneie o QR Code para conectar',
+        });
+      } else if (false) {
         // Cloud API validation (legacy)
         if (settings.whatsapp_access_token && settings.whatsapp_phone_number_id) {
           try {
