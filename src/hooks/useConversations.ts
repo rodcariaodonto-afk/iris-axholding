@@ -12,8 +12,10 @@ import {
   MessageType
 } from '@/types';
 import { toast } from 'sonner';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 export function useConversations() {
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [conversations, setConversations] = useState<UIConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,8 @@ export function useConversations() {
   
   // Polling interval ref for fallback mechanism
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchingAllRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
   // Fetch a single conversation and add it to state
   const fetchAndAddConversation = useCallback(async (conversationId: string) => {
@@ -40,11 +44,16 @@ export function useConversations() {
     console.log('[Realtime] 🔍 Fetching new conversation:', conversationId);
     
     try {
-      const { data: convData, error: convError } = await supabase
+      let convQuery = supabase
         .from('conversations')
         .select(`*, contact:contacts(*)`)
-        .eq('id', conversationId)
-        .maybeSingle();
+        .eq('id', conversationId);
+
+      if (activeAccountId) {
+        convQuery = convQuery.eq('account_id', activeAccountId);
+      }
+
+      const { data: convData, error: convError } = await convQuery.maybeSingle();
       
       if (convError || !convData) {
         console.error('[Realtime] Error fetching conversation:', convError);
@@ -85,12 +94,28 @@ export function useConversations() {
     } finally {
       fetchingConversationIds.current.delete(conversationId);
     }
-  }, []);
+  }, [activeAccountId]);
 
   // Initial fetch
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (options?: { showLoading?: boolean }) => {
+    if (!activeAccountId) {
+      if (!accountLoading) {
+        setConversations([]);
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (fetchingAllRef.current) {
+      console.log('[useConversations] Fetch already in progress, skipping duplicate');
+      return;
+    }
+
+    fetchingAllRef.current = true;
     try {
-      setLoading(true);
+      if (options?.showLoading || !hasLoadedRef.current) {
+        setLoading(true);
+      }
       setError(null);
       const data = await api.fetchConversations();
       
@@ -103,30 +128,42 @@ export function useConversations() {
       });
       
       setConversations(data);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error('[useConversations] Error fetching:', err);
       setError('Erro ao carregar conversas');
       toast.error('Erro ao carregar conversas');
     } finally {
       setLoading(false);
+      fetchingAllRef.current = false;
     }
-  }, []);
+  }, [activeAccountId, accountLoading]);
 
   // Set up real-time subscription
   useEffect(() => {
-    fetchConversations();
+    if (accountLoading) return;
+
+    if (!activeAccountId) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
+
+    hasLoadedRef.current = false;
+    fetchConversations({ showLoading: true });
 
     console.log('[Realtime] Setting up real-time subscriptions...');
 
     // Subscribe to new messages
     const messagesChannel = supabase
-      .channel('messages-realtime')
+      .channel(`messages-realtime-${activeAccountId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages'
+          table: 'messages',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] 📩 New message received:', payload.new);
@@ -222,7 +259,8 @@ export function useConversations() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'messages'
+          table: 'messages',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] Message updated:', payload.new);
@@ -265,11 +303,11 @@ export function useConversations() {
             console.log('[Realtime] 🔄 Starting polling fallback (every 10s)...');
             pollingIntervalRef.current = setInterval(() => {
               console.log('[Realtime] 📡 Polling for updates...');
-              fetchConversations();
+              fetchConversations({ showLoading: false });
             }, 10000);
           }
           // Also attempt immediate fetch
-          setTimeout(() => fetchConversations(), 2000);
+          setTimeout(() => fetchConversations({ showLoading: false }), 2000);
         } else if (status === 'TIMED_OUT') {
           console.warn('[Realtime] ⚠️ Connection timed out');
           setRealtimeConnected(false);
@@ -278,22 +316,23 @@ export function useConversations() {
             console.log('[Realtime] 🔄 Starting polling fallback after timeout...');
             pollingIntervalRef.current = setInterval(() => {
               console.log('[Realtime] 📡 Polling for updates...');
-              fetchConversations();
+              fetchConversations({ showLoading: false });
             }, 10000);
           }
-          setTimeout(() => fetchConversations(), 3000);
+          setTimeout(() => fetchConversations({ showLoading: false }), 3000);
         }
       });
 
     // Subscribe to conversation changes
     const conversationsChannel = supabase
-      .channel('conversations-realtime')
+      .channel(`conversations-realtime-${activeAccountId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'conversations'
+          table: 'conversations',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] 🆕 New conversation INSERT detected:', payload.new);
@@ -316,7 +355,8 @@ export function useConversations() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'conversations'
+          table: 'conversations',
+          filter: `account_id=eq.${activeAccountId}`
         },
         (payload) => {
           console.log('[Realtime] Conversation UPDATE:', payload.new);
@@ -357,7 +397,7 @@ export function useConversations() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [fetchConversations, fetchAndAddConversation]);
+  }, [activeAccountId, accountLoading, fetchConversations, fetchAndAddConversation]);
 
   // Send message
   const sendMessage = useCallback(async (conversationId: string, content: string) => {
