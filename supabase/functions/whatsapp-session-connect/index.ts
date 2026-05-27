@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     }
     const baseUrl = settings.evolution_api_url.replace(/\/$/, "");
     const apiKey = settings.evolution_api_key;
-    const instanceName = session.evolution_instance_name || `iris-${session.id.slice(0, 8)}`;
+    const instanceName = session.evolution_instance_name || `fce-${session.id.slice(0, 8)}`;
 
     // 1) Tenta criar instância (se já existe, segue)
     const createResp = await fetch(`${baseUrl}/instance/create`, {

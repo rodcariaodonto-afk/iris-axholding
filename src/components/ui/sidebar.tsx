@@ -154,7 +154,7 @@ export const MobileSidebar = ({
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="text-sm font-semibold tracking-tight text-foreground">Iris</div>
+        <div className="text-sm font-semibold tracking-tight text-foreground">FCE</div>
         <div className="w-10 h-10" />
         <AnimatePresence>
           {open && (

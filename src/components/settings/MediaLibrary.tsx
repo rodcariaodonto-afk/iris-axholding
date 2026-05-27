@@ -133,7 +133,7 @@ const MediaLibrary: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold text-white">Biblioteca de Arquivos</h3>
           <p className="text-sm text-slate-400">
-            Arquivos que a Nina pode enviar automaticamente nas conversas (PDFs, catálogos, imagens).
+            Arquivos que a DANI pode enviar automaticamente nas conversas (PDFs, catálogos, imagens).
           </p>
         </div>
         {isAdmin && (
@@ -180,7 +180,7 @@ const MediaLibrary: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Descrição (quando a Nina deve enviar)
+              Descrição (quando a DANI deve enviar)
             </label>
             <textarea
               value={formDescription}
@@ -219,7 +219,7 @@ const MediaLibrary: React.FC = () => {
         <div className="text-center py-16 text-slate-500">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>Nenhum arquivo na biblioteca ainda.</p>
-          <p className="text-sm mt-1">Adicione PDFs, catálogos ou imagens para a Nina enviar.</p>
+          <p className="text-sm mt-1">Adicione PDFs, catálogos ou imagens para a DANI enviar.</p>
         </div>
       ) : (
         <div className="space-y-3">

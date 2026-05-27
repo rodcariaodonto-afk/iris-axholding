@@ -76,7 +76,7 @@ export default function AccountPlan() {
           </div>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground text-center">Para mudar de plano, fale com o time AXHolding.</p>
+      <p className="text-xs text-muted-foreground text-center">Para mudar de plano, fale com o time FCE.</p>
     </div>
   );
 }

@@ -83,7 +83,7 @@ export const StepIdentity: React.FC<StepIdentityProps> = ({
             id="sdrName"
             value={sdrName}
             onChange={(e) => onSdrNameChange(e.target.value)}
-            placeholder="Ex: Julia, Carlos, Nina..."
+            placeholder="Ex: DANI, Julia, Carlos..."
             className="focus:ring-primary"
           />
           <p className="text-xs text-muted-foreground">Nome que a IA usará ao se apresentar</p>

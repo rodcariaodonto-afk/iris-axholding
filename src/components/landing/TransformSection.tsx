@@ -10,7 +10,7 @@ const ANTES = [
 
 const DEPOIS = [
   "Atendimento inteligente com IA apoiando a operação",
-  "IRIS responde 24/7 e qualifica o primeiro contato",
+  "FCE responde 24/7 e qualifica o primeiro contato",
   "Conversas, contatos e oportunidades centralizados",
   "Lead score e próxima melhor ação para cada conversa",
   "Dashboard com métricas, histórico e evolução comercial",
@@ -33,7 +33,7 @@ export default function TransformSection() {
         <div className="mt-12 grid md:grid-cols-2 gap-6">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
             <h3 className="text-lg font-bold text-[#0F172A]" style={{ fontFamily: "Plus Jakarta Sans" }}>
-              Antes da IRIS
+              Antes da FCE
             </h3>
             <ul className="mt-5 space-y-3">
               {ANTES.map((t) => (
@@ -47,9 +47,9 @@ export default function TransformSection() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-[#06B6D4]/30 bg-gradient-to-br from-[#EFF6FF] to-white p-6 sm:p-8 shadow-sm">
+          <div className="rounded-2xl border border-[#e50789]/30 bg-gradient-to-br from-[#EFF6FF] to-white p-6 sm:p-8 shadow-sm">
             <h3 className="text-lg font-bold text-[#0F172A]" style={{ fontFamily: "Plus Jakarta Sans" }}>
-              Depois da IRIS
+              Depois da FCE
             </h3>
             <ul className="mt-5 space-y-3">
               {DEPOIS.map((t) => (

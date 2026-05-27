@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Claude Code session metadata
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

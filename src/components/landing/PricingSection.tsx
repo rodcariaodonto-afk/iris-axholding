@@ -3,7 +3,7 @@ import { buildWhatsAppUrl } from "./whatsappLink";
 
 const SETUP_ITEMS = [
   "Configuração inicial da plataforma",
-  "Personalização do agente IRIS (prompt, tom, regras)",
+  "Personalização do agente FCE (prompt, tom, regras)",
   "Integração com WhatsApp (Meta ou Evolution)",
   "Treinamento de qualificação e objeções",
   "Acompanhamento dos primeiros dias de operação",
@@ -35,7 +35,7 @@ const PLANS: Plan[] = [
     ],
     cta: "Começar com Starter",
     ctaMessage:
-      "Olá! Tenho interesse no Plano Starter da IRIS (Setup R$ 2.500 + R$ 120/mês). Pode me apresentar os próximos passos?",
+      "Olá! Tenho interesse no Plano Starter da FCE (Setup R$ 2.500 + R$ 120/mês). Pode me apresentar os próximos passos?",
   },
   {
     code: "pro",
@@ -53,7 +53,7 @@ const PLANS: Plan[] = [
     ],
     cta: "Quero o Plano Pro",
     ctaMessage:
-      "Olá! Tenho interesse no Plano Pro da IRIS (Setup R$ 2.500 + R$ 297/mês). Pode me apresentar os próximos passos?",
+      "Olá! Tenho interesse no Plano Pro da FCE (Setup R$ 2.500 + R$ 297/mês). Pode me apresentar os próximos passos?",
   },
   {
     code: "business",
@@ -70,7 +70,7 @@ const PLANS: Plan[] = [
     ],
     cta: "Quero o Plano Business",
     ctaMessage:
-      "Olá! Tenho interesse no Plano Business da IRIS (Setup R$ 2.500 + R$ 997/mês). Pode me apresentar os próximos passos?",
+      "Olá! Tenho interesse no Plano Business da FCE (Setup R$ 2.500 + R$ 997/mês). Pode me apresentar os próximos passos?",
   },
   {
     code: "enterprise",
@@ -85,12 +85,12 @@ const PLANS: Plan[] = [
     ],
     cta: "Falar com vendas",
     ctaMessage:
-      "Olá! Tenho interesse no Plano Enterprise da IRIS. Pode me apresentar uma proposta sob medida?",
+      "Olá! Tenho interesse no Plano Enterprise da FCE. Pode me apresentar uma proposta sob medida?",
   },
 ];
 
 const SETUP_WPP_URL = buildWhatsAppUrl(
-  "Olá! Tenho interesse no Setup de Implantação da IRIS (R$ 2.500). Pode me apresentar os próximos passos?"
+  "Olá! Tenho interesse no Setup de Implantação da FCE (R$ 2.500). Pode me apresentar os próximos passos?"
 );
 
 export default function PricingSection() {
@@ -115,7 +115,7 @@ export default function PricingSection() {
         <div className="mt-12 rounded-2xl border border-[#0F172A] bg-[#0F172A] text-white shadow-2xl overflow-hidden">
           <div className="grid md:grid-cols-2">
             <div className="p-8 sm:p-10 border-b md:border-b-0 md:border-r border-white/10">
-              <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-[#06B6D4]">
+              <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-[#e50789]">
                 Setup de implantação
               </span>
               <p className="mt-3 flex items-baseline gap-2">
@@ -140,7 +140,7 @@ export default function PricingSection() {
                 ))}
               </ul>
             </div>
-            <div className="p-8 sm:p-10 bg-gradient-to-br from-[#0F172A] via-[#0F172A] to-[#06B6D4]/10 flex flex-col justify-center">
+            <div className="p-8 sm:p-10 bg-gradient-to-br from-[#0F172A] via-[#0F172A] to-[#e50789]/10 flex flex-col justify-center">
               <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-[#25D366]">
                 Como funciona
               </span>
@@ -181,12 +181,12 @@ export default function PricingSection() {
                   key={p.code}
                   className={`rounded-2xl border p-6 flex flex-col ${
                     p.highlight
-                      ? "border-[#06B6D4] bg-white shadow-xl ring-2 ring-[#06B6D4]/20 relative"
+                      ? "border-[#e50789] bg-white shadow-xl ring-2 ring-[#e50789]/20 relative"
                       : "border-slate-200 bg-white shadow-sm"
                   }`}
                 >
                   {p.highlight && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#06B6D4] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#e50789] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
                       Mais escolhido
                     </span>
                   )}

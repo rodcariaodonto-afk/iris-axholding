@@ -4,7 +4,7 @@ import { MessageSquare, Calendar, Sparkles, Users } from "lucide-react";
 const items = [
   { title: "WhatsApp / Evolution", description: "Conecte seu número de WhatsApp Business ou Evolution API.", icon: MessageSquare, to: "/settings" },
   { title: "Google Calendar", description: "Sincronize agendamentos com sua agenda Google.", icon: Calendar, to: "/scheduling" },
-  { title: "Inteligência Artificial", description: "Configure o prompt, voz e comportamento da Nina.", icon: Sparkles, to: "/settings" },
+  { title: "Inteligência Artificial", description: "Configure o prompt, voz e comportamento da DANI.", icon: Sparkles, to: "/settings" },
   { title: "Equipe & Distribuição", description: "Gerencie membros operacionais e distribuição de leads.", icon: Users, to: "/team" },
 ];
 

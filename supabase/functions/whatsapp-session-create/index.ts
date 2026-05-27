@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
     const providedInstanceName = body.evolution_instance_name?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") || null;
     const evolutionInstanceName = body.provider === "evolution"
-      ? providedInstanceName || `iris-${body.account_id.slice(0, 8)}-${userId.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`
+      ? providedInstanceName || `fce-${body.account_id.slice(0, 8)}-${userId.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`
       : null;
 
     if (evolutionInstanceName) {

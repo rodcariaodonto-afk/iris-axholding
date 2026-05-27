@@ -70,7 +70,7 @@ export const PERMISSION_MATRIX: { area: string; perms: { label: string; roles: A
     ],
   },
   {
-    area: "IA / Nina",
+    area: "IA / DANI",
     perms: [
       { label: "Editar prompt e personalidade", roles: ["owner", "admin"] },
       { label: "Ativar/Desativar IA", roles: ["owner", "admin", "manager"] },

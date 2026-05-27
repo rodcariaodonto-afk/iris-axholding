@@ -6,7 +6,7 @@ export default function ContactSection() {
   return (
     <section id="contato" className="py-20 bg-gradient-to-br from-[#0F172A] via-[#0B1220] to-[#0F172A] text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#06B6D4]">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#e50789]">
           Comece agora
         </span>
         <h2
@@ -14,13 +14,13 @@ export default function ContactSection() {
           style={{ fontFamily: "Plus Jakarta Sans" }}
         >
           Pronto para colocar uma{" "}
-          <span className="bg-gradient-to-r from-[#06B6D4] to-[#7C3AED] bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#e50789] to-[#8f1b3f] bg-clip-text text-transparent">
             Agente SDR de IA
           </span>{" "}
           trabalhando no seu WhatsApp?
         </h2>
         <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
-          Fale com a equipe IRIS e tenha sua operação comercial inteligente rodando em poucos dias.
+          Fale com a equipe FCE e tenha sua operação comercial inteligente rodando em poucos dias.
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -32,7 +32,7 @@ export default function ContactSection() {
             style={{ fontFamily: "Plus Jakarta Sans" }}
           >
             <MessageCircle className="h-5 w-5 mr-2" />
-            Quero implementar a IRIS
+            Quero implementar a FCE
           </a>
           <Link
             to="/auth"

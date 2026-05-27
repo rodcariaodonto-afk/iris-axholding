@@ -259,7 +259,7 @@ const Auth: React.FC = () => {
               {isLogin ? 'Quer criar uma conta?' : 'Já tem uma conta?'}
               {isLogin ? (
                 <a
-                  href={`https://wa.me/5511939171383?text=${encodeURIComponent('Olá! Quero criar minha conta na IRIS. Pode liberar meu acesso?')}`}
+                  href={`https://wa.me/5500000000000?text=${encodeURIComponent('Olá! Quero criar minha conta na FCE. Pode liberar meu acesso?')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-1 text-primary hover:text-primary/80 font-medium transition-colors"

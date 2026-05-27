@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare, Building2 } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Shield, Bot, Plug, Loader2, Save, RotateCcw, BookOpen, Lock, FolderOpen, User, Mail, MessageSquare, Building2, Package } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import AgentSettings, { AgentSettingsRef } from './settings/AgentSettings';
 import ApiSettings, { ApiSettingsRef } from './settings/ApiSettings';
@@ -7,6 +7,7 @@ import SystemRoadmap from './SystemRoadmap';
 import MediaLibrary from './settings/MediaLibrary';
 import AccountSettings from './settings/AccountSettings';
 import EmailSettings from './settings/EmailSettings';
+import BlingSettings from './settings/BlingSettings';
 import WhatsAppSessions from './settings/WhatsAppSessions';
 import WhatsAppQueues from './settings/WhatsAppQueues';
 import CoworkingSettings from './settings/CoworkingSettings';
@@ -29,6 +30,14 @@ const Settings: React.FC = () => {
   const { resetWizard } = useOnboardingStatus();
   const { setShowOnboarding } = useOutletContext<OutletContext>();
   const { available: coworkingAvailable } = useCoworkingModuleAvailable();
+
+  // Detect OAuth callback (Bling redirects to /settings?code=...&state=...) and switch to Bling tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('code') && params.get('state')) {
+      setActiveTab('bling');
+    }
+  }, []);
 
   const handleReopenOnboarding = () => {
     resetWizard();
@@ -93,7 +102,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="agent" className="w-full" onValueChange={setActiveTab}>
+      <Tabs value={activeTab} defaultValue="agent" className="w-full" onValueChange={setActiveTab}>
         <div className="flex flex-col mb-6 sm:mb-8 gap-3">
           <div className="w-full overflow-x-auto overflow-y-hidden settings-tabs-scroll">
             <TabsList className="!flex w-max min-w-full justify-start !overflow-visible">
@@ -129,6 +138,10 @@ const Settings: React.FC = () => {
                 <Mail className="w-4 h-4" />
                 Email
               </TabsTrigger>
+              <TabsTrigger value="bling" className="gap-2 shrink-0">
+                <Package className="w-4 h-4" />
+                Bling
+              </TabsTrigger>
               {coworkingAvailable && (
                 <TabsTrigger value="coworking" className="gap-2 shrink-0">
                   <Building2 className="w-4 h-4" />
@@ -139,7 +152,7 @@ const Settings: React.FC = () => {
           </div>
 
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'bling' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && isAdmin && (
             <div className="flex gap-3">
               <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
               <Button variant="primary" onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -148,7 +161,7 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && !isAdmin && (
+          {activeTab !== 'docs' && activeTab !== 'media' && activeTab !== 'account' && activeTab !== 'email' && activeTab !== 'bling' && activeTab !== 'whatsapp' && activeTab !== 'queues' && activeTab !== 'coworking' && !isAdmin && (
             <div className="flex items-center gap-2 text-sm text-amber-400">
               <Lock className="w-4 h-4" />
               Apenas administradores podem editar
@@ -186,6 +199,10 @@ const Settings: React.FC = () => {
 
         <TabsContent value="email">
           <EmailSettings />
+        </TabsContent>
+
+        <TabsContent value="bling">
+          <BlingSettings />
         </TabsContent>
 
         {coworkingAvailable && (

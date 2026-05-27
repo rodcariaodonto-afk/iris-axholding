@@ -62,7 +62,7 @@ const Reports: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100">Central de Relatórios</h1>
-            <p className="text-sm text-slate-400">Análise completa de leads, pipeline e performance da Iris</p>
+            <p className="text-sm text-slate-400">Análise completa de leads, pipeline e performance da FCE</p>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ const Reports: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-slate-200 mb-3">Performance da Iris</h2>
+            <h2 className="text-lg font-semibold text-slate-200 mb-3">Performance da FCE</h2>
             <AiPerformance data={data} />
           </div>
 

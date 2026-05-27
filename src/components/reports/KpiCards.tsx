@@ -67,7 +67,7 @@ const KpiCards: React.FC<{ data: ReportData }> = ({ data }) => {
       />
       <Card
         icon={Clock}
-        label="Resposta Média Iris"
+        label="Resposta Média FCE"
         value={`${(avgResponseMs / 1000).toFixed(1)}s`}
         hint={`${ninaMessages.length} respostas`}
         color="bg-cyan-500/80"

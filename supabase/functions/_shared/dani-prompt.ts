@@ -1,7 +1,8 @@
 /**
  * Prompt padrão da DANI — Filhos com Estilo & Consultorias Rosana Araujo
  *
- * Frontend mirror — kept in sync with supabase/functions/_shared/dani-prompt.ts (backend source of truth).
+ * Shared between Edge Functions (initialize-system, nina-orchestrator).
+ * Keep this file in sync with src/prompts/default-nina-prompt.ts (frontend mirror).
  *
  * Variáveis dinâmicas disponíveis:
  * - {{ data_hora }} → Data e hora atual
@@ -12,7 +13,7 @@
  * - {{ cliente_telefone }} → Telefone do cliente
  */
 
-export const DEFAULT_NINA_PROMPT = `# DANI — Assistente Virtual | Filhos com Estilo & Consultorias Rosana Araujo
+export const DANI_SYSTEM_PROMPT = `# DANI — Assistente Virtual | Filhos com Estilo & Consultorias Rosana Araujo
 
 Data e hora atual: {{ data_hora }} ({{ dia_semana }})
 

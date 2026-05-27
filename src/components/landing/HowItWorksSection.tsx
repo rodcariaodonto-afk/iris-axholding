@@ -2,11 +2,11 @@ const STEPS = [
   {
     n: "01",
     title: "Diagnóstico comercial",
-    desc: "Entendemos o seu processo, público, objeções e perfis de cliente para configurar a IRIS sob medida.",
+    desc: "Entendemos o seu processo, público, objeções e perfis de cliente para configurar a FCE sob medida.",
   },
   {
     n: "02",
-    title: "Setup da IRIS",
+    title: "Setup da FCE",
     desc: "Configuramos a plataforma, identidade do agente, regras de atendimento e estrutura inicial do CRM.",
   },
   {
@@ -49,7 +49,7 @@ export default function HowItWorksSection() {
               key={s.n}
               className="relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all"
             >
-              <span className="text-3xl font-extrabold bg-gradient-to-r from-[#06B6D4] to-[#7C3AED] bg-clip-text text-transparent">
+              <span className="text-3xl font-extrabold bg-gradient-to-r from-[#e50789] to-[#8f1b3f] bg-clip-text text-transparent">
                 {s.n}
               </span>
               <h3 className="mt-3 text-base font-bold text-[#0F172A]" style={{ fontFamily: "Plus Jakarta Sans" }}>

@@ -16,12 +16,12 @@ export default function LandingHeader() {
   return (
     <header className="fixed top-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <a href="#top" className="flex items-center gap-2" aria-label="IRIS — início">
+        <a href="#top" className="flex items-center gap-2" aria-label="FCE — início">
           <span
-            className="text-2xl font-extrabold bg-gradient-to-r from-[#06B6D4] to-[#7C3AED] bg-clip-text text-transparent"
+            className="text-2xl font-extrabold bg-gradient-to-r from-[#e50789] to-[#8f1b3f] bg-clip-text text-transparent"
             style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}
           >
-            IRIS
+            FCE
           </span>
           <span className="hidden sm:inline text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Agente SDR

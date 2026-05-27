@@ -3,12 +3,12 @@ import { ChevronDown } from "lucide-react";
 
 const FAQ = [
   {
-    q: "A IRIS substitui o vendedor?",
-    a: "Não. A IRIS apoia a equipe respondendo, qualificando e organizando os leads para que os vendedores foquem nas melhores oportunidades.",
+    q: "A FCE substitui o vendedor?",
+    a: "Não. A FCE apoia a equipe respondendo, qualificando e organizando os leads para que os vendedores foquem nas melhores oportunidades.",
   },
   {
     q: "A plataforma funciona com WhatsApp?",
-    a: "Sim. A IRIS foi pensada para operações comerciais que usam WhatsApp como canal central de atendimento, integrando com Meta Cloud API ou Evolution API.",
+    a: "Sim. A FCE foi pensada para operações comerciais que usam WhatsApp como canal central de atendimento, integrando com Meta Cloud API ou Evolution API.",
   },
   {
     q: "O que está incluído no setup de R$ 2.500?",

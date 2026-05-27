@@ -38,7 +38,7 @@ const FEATURES = [
   {
     icon: Calendar,
     title: "Agenda integrada",
-    desc: "A IRIS agenda demonstrações e reuniões direto no Google Calendar da sua equipe.",
+    desc: "A FCE agenda demonstrações e reuniões direto no Google Calendar da sua equipe.",
   },
   {
     icon: Sparkles,
@@ -73,10 +73,10 @@ export default function FeaturesSection() {
           {FEATURES.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
-              className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-[#06B6D4]/30 transition-all"
+              className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-[#e50789]/30 transition-all"
             >
               <div className="h-10 w-10 rounded-lg bg-[#EFF6FF] flex items-center justify-center mb-3">
-                <Icon className="h-5 w-5 text-[#06B6D4]" strokeWidth={2} />
+                <Icon className="h-5 w-5 text-[#e50789]" strokeWidth={2} />
               </div>
               <h3 className="text-sm font-bold text-[#0F172A]" style={{ fontFamily: "Plus Jakarta Sans" }}>
                 {title}

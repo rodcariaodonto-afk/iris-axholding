@@ -391,7 +391,7 @@ function CreateSessionDialog({ open, onOpenChange, accountId, onCreated }: {
       body.whatsapp_phone_number_id = meta.phone_id;
       body.whatsapp_business_account_id = meta.waba;
       body.whatsapp_access_token = meta.token;
-      body.whatsapp_verify_token = meta.verify || "iris-" + Math.random().toString(36).slice(2, 10);
+      body.whatsapp_verify_token = meta.verify || "fce-" + Math.random().toString(36).slice(2, 10);
     }
     const { data, error } = await supabase.functions.invoke("whatsapp-session-create", { body });
     setCreating(false);

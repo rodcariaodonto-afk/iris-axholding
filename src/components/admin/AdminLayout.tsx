@@ -21,7 +21,7 @@ export default function AdminLayout() {
         <div className="flex items-center gap-2 mb-4">
           <ShieldCheck className="w-5 h-5 text-primary" />
           <div>
-            <h1 className="text-lg font-semibold leading-tight">AXHolding · Super Admin</h1>
+            <h1 className="text-lg font-semibold leading-tight">FCE · Super Admin</h1>
             <p className="text-xs text-muted-foreground">Visão interna de todas as contas</p>
           </div>
         </div>

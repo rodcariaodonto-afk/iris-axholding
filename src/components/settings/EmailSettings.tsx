@@ -153,7 +153,7 @@ const EmailSettings: React.FC = () => {
             <Input
               id="from-name"
               type="text"
-              placeholder="Equipe IRIS"
+              placeholder="Equipe FCE"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
             />

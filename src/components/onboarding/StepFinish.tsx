@@ -67,7 +67,7 @@ const componentLabels: Record<string, string> = {
   lovable_ai: 'IA Backend',
   pipeline: 'Pipeline de Vendas',
   profile: 'Perfil',
-  nina_settings: 'Configurações Nina',
+  nina_settings: 'Configurações DANI',
 };
 
 export const StepFinish: React.FC<StepFinishProps> = ({
@@ -84,11 +84,11 @@ export const StepFinish: React.FC<StepFinishProps> = ({
     if (sdrName && companyName) {
       return `Olá! Aqui é ${sdrName} da ${companyName}. Este é um teste do sistema! 🚀`;
     } else if (sdrName) {
-      return `Olá! Aqui é ${sdrName}. Este é um teste do sistema Nina! 🚀`;
+      return `Olá! Aqui é ${sdrName}. Este é um teste do sistema! 🚀`;
     } else if (companyName) {
       return `Olá! Aqui é o assistente da ${companyName}. Este é um teste do sistema! 🚀`;
     }
-    return 'Olá! Este é um teste do sistema Nina SDR! 🚀';
+    return 'Olá! Este é um teste do sistema! 🚀';
   };
   
   const [testMessage, setTestMessage] = useState(getDefaultTestMessage);

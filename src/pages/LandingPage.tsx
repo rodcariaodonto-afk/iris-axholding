@@ -13,12 +13,12 @@ import WhatsAppFAB from "@/components/landing/WhatsAppFAB";
 
 export default function LandingPage() {
   useEffect(() => {
-    document.title = "IRIS Agente de IA SDR — Atendimento e Vendas pelo WhatsApp";
+    document.title = "FCE Agente de IA SDR — Atendimento e Vendas pelo WhatsApp";
     const desc = document.querySelector('meta[name="description"]');
     if (desc) {
       desc.setAttribute(
         "content",
-        "Transforme conversas do WhatsApp em oportunidades comerciais com a IRIS, uma agente de IA SDR para atender, qualificar e organizar leads. Setup R$ 2.500 e mensalidade R$ 120."
+        "Transforme conversas do WhatsApp em oportunidades comerciais com a FCE, uma agente de IA SDR para atender, qualificar e organizar leads."
       );
     }
   }, []);

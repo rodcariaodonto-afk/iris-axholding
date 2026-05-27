@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     if (invErr) throw invErr;
 
     // Sempre usar domínio público (preview da Lovable exige login na Lovable)
-    const publicBase = Deno.env.get("PUBLIC_APP_URL") || "https://www.axiris.com.br";
+    const publicBase = Deno.env.get("PUBLIC_APP_URL") || "https://www.fce.com.br";
     const acceptUrl = `${publicBase}/invite/${inviteToken}`;
 
     // Envia email via send-transactional-email (Lovable Emails)

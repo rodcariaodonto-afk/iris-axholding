@@ -9,7 +9,7 @@ const ITEMS = [
   {
     icon: Target,
     title: "Qualificação comercial",
-    desc: "A IRIS identifica intenção, interesses e etapa do lead para entregar oportunidades prontas para o vendedor.",
+    desc: "A FCE identifica intenção, interesses e etapa do lead para entregar oportunidades prontas para o vendedor.",
   },
   {
     icon: Layers,
@@ -35,7 +35,7 @@ export default function ProofSection() {
           Resultados reais para o seu time comercial
         </h2>
         <p className="mt-3 text-[#4B5563] max-w-2xl mx-auto">
-          A IRIS atua como uma camada de inteligência comercial em cima do seu WhatsApp,
+          A FCE atua como uma camada de inteligência comercial em cima do seu WhatsApp,
           aumentando velocidade de resposta, qualificação e organização das oportunidades.
         </p>
 
@@ -43,10 +43,10 @@ export default function ProofSection() {
           {ITEMS.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
-              className="text-left rounded-xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-[#06B6D4]/30 transition-all"
+              className="text-left rounded-xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-[#e50789]/30 transition-all"
             >
               <div className="h-11 w-11 rounded-lg bg-[#EFF6FF] flex items-center justify-center mb-4">
-                <Icon className="h-5 w-5 text-[#06B6D4]" strokeWidth={2} />
+                <Icon className="h-5 w-5 text-[#e50789]" strokeWidth={2} />
               </div>
               <h3 className="text-base font-bold text-[#0F172A]" style={{ fontFamily: "Plus Jakarta Sans" }}>
                 {title}

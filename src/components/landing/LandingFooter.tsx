@@ -12,10 +12,10 @@ export default function LandingFooter() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <p
-              className="text-2xl font-extrabold bg-gradient-to-r from-[#06B6D4] to-[#7C3AED] bg-clip-text text-transparent"
+              className="text-2xl font-extrabold bg-gradient-to-r from-[#e50789] to-[#8f1b3f] bg-clip-text text-transparent"
               style={{ fontFamily: "Plus Jakarta Sans" }}
             >
-              IRIS
+              FCE
             </p>
             <p className="mt-1 text-sm text-slate-400 max-w-md">
               Agente SDR de IA para WhatsApp. Atende, qualifica e organiza seus leads
@@ -31,7 +31,7 @@ export default function LandingFooter() {
           </nav>
         </div>
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:justify-between gap-2 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} IRIS · AXHolding. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} FCE. Todos os direitos reservados.</p>
           <p>Feito com IA, processo e governança.</p>
         </div>
       </div>

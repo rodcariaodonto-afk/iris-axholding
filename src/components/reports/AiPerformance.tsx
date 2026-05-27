@@ -2,7 +2,7 @@ import React from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ReportData } from "@/services/reports";
 
-const COLORS = ["#06b6d4", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"];
+const COLORS = ["#e50789", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"];
 
 const Section = ({ title, children }: any) => (
   <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-5">
@@ -43,7 +43,7 @@ const AiPerformance: React.FC<{ data: ReportData }> = ({ data }) => {
             <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
             <YAxis stroke="#64748b" fontSize={11} />
             <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155" }} />
-            <Area type="monotone" dataKey="count" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.2} />
+            <Area type="monotone" dataKey="count" stroke="#e50789" fill="#e50789" fillOpacity={0.2} />
           </AreaChart>
         </ResponsiveContainer>
       </Section>
@@ -66,7 +66,7 @@ const AiPerformance: React.FC<{ data: ReportData }> = ({ data }) => {
         <div className="grid grid-cols-3 gap-3 mt-2">
           <div className="text-center p-4 bg-slate-800/50 rounded-lg">
             <div className="text-2xl font-bold text-cyan-400">{fromMap.nina}</div>
-            <div className="text-xs text-slate-400 mt-1">Iris (IA)</div>
+            <div className="text-xs text-slate-400 mt-1">FCE (IA)</div>
           </div>
           <div className="text-center p-4 bg-slate-800/50 rounded-lg">
             <div className="text-2xl font-bold text-purple-400">{fromMap.human}</div>
@@ -88,8 +88,8 @@ const AiPerformance: React.FC<{ data: ReportData }> = ({ data }) => {
             const count = data.conversations.filter((c) => c.status === status).length;
             const total = data.conversations.length || 1;
             const pct = (count / total) * 100;
-            const labels = { nina: "Atendidas pela Iris", human: "Atendidas por Humano", paused: "Pausadas" };
-            const colors = { nina: "bg-cyan-500", human: "bg-purple-500", paused: "bg-amber-500" };
+            const labels = { nina: "Atendidas pela FCE", human: "Atendidas por Humano", paused: "Pausadas" };
+            const colors = { nina: "bg-pink-600", human: "bg-purple-500", paused: "bg-amber-500" };
             return (
               <div key={status}>
                 <div className="flex justify-between text-sm mb-1">

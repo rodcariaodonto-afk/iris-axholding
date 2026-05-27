@@ -25,7 +25,7 @@ interface AccountInviteProps {
 const AccountInviteEmail = ({
   accountName = 'sua empresa',
   inviterName,
-  acceptUrl = 'https://www.axiris.com.br',
+  acceptUrl = 'https://www.fce.com.br',
   role = 'membro',
   brandName = 'AXHUB',
 }: AccountInviteProps) => (
@@ -69,9 +69,9 @@ export const template = {
     `Convite para acessar ${data?.accountName || 'sua conta'} — ${data?.brandName || 'AXHUB'}`,
   displayName: 'Convite de acesso à conta',
   previewData: {
-    accountName: 'AXHolding',
+    accountName: 'FCE',
     inviterName: 'Rodrigo Cária',
-    acceptUrl: 'https://www.axiris.com.br/invite/exemplo-token',
+    acceptUrl: 'https://www.fce.com.br/invite/exemplo-token',
     role: 'owner',
     brandName: 'AXHUB',
   },

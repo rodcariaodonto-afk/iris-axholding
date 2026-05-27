@@ -28,7 +28,7 @@ const Logo = ({ companyName, companyLogoUrl }: { companyName: string; companyLog
   return (
     <Link to="/dashboard" className="flex items-center space-x-3 py-1">
       <div className="relative flex items-center justify-center flex-shrink-0">
-        <img src={companyLogoUrl || axhubIcon} alt={companyName || 'IRIS'} className="h-10 w-auto object-contain rounded-lg" />
+        <img src={companyLogoUrl || axhubIcon} alt={companyName || 'FCE'} className="h-10 w-auto object-contain rounded-lg" />
       </div>
       <motion.div
         initial={{ opacity: 0 }}
@@ -135,7 +135,7 @@ const SidebarContent = () => {
           {isSuperAdmin && (
             <>
               <div className={`px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider text-primary/70 ${open ? '' : 'hidden'}`}>
-                AXHolding
+                FCE Admin
               </div>
               <SidebarLink
                 link={{ label: 'Super Admin', href: '/admin/accounts', icon: <ShieldCheck className="h-5 w-5" /> }}

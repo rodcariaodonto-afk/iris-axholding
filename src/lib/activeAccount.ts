@@ -4,7 +4,7 @@
  * without forcing every call site into a hook.
  */
 
-const STORAGE_KEY = "iris.activeAccountId";
+const STORAGE_KEY = "fce.activeAccountId";
 
 let activeAccountId: string | null = null;
 
