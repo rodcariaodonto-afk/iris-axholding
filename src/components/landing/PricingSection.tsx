@@ -29,8 +29,8 @@ const PLANS: Plan[] = [
     features: [
       "1 usuário",
       "1 sessão de WhatsApp",
-      "3.000 respostas de IA / mês",
-      "Contatos e mensagens recebidas ilimitados",
+      "Mensagens e respostas de IA ilimitadas",
+      "Contatos ilimitados",
       "CRM, pipeline e relatórios",
     ],
     cta: "Começar com Starter",
@@ -46,8 +46,8 @@ const PLANS: Plan[] = [
     features: [
       "Até 5 usuários",
       "Até 5 sessões de WhatsApp",
-      "12.000 respostas de IA / mês",
-      "Contatos e mensagens recebidas ilimitados",
+      "Mensagens e respostas de IA ilimitadas",
+      "Contatos ilimitados",
       "CRM, pipeline e relatórios",
       "Agenda integrada (Google Calendar)",
     ],
@@ -63,8 +63,8 @@ const PLANS: Plan[] = [
     features: [
       "Até 30 usuários",
       "Até 30 sessões de WhatsApp",
-      "50.000 respostas de IA / mês",
-      "Contatos e mensagens recebidas ilimitados",
+      "Mensagens e respostas de IA ilimitadas",
+      "Contatos ilimitados",
       "Multi-times e permissões avançadas",
       "Suporte prioritário",
     ],
