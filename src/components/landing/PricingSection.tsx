@@ -29,8 +29,8 @@ const PLANS: Plan[] = [
     features: [
       "1 usuário",
       "1 sessão de WhatsApp",
-      "Contatos ilimitados",
-      "Mensagens ilimitadas",
+      "3.000 respostas de IA / mês",
+      "Contatos e mensagens recebidas ilimitados",
       "CRM, pipeline e relatórios",
     ],
     cta: "Começar com Starter",
