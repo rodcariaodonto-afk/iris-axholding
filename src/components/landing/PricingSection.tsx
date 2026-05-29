@@ -171,7 +171,7 @@ export default function PricingSection() {
             Escolha seu plano mensal
           </h3>
           <p className="text-center text-sm text-[#4B5563] mt-2">
-            Todos os planos incluem contatos e mensagens ilimitados.
+            Todos os planos incluem contatos e mensagens recebidas ilimitados.
           </p>
 
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
