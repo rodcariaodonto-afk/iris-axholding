@@ -63,8 +63,8 @@ const PLANS: Plan[] = [
     features: [
       "Até 30 usuários",
       "Até 30 sessões de WhatsApp",
-      "Contatos ilimitados",
-      "Mensagens ilimitadas",
+      "50.000 respostas de IA / mês",
+      "Contatos e mensagens recebidas ilimitados",
       "Multi-times e permissões avançadas",
       "Suporte prioritário",
     ],
