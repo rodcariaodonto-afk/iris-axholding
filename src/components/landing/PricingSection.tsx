@@ -79,6 +79,7 @@ const PLANS: Plan[] = [
     features: [
       "Usuários ilimitados",
       "Sessões de WhatsApp ilimitadas",
+      "Respostas de IA ilimitadas",
       "SLA dedicado e infraestrutura sob medida",
       "Integrações e automações personalizadas",
       "Onboarding e treinamento dedicados",
