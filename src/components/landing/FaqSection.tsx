@@ -16,7 +16,7 @@ const FAQ = [
   },
   {
     q: "Quais são os planos mensais?",
-    a: "Starter (R$ 120/mês): 1 usuário e 1 sessão de WhatsApp. Pro (R$ 297/mês): até 5 usuários e 5 sessões. Business (R$ 997/mês): até 30 usuários e 30 sessões. Enterprise: sob consulta, com usuários e sessões ilimitados. Todos os planos incluem contatos e mensagens ilimitados.",
+    a: "Starter (R$ 120/mês): 1 usuário, 1 sessão de WhatsApp e 3.000 respostas de IA/mês. Pro (R$ 297/mês): até 5 usuários, 5 sessões e 12.000 respostas de IA/mês. Business (R$ 997/mês): até 30 usuários, 30 sessões e 50.000 respostas de IA/mês. Enterprise: sob consulta, com usuários, sessões e respostas de IA ilimitados. Todos os planos incluem contatos e mensagens recebidas ilimitados.",
   },
   {
     q: "Quanto tempo leva para começar a operar?",

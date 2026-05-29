@@ -29,8 +29,8 @@ const PLANS: Plan[] = [
     features: [
       "1 usuário",
       "1 sessão de WhatsApp",
-      "Contatos ilimitados",
-      "Mensagens ilimitadas",
+      "3.000 respostas de IA / mês",
+      "Contatos e mensagens recebidas ilimitados",
       "CRM, pipeline e relatórios",
     ],
     cta: "Começar com Starter",
@@ -46,8 +46,8 @@ const PLANS: Plan[] = [
     features: [
       "Até 5 usuários",
       "Até 5 sessões de WhatsApp",
-      "Contatos ilimitados",
-      "Mensagens ilimitadas",
+      "12.000 respostas de IA / mês",
+      "Contatos e mensagens recebidas ilimitados",
       "CRM, pipeline e relatórios",
       "Agenda integrada (Google Calendar)",
     ],
@@ -63,8 +63,8 @@ const PLANS: Plan[] = [
     features: [
       "Até 30 usuários",
       "Até 30 sessões de WhatsApp",
-      "Contatos ilimitados",
-      "Mensagens ilimitadas",
+      "50.000 respostas de IA / mês",
+      "Contatos e mensagens recebidas ilimitados",
       "Multi-times e permissões avançadas",
       "Suporte prioritário",
     ],
@@ -79,6 +79,7 @@ const PLANS: Plan[] = [
     features: [
       "Usuários ilimitados",
       "Sessões de WhatsApp ilimitadas",
+      "Respostas de IA ilimitadas",
       "SLA dedicado e infraestrutura sob medida",
       "Integrações e automações personalizadas",
       "Onboarding e treinamento dedicados",
@@ -170,7 +171,7 @@ export default function PricingSection() {
             Escolha seu plano mensal
           </h3>
           <p className="text-center text-sm text-[#4B5563] mt-2">
-            Todos os planos incluem contatos e mensagens ilimitados.
+            Todos os planos incluem contatos e mensagens recebidas ilimitados.
           </p>
 
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">

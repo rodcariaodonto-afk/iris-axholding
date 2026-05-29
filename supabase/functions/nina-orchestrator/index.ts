@@ -951,6 +951,59 @@ async function processQueueItem(
     return;
   }
 
+  // --- Limite de consumo de IA por plano (corte automático ao atingir o teto) ---
+  // Protege a margem: quando a conta atinge o limite mensal de respostas de IA do
+  // seu plano, a IA para de responder automaticamente até o próximo mês ou upgrade.
+  // Estratégia fail-open: qualquer erro nesta checagem permite a resposta normalmente.
+  try {
+    if (conversation.account_id) {
+      const { data: acc } = await supabase
+        .from('accounts')
+        .select('plan')
+        .eq('id', conversation.account_id)
+        .maybeSingle();
+
+      const planCode = acc?.plan || 'starter';
+      const { data: planRow } = await supabase
+        .from('account_plans')
+        .select('ai_responses_month')
+        .eq('code', planCode)
+        .maybeSingle();
+
+      const aiLimit = Number(planRow?.ai_responses_month ?? 999999);
+
+      // Só aplica corte quando há um limite real definido (planos ilimitados usam 999999)
+      if (aiLimit > 0 && aiLimit < 999999) {
+        const monthStart = new Date();
+        monthStart.setUTCDate(1);
+        monthStart.setUTCHours(0, 0, 0, 0);
+
+        const { count: aiUsed } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('account_id', conversation.account_id)
+          .eq('from_type', 'nina')
+          .gte('created_at', monthStart.toISOString());
+
+        if ((aiUsed ?? 0) >= aiLimit) {
+          console.warn(
+            `[Nina] Limite mensal de IA atingido para a conta ${conversation.account_id} ` +
+            `(plano ${planCode}): ${aiUsed}/${aiLimit}. Pulando resposta da IA.`
+          );
+          await supabase
+            .from('messages')
+            .update({ processed_by_nina: true })
+            .eq('id', message.id);
+          return;
+        }
+
+        console.log(`[Nina] Uso de IA no mês: ${aiUsed}/${aiLimit} (plano ${planCode})`);
+      }
+    }
+  } catch (limitErr) {
+    console.error('[Nina] Falha na checagem de limite (permitindo resposta):', limitErr);
+  }
+
   // Get recent messages for context (last 20)
   const { data: recentMessages } = await supabase
     .from('messages')
