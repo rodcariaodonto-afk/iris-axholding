@@ -29,20 +29,32 @@ serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      const { data: settings } = await supabase
+      // Collect all valid verify tokens (new flow stores it in whatsapp_sessions,
+      // legacy flow stores it in nina_settings).
+      const validTokens = new Set<string>(['webhook-verify-token']);
+
+      const { data: sessionTokens } = await supabase
+        .from('whatsapp_sessions')
+        .select('whatsapp_verify_token')
+        .eq('provider', 'meta_cloud')
+        .not('whatsapp_verify_token', 'is', null);
+      for (const s of sessionTokens ?? []) {
+        if (s.whatsapp_verify_token) validTokens.add(s.whatsapp_verify_token);
+      }
+
+      const { data: legacyToken } = await supabase
         .from('nina_settings')
         .select('whatsapp_verify_token')
         .not('whatsapp_verify_token', 'is', null)
         .limit(1)
         .maybeSingle();
+      if (legacyToken?.whatsapp_verify_token) validTokens.add(legacyToken.whatsapp_verify_token);
 
-      const verifyToken = settings?.whatsapp_verify_token || 'webhook-verify-token';
-
-      if (mode === 'subscribe' && token === verifyToken) {
+      if (mode === 'subscribe' && token && validTokens.has(token)) {
         console.log('[Webhook] Verification successful');
         return new Response(challenge, { status: 200, headers: corsHeaders });
       } else {
-        console.error('[Webhook] Verification failed');
+        console.error('[Webhook] Verification failed. Received token did not match any configured verify token.');
         return new Response('Forbidden', { status: 403, headers: corsHeaders });
       }
     }
