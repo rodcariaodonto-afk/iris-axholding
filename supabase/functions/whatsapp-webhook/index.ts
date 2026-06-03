@@ -615,11 +615,16 @@ async function handleCloudAPIWebhook(
         .eq('processed', false).eq('phone_number_id', phoneNumberId)
         .filter('message_data->>from', 'eq', phoneNumber);
 
-      await supabase.from('message_grouping_queue').insert({
+      const { error: groupingError } = await supabase.from('message_grouping_queue').insert({
         whatsapp_message_id: message.id, phone_number_id: phoneNumberId,
         message_id: dbMessage.id, message_data: message,
-        contacts_data: contactInfo || null, process_after: processAfter
+        contacts_data: contactInfo || null, process_after: processAfter,
+        session_id: sessionId,
+        ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
       });
+      if (groupingError) {
+        console.error('[Webhook:CloudAPI] Error enqueueing message_grouping_queue:', groupingError);
+      }
     }
 
     EdgeRuntime.waitUntil(
