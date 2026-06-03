@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       .eq("user_id", caller.id)
       .eq("status", "active")
       .maybeSingle();
-    const { data: isSuper } = await admin.rpc("is_super_admin");
+    const { data: isSuper } = await userClient.rpc("is_super_admin");
     const callerIsAdmin = callerMember?.role === "owner" || callerMember?.role === "admin";
     if (!callerIsAdmin && isSuper !== true) {
       return new Response(
