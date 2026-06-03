@@ -57,7 +57,27 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require an authenticated user — this triggers paid AI calls.
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: authData, error: authErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (authErr || !authData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const formData: FormData = await req.json();
+    
     
     // Validar campos obrigatórios
     if (!formData.sdr_name || !formData.company_name || !formData.products || !formData.differentials) {
