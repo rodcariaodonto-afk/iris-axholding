@@ -76,6 +76,30 @@ serve(async (req) => {
       const isEvolutionAPI = body.event || body.instance;
       
       if (isEvolutionAPI) {
+        // Verify shared secret to prevent webhook spoofing.
+        // When EVOLUTION_WEBHOOK_SECRET is configured, every Evolution POST must
+        // present it via the `x-webhook-secret`/`apikey` header or `?secret=` query
+        // param. If the secret is NOT configured, requests are allowed (backward
+        // compatible) but a warning is logged so it can be enabled without downtime.
+        const expectedSecret = Deno.env.get('EVOLUTION_WEBHOOK_SECRET');
+        if (expectedSecret) {
+          const url = new URL(req.url);
+          const providedSecret =
+            req.headers.get('x-webhook-secret') ||
+            req.headers.get('apikey') ||
+            req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+            url.searchParams.get('secret') ||
+            '';
+          if (providedSecret !== expectedSecret) {
+            console.error('[Webhook:Evolution] Rejected POST: invalid or missing webhook secret');
+            return new Response(JSON.stringify({ error: 'Forbidden' }), {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          console.warn('[Webhook:Evolution] EVOLUTION_WEBHOOK_SECRET not configured — accepting unverified POST. Configure the secret to prevent spoofing.');
+        }
         return await handleEvolutionWebhook(supabase, body, supabaseUrl, supabaseServiceKey);
       } else {
         return await handleCloudAPIWebhook(supabase, body, supabaseUrl, supabaseServiceKey);
