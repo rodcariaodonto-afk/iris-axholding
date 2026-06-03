@@ -60,6 +60,6 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   } catch (e) {
     console.error('[account-deletion-approve]', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });

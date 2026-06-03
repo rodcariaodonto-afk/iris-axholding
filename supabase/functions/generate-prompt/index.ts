@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -55,7 +57,27 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require an authenticated user — this triggers paid AI calls.
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: authData, error: authErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (authErr || !authData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const formData: FormData = await req.json();
+    
     
     // Validar campos obrigatórios
     if (!formData.sdr_name || !formData.company_name || !formData.products || !formData.differentials) {
@@ -249,7 +271,7 @@ Gere o prompt completo preenchido, mantendo TODA a estrutura XML e substituindo 
   } catch (error) {
     console.error('[generate-prompt] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

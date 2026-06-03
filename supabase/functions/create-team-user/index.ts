@@ -27,7 +27,29 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
+
+    // Require an authenticated caller
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    if (!jwt) {
+      return new Response(
+        JSON.stringify({ error: "Não autenticado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: userRes } = await userClient.auth.getUser();
+    const caller = userRes?.user;
+    if (!caller) {
+      return new Response(
+        JSON.stringify({ error: "Token inválido" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const body = await req.json();
     const {
@@ -53,6 +75,24 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // Authorize: caller must be owner/admin of the target account (or a super admin)
+    const { data: callerMember } = await admin
+      .from("account_members")
+      .select("role")
+      .eq("account_id", account_id)
+      .eq("user_id", caller.id)
+      .eq("status", "active")
+      .maybeSingle();
+    const { data: isSuper } = await userClient.rpc("is_super_admin");
+    const callerIsAdmin = callerMember?.role === "owner" || callerMember?.role === "admin";
+    if (!callerIsAdmin && isSuper !== true) {
+      return new Response(
+        JSON.stringify({ error: "Apenas owner/admin podem criar usuários" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     // Valida limite de usuários do plano (a função SQL já soma ativos + convites pendentes)
     const { data: limitCheck } = await admin.rpc("check_account_limit", {
@@ -216,7 +256,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("[create-team-user] error", e);
     return new Response(
-      JSON.stringify({ error: (e as Error).message }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

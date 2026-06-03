@@ -115,6 +115,6 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     console.error('[account-export] error', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });

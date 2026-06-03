@@ -64,6 +64,6 @@ Deno.serve(async (req) => {
     return json({ deletion_request: dr, scheduled_for: scheduled });
   } catch (e) {
     console.error('[account-deletion-request]', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });

@@ -121,6 +121,6 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[super-admin-create-client]", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
