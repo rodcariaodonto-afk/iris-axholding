@@ -271,7 +271,7 @@ Gere o prompt completo preenchido, mantendo TODA a estrutura XML e substituindo 
   } catch (error) {
     console.error('[generate-prompt] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
