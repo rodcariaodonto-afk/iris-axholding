@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     return json({ success: true, action, account_id, updates });
   } catch (e) {
     console.error("[super-admin-account-action]", e);
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
 

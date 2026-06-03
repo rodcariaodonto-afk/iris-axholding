@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     if (delErr) return json({ error: delErr.message }, 400);
     return json({ ok: true });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
 

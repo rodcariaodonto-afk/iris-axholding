@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, status: newStatus, phone_number: phoneNumber });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
 

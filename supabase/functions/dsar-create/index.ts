@@ -58,6 +58,6 @@ Deno.serve(async (req) => {
     return json({ ok: true, request_id: dsar.id });
   } catch (e) {
     console.error('[dsar-create]', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });

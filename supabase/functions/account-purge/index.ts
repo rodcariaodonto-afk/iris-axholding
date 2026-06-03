@@ -45,6 +45,6 @@ Deno.serve(async (req) => {
     return json({ purged_count: purged.length, purged });
   } catch (e) {
     console.error('[account-purge]', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });

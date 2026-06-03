@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, session }, 200);
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
 

@@ -75,6 +75,6 @@ Deno.serve(async (req) => {
     return json(report);
   } catch (e) {
     console.error('[compliance-report]', e);
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
