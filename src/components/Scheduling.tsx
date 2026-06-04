@@ -683,12 +683,25 @@ const Scheduling: React.FC = () => {
               )
             )}
 
+            {!coworkingEnabled && canEnableCoworking && (
+              <button
+                onClick={handleEnableCoworking}
+                disabled={enablingCoworking}
+                title="Liberar o modo Coworking nesta conta"
+                className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+              >
+                {enablingCoworking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{enablingCoworking ? 'Liberando...' : 'Ativar Coworking'}</span>
+              </button>
+            )}
+
             <Button onClick={() => { setSelectedDate(new Date().toISOString().split('T')[0]); setShowCreateModal(true); }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Agendar
             </Button>
         </div>
       </div>
+
 
       {/* Main Calendar Area */}
       <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col relative">
