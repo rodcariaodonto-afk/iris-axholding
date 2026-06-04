@@ -572,13 +572,22 @@ async function handleCloudAPIWebhook(
       const whatsappId = contactInfo?.wa_id || phoneNumber;
       const contactName = contactInfo?.profile?.name || null;
 
-      let { data: contact } = await supabase
-        .from('contacts').select('*').eq('phone_number', phoneNumber).maybeSingle();
+      let contactCloudQuery = supabase
+        .from('contacts').select('*').eq('phone_number', phoneNumber);
+      if (sessionAccountId) contactCloudQuery = contactCloudQuery.eq('account_id', sessionAccountId);
+      let { data: contact } = await contactCloudQuery.maybeSingle();
 
       if (!contact) {
         const { data: newContact, error: contactError } = await supabase
           .from('contacts')
-          .insert({ phone_number: phoneNumber, whatsapp_id: whatsappId, name: contactName, call_name: contactName?.split(' ')[0] || null, user_id: null })
+          .insert({
+            phone_number: phoneNumber,
+            whatsapp_id: whatsappId,
+            name: contactName,
+            call_name: contactName?.split(' ')[0] || null,
+            user_id: null,
+            ...(sessionAccountId ? { account_id: sessionAccountId } : {}),
+          })
           .select().single();
         if (contactError) { console.error('[Webhook:CloudAPI] Error creating contact:', contactError); continue; }
         contact = newContact;
