@@ -78,8 +78,21 @@ const Scheduling: React.FC = () => {
     duration: 60,
     resource_id: '' as string,
   });
-  const { enabled: coworkingEnabled } = useCoworkingEnabled();
+  const { enabled: coworkingEnabled, refresh: refreshCoworking } = useCoworkingEnabled();
   const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
+  const { role, isSuperAdmin } = useActiveAccount();
+  const canEnableCoworking = isSuperAdmin || role === 'owner' || role === 'admin';
+  const { enable: enableCoworking, enabling: enablingCoworking } = useEnableCoworking();
+
+  const handleEnableCoworking = async () => {
+    try {
+      await enableCoworking();
+      toast.success('Modo Coworking liberado — salas padrão criadas');
+      refreshCoworking();
+    } catch {
+      toast.error('Erro ao liberar o modo Coworking');
+    }
+  };
 
   // Edit Form State
   const [editFormData, setEditFormData] = useState({
