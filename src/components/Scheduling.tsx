@@ -7,7 +7,8 @@ import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
-import { useCoworkingEnabled, useBookableResources } from '@/hooks/useCoworking';
+import { useCoworkingEnabled, useBookableResources, useEnableCoworking } from '@/hooks/useCoworking';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 type ViewMode = 'month' | 'week' | 'day';
 
