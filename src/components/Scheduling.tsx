@@ -7,7 +7,8 @@ import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
-import { useCoworkingEnabled, useBookableResources } from '@/hooks/useCoworking';
+import { useCoworkingEnabled, useBookableResources, useEnableCoworking } from '@/hooks/useCoworking';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -77,8 +78,21 @@ const Scheduling: React.FC = () => {
     duration: 60,
     resource_id: '' as string,
   });
-  const { enabled: coworkingEnabled } = useCoworkingEnabled();
+  const { enabled: coworkingEnabled, refresh: refreshCoworking } = useCoworkingEnabled();
   const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
+  const { role, isSuperAdmin } = useActiveAccount();
+  const canEnableCoworking = isSuperAdmin || role === 'owner' || role === 'admin';
+  const { enable: enableCoworking, enabling: enablingCoworking } = useEnableCoworking();
+
+  const handleEnableCoworking = async () => {
+    try {
+      await enableCoworking();
+      toast.success('Modo Coworking liberado — salas padrão criadas');
+      refreshCoworking();
+    } catch {
+      toast.error('Erro ao liberar o modo Coworking');
+    }
+  };
 
   // Edit Form State
   const [editFormData, setEditFormData] = useState({
@@ -669,12 +683,25 @@ const Scheduling: React.FC = () => {
               )
             )}
 
+            {!coworkingEnabled && canEnableCoworking && (
+              <button
+                onClick={handleEnableCoworking}
+                disabled={enablingCoworking}
+                title="Liberar o modo Coworking nesta conta"
+                className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+              >
+                {enablingCoworking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{enablingCoworking ? 'Liberando...' : 'Ativar Coworking'}</span>
+              </button>
+            )}
+
             <Button onClick={() => { setSelectedDate(new Date().toISOString().split('T')[0]); setShowCreateModal(true); }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Agendar
             </Button>
         </div>
       </div>
+
 
       {/* Main Calendar Area */}
       <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col relative">
