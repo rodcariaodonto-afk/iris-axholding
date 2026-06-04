@@ -85,6 +85,30 @@ export function useToggleCoworking() {
   return { toggle, saving };
 }
 
+/** Libera e ativa o módulo Coworking de uma vez (Owner/Admin). Cria as salas padrão. */
+export function useEnableCoworking() {
+  const { activeAccountId } = useActiveAccount();
+  const [enabling, setEnabling] = useState(false);
+
+  const enable = useCallback(async () => {
+    if (!activeAccountId) return;
+    setEnabling(true);
+    try {
+      const { data: acc } = await supabase.from('accounts').select('settings').eq('id', activeAccountId).single();
+      const settings = {
+        ...((acc?.settings as Record<string, unknown>) || {}),
+        coworking_module_available: true,
+        coworking_enabled: true,
+      };
+      const { error } = await supabase.from('accounts').update({ settings }).eq('id', activeAccountId);
+      if (error) throw error;
+      await supabase.rpc('bootstrap_coworking_defaults', { _account_id: activeAccountId });
+    } finally { setEnabling(false); }
+  }, [activeAccountId]);
+
+  return { enable, enabling };
+}
+
 /** Lista salas da conta ativa com Realtime. */
 export function useBookableResources(opts?: { onlyActive?: boolean; onlyPublic?: boolean }) {
   const { activeAccountId } = useActiveAccount();
