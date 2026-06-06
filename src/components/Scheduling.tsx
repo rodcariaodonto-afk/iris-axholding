@@ -83,6 +83,7 @@ const Scheduling: React.FC = () => {
   const { role, isSuperAdmin } = useActiveAccount();
   const canEnableCoworking = isSuperAdmin || role === 'owner' || role === 'admin';
   const { enable: enableCoworking, enabling: enablingCoworking } = useEnableCoworking();
+  const { disable: disableCoworking, disabling: disablingCoworking } = useDisableCoworking();
 
   const handleEnableCoworking = async () => {
     try {
@@ -91,6 +92,16 @@ const Scheduling: React.FC = () => {
       refreshCoworking();
     } catch {
       toast.error('Erro ao liberar o modo Coworking');
+    }
+  };
+
+  const handleDisableCoworking = async () => {
+    try {
+      await disableCoworking();
+      toast.success('Modo Coworking desativado');
+      refreshCoworking();
+    } catch {
+      toast.error('Erro ao desativar o modo Coworking');
     }
   };
 
