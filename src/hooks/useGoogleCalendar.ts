@@ -41,7 +41,13 @@ export function useGoogleCalendar() {
       if (!session) throw new Error('Not authenticated');
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const redirectUri = `${window.location.origin}/scheduling`;
-      const qs = new URLSearchParams({ action: 'authorize', redirect_uri: redirectUri }).toString();
+      const { getActiveAccountId } = await import('@/lib/activeAccount');
+      const accountId = getActiveAccountId();
+      const qs = new URLSearchParams({
+        action: 'authorize',
+        redirect_uri: redirectUri,
+        ...(accountId ? { account_id: accountId } : {}),
+      }).toString();
       const url = `https://${projectId}.supabase.co/functions/v1/google-calendar-auth?${qs}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${session.access_token}` },
