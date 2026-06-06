@@ -7,7 +7,7 @@ import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
-import { useCoworkingEnabled, useBookableResources, useEnableCoworking } from '@/hooks/useCoworking';
+import { useCoworkingEnabled, useBookableResources, useEnableCoworking, useDisableCoworking } from '@/hooks/useCoworking';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 type ViewMode = 'month' | 'week' | 'day';
@@ -83,6 +83,7 @@ const Scheduling: React.FC = () => {
   const { role, isSuperAdmin } = useActiveAccount();
   const canEnableCoworking = isSuperAdmin || role === 'owner' || role === 'admin';
   const { enable: enableCoworking, enabling: enablingCoworking } = useEnableCoworking();
+  const { disable: disableCoworking, disabling: disablingCoworking } = useDisableCoworking();
 
   const handleEnableCoworking = async () => {
     try {
@@ -91,6 +92,16 @@ const Scheduling: React.FC = () => {
       refreshCoworking();
     } catch {
       toast.error('Erro ao liberar o modo Coworking');
+    }
+  };
+
+  const handleDisableCoworking = async () => {
+    try {
+      await disableCoworking();
+      toast.success('Modo Coworking desativado');
+      refreshCoworking();
+    } catch {
+      toast.error('Erro ao desativar o modo Coworking');
     }
   };
 
@@ -692,6 +703,18 @@ const Scheduling: React.FC = () => {
               >
                 {enablingCoworking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
                 <span className="hidden sm:inline">{enablingCoworking ? 'Liberando...' : 'Ativar Coworking'}</span>
+              </button>
+            )}
+
+            {coworkingEnabled && canEnableCoworking && (
+              <button
+                onClick={handleDisableCoworking}
+                disabled={disablingCoworking}
+                title="Desativar o modo Coworking nesta conta"
+                className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-300 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {disablingCoworking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{disablingCoworking ? 'Desativando...' : 'Desativar Coworking'}</span>
               </button>
             )}
 

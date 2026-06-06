@@ -109,6 +109,28 @@ export function useEnableCoworking() {
   return { enable, enabling };
 }
 
+/** Desativa o módulo Coworking (Owner/Admin). Mantém as salas, apenas oculta o módulo. */
+export function useDisableCoworking() {
+  const { activeAccountId } = useActiveAccount();
+  const [disabling, setDisabling] = useState(false);
+
+  const disable = useCallback(async () => {
+    if (!activeAccountId) return;
+    setDisabling(true);
+    try {
+      const { data: acc } = await supabase.from('accounts').select('settings').eq('id', activeAccountId).single();
+      const settings = {
+        ...((acc?.settings as Record<string, unknown>) || {}),
+        coworking_enabled: false,
+      };
+      const { error } = await supabase.from('accounts').update({ settings }).eq('id', activeAccountId);
+      if (error) throw error;
+    } finally { setDisabling(false); }
+  }, [activeAccountId]);
+
+  return { disable, disabling };
+}
+
 /** Lista salas da conta ativa com Realtime. */
 export function useBookableResources(opts?: { onlyActive?: boolean; onlyPublic?: boolean }) {
   const { activeAccountId } = useActiveAccount();
