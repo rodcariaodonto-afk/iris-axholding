@@ -41,13 +41,14 @@ Deno.serve(async (req) => {
 
     if (action === "authorize" || !action) {
       const redirectUri = url.searchParams.get("redirect_uri") || `${url.origin}/scheduling`;
+      const accountId = url.searchParams.get("account_id") || null;
 
       const scopes = [
         "https://www.googleapis.com/auth/calendar",
         "https://www.googleapis.com/auth/calendar.events",
       ].join(" ");
 
-      const state = btoa(JSON.stringify({ user_id: user.id, redirect_uri: redirectUri }));
+      const state = btoa(JSON.stringify({ user_id: user.id, redirect_uri: redirectUri, account_id: accountId }));
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
@@ -103,6 +104,29 @@ Deno.serve(async (req) => {
 
       const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+      // Resolve account_id: prefer the one passed via state, otherwise fall back
+      // to the user's first active account membership.
+      let accountId: string | null = stateData.account_id || null;
+      if (!accountId) {
+        const { data: membership } = await supabaseAdmin
+          .from("account_members")
+          .select("account_id")
+          .eq("user_id", userId)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        accountId = membership?.account_id ?? null;
+      }
+
+      if (!accountId) {
+        console.error("No account_id resolved for user", userId);
+        return new Response(JSON.stringify({ error: "Nenhuma conta ativa encontrada para salvar a conexão." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Delete existing then insert (no unique constraint on user_id assumed)
       await supabaseAdmin.from("google_calendar_connections").delete().eq("user_id", userId);
 
@@ -110,6 +134,7 @@ Deno.serve(async (req) => {
         .from("google_calendar_connections")
         .insert({
           user_id: userId,
+          account_id: accountId,
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || "",
           token_expires_at: expiresAt,
