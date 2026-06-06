@@ -41,13 +41,14 @@ Deno.serve(async (req) => {
 
     if (action === "authorize" || !action) {
       const redirectUri = url.searchParams.get("redirect_uri") || `${url.origin}/scheduling`;
+      const accountId = url.searchParams.get("account_id") || null;
 
       const scopes = [
         "https://www.googleapis.com/auth/calendar",
         "https://www.googleapis.com/auth/calendar.events",
       ].join(" ");
 
-      const state = btoa(JSON.stringify({ user_id: user.id, redirect_uri: redirectUri }));
+      const state = btoa(JSON.stringify({ user_id: user.id, redirect_uri: redirectUri, account_id: accountId }));
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
