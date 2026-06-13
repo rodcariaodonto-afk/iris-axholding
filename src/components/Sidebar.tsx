@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3, Building2 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3, Building2, Megaphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useOutboundCampaignsModuleAvailable } from '@/hooks/useOutboundCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { canManageAccount } from '@/lib/permissions';
@@ -57,6 +58,7 @@ const SidebarContent = () => {
   const { companyName, companyLogoUrl } = useCompanySettings();
   const { user, signOut } = useAuth();
   const { role, isSuperAdmin } = useActiveAccount();
+  const { available: campaignsAvailable } = useOutboundCampaignsModuleAvailable();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.substring(1) || 'dashboard';
@@ -121,6 +123,12 @@ const SidebarContent = () => {
               isActive={currentPath.startsWith(link.href.slice(1))}
             />
           ))}
+          {campaignsAvailable && (
+            <SidebarLink
+              link={{ label: 'Campanhas', href: '/campaigns', icon: <Megaphone className="h-5 w-5" /> }}
+              isActive={currentPath.startsWith('campaigns')}
+            />
+          )}
           {showAccountGroup && (
             <>
               <div className={`px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60 ${open ? '' : 'hidden'}`}>
