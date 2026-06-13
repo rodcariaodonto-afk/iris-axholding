@@ -510,6 +510,93 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_contacts: {
+        Row: {
+          account_id: string
+          campaign_id: string
+          contact_id: string | null
+          conversation_id: string | null
+          converted_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          name: string | null
+          phone_number: string
+          replied_at: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          campaign_id: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name?: string | null
+          phone_number: string
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          campaign_id?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name?: string | null
+          phone_number?: string
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_contacts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_contacts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_contacts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           account_id: string
@@ -1836,6 +1923,72 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbound_campaigns: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          created_at: string
+          daily_limit: number
+          delay_seconds: number
+          id: string
+          name: string
+          opening_message: string
+          pdf_filename: string | null
+          pdf_url: string | null
+          scheduled_start_at: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number
+          delay_seconds?: number
+          id?: string
+          name: string
+          opening_message: string
+          pdf_filename?: string | null
+          pdf_url?: string | null
+          scheduled_start_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number
+          delay_seconds?: number
+          id?: string
+          name?: string
+          opening_message?: string
+          pdf_filename?: string | null
+          pdf_url?: string | null
+          scheduled_start_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_campaigns_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_campaigns_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_sessions"
             referencedColumns: ["id"]
           },
         ]
