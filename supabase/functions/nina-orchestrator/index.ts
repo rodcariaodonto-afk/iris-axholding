@@ -908,6 +908,8 @@ async function sendFileFromLibrary(
   const { error: followUpError } = await supabase.from('send_queue').insert({
     conversation_id: conversationId,
     contact_id: contactId,
+    account_id: accountId,
+    session_id: sessionId,
     content: 'Dá uma olhada quando puder. Se tiver alguma dúvida depois de ver, é só me chamar — estou por aqui. 😊',
     from_type: 'nina',
     message_type: 'text',
