@@ -904,6 +904,25 @@ async function sendFileFromLibrary(
     return { error: error.message };
   }
 
+  // Follow-up text 2 seconds after the file
+  const { error: followUpError } = await supabase.from('send_queue').insert({
+    conversation_id: conversationId,
+    contact_id: contactId,
+    content: 'Dá uma olhada quando puder. Se tiver alguma dúvida depois de ver, é só me chamar — estou por aqui. 😊',
+    from_type: 'nina',
+    message_type: 'text',
+    priority: 1,
+    scheduled_at: new Date(Date.now() + 2000).toISOString(),
+    metadata: {
+      media_library_id: file.id,
+      send_reason: args.reason || 'client_request'
+    }
+  });
+
+  if (followUpError) {
+    console.error('[Nina] Error queuing follow-up text:', followUpError);
+  }
+
   console.log('[Nina] File queued for sending:', file.name);
   return { success: true, file_name: file.name, file_type: messageType };
 }
@@ -1134,6 +1153,7 @@ async function processQueueItem(
   let appointmentCreated = null;
   let appointmentRescheduled = null;
   let appointmentCancelled = null;
+  let fileQueued = false;
   
   for (const toolCall of toolCalls) {
     if (toolCall.function?.name === 'create_appointment') {
@@ -1238,9 +1258,8 @@ async function processQueueItem(
         );
         
         if (result.success) {
-          const emoji = result.file_type === 'image' ? '🖼️' : '📄';
-          aiContent = (aiContent || '') + `\n\n${emoji} Enviando: ${result.file_name}`;
-          console.log('[Nina] File send confirmation added');
+          fileQueued = true;
+          console.log('[Nina] File queued, follow-up text scheduled at +2s');
         } else if (result.error === 'no_file_found') {
           console.log('[Nina] No file found for query:', args.search_query);
           aiContent = (aiContent || '') + '\n\nDesculpe, não encontrei esse arquivo na nossa biblioteca no momento.';
@@ -1252,7 +1271,8 @@ async function processQueueItem(
   }
 
   // If no content and we only got tool calls, generate a default response
-  if (!aiContent && toolCalls.length > 0) {
+  // fileQueued: skip fallback — follow-up text already scheduled inside sendFileFromLibrary
+  if (!aiContent && toolCalls.length > 0 && !fileQueued) {
     if (appointmentCreated && !appointmentCreated.error) {
       aiContent = `Perfeito! Já agendei para você. ✅ Agendamento confirmado para ${appointmentCreated.date.split('-').reverse().join('/')} às ${appointmentCreated.time}!`;
     } else if (appointmentRescheduled && !appointmentRescheduled.error) {
@@ -1264,8 +1284,8 @@ async function processQueueItem(
     }
   }
 
-  // Fallback for empty AI response - use default greeting instead of throwing error
-  if (!aiContent) {
+  // Fallback for empty AI response - skip when a file was already queued
+  if (!aiContent && !fileQueued) {
     console.warn('[Nina] Empty AI response received, using fallback');
     aiContent = 'Olá! Como posso ajudar você hoje? 😊';
   }
@@ -1302,16 +1322,18 @@ async function processQueueItem(
   const incomingWasAudio = message.type === 'audio';
   const shouldSendAudio = incomingWasAudio && settings?.elevenlabs_api_key;
 
-  if (shouldSendAudio) {
-    console.log(`[Nina] Audio response enabled (incoming was audio: ${incomingWasAudio})`);
-    const audioQueued = await queueAudioResponses(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
+  if (aiContent) {
+    if (shouldSendAudio) {
+      console.log(`[Nina] Audio response enabled (incoming was audio: ${incomingWasAudio})`);
+      const audioQueued = await queueAudioResponses(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
 
-    if (!audioQueued) {
-      console.log('[Nina] Failed to generate audio, falling back to text');
+      if (!audioQueued) {
+        console.log('[Nina] Failed to generate audio, falling back to text');
+        await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
+      }
+    } else {
       await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
     }
-  } else {
-    await queueTextResponse(supabase, conversation, message, aiContent, settings, aiSettings, delay, appointmentCreated);
   }
 
   // If an appointment was created with a meeting link, send the link as a separate text message
