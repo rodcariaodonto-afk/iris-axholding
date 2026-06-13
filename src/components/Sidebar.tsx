@@ -123,6 +123,12 @@ const SidebarContent = () => {
               isActive={currentPath.startsWith(link.href.slice(1))}
             />
           ))}
+          {campaignsAvailable && (
+            <SidebarLink
+              link={{ label: 'Campanhas', href: '/campaigns', icon: <Megaphone className="h-5 w-5" /> }}
+              isActive={currentPath.startsWith('campaigns')}
+            />
+          )}
           {showAccountGroup && (
             <>
               <div className={`px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60 ${open ? '' : 'hidden'}`}>
