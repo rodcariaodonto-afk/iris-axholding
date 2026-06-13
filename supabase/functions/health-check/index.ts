@@ -54,13 +54,39 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Check nina_settings com fallback triplo
+    // 2. Check nina_settings (multi-tenant: filtra por account_id)
     console.log('[health-check] Checking nina_settings...');
     let settings = null;
     let settingsError = null;
 
-    // 1. Tentar por user_id
-    if (userId) {
+    // Resolver account_id do usuário (membro ativo)
+    let accountId: string | null = null;
+    if (req.headers.get('x-account-id')) {
+      accountId = req.headers.get('x-account-id');
+    } else if (userId) {
+      const { data: member } = await supabase
+        .from('account_members')
+        .select('account_id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      accountId = member?.account_id || null;
+    }
+
+    // 1. Buscar por account_id
+    if (accountId) {
+      const { data, error } = await supabase
+        .from('nina_settings')
+        .select('*')
+        .eq('account_id', accountId)
+        .maybeSingle();
+      settings = data;
+      settingsError = error;
+    }
+
+    // 2. Fallback por user_id
+    if (!settings && !settingsError && userId) {
       const { data, error } = await supabase
         .from('nina_settings')
         .select('*')
@@ -70,24 +96,13 @@ Deno.serve(async (req) => {
       settingsError = error;
     }
 
-    // 2. Fallback: buscar global (user_id IS NULL)
+    // 3. Último fallback: qualquer settings (limit 1)
     if (!settings && !settingsError) {
-      console.log('[health-check] No user-specific settings, trying global...');
+      console.log('[health-check] No scoped settings, fetching any...');
       const { data, error } = await supabase
         .from('nina_settings')
         .select('*')
-        .is('user_id', null)
-        .maybeSingle();
-      settings = data;
-      settingsError = error;
-    }
-
-    // 3. Último fallback: qualquer settings
-    if (!settings && !settingsError) {
-      console.log('[health-check] No global settings, fetching any...');
-      const { data, error } = await supabase
-        .from('nina_settings')
-        .select('*')
+        .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
       settings = data;
