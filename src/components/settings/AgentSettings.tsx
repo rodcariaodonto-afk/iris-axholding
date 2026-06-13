@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import PromptGeneratorSheet from './PromptGeneratorSheet';
 import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
 import { useAuth } from '@/hooks/useAuth';
+import { getActiveAccountId } from '@/lib/activeAccount';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   Tooltip,
