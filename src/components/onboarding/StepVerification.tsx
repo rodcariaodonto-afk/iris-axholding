@@ -84,7 +84,10 @@ export const StepVerification: React.FC<StepVerificationProps> = ({ onAllChecked
   const runHealthCheck = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke<HealthCheckResponse>('health-check');
+      const accountId = getActiveAccountId();
+      const { data, error } = await supabase.functions.invoke<HealthCheckResponse>('health-check', {
+        headers: accountId ? { 'x-account-id': accountId } : undefined,
+      });
       
       if (error) {
         console.error('Health check error:', error);
