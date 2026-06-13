@@ -1252,6 +1252,8 @@ async function processQueueItem(
         
         if (result.success) {
           fileQueued = true;
+          // Suppress any AI-generated text: the file + follow-up are the only messages
+          aiContent = '';
           console.log('[Nina] File queued, follow-up text scheduled at +2s');
         } else if (result.error === 'no_file_found') {
           console.log('[Nina] No file found for query:', args.search_query);
