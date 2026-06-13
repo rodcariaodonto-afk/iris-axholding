@@ -1047,9 +1047,10 @@ async function processQueueItem(
 
   // Build enhanced system prompt with context
   const enhancedSystemPrompt = buildEnhancedPrompt(
-    systemPrompt, 
-    conversation.contact, 
-    clientMemory
+    systemPrompt,
+    conversation.contact,
+    clientMemory,
+    conversation
   );
 
   // Process template variables ({{ data_hora }}, {{ dia_semana }}, etc.)
@@ -1649,7 +1650,7 @@ function processPromptTemplate(prompt: string, contact: any): string {
   });
 }
 
-function buildEnhancedPrompt(basePrompt: string, contact: any, memory: any): string {
+function buildEnhancedPrompt(basePrompt: string, contact: any, memory: any, conversation?: any): string {
   let contextInfo = '';
 
   if (contact) {
@@ -1661,19 +1662,31 @@ function buildEnhancedPrompt(basePrompt: string, contact: any, memory: any): str
 
   if (memory && Object.keys(memory).length > 0) {
     contextInfo += `\n\nMEMÓRIA DO CLIENTE:`;
-    
+
     if (memory.lead_profile) {
       const lp = memory.lead_profile;
       if (lp.interests?.length) contextInfo += `\n- Interesses: ${lp.interests.join(', ')}`;
       if (lp.products_discussed?.length) contextInfo += `\n- Produtos discutidos: ${lp.products_discussed.join(', ')}`;
       if (lp.lead_stage) contextInfo += `\n- Estágio: ${lp.lead_stage}`;
     }
-    
+
     if (memory.sales_intelligence) {
       const si = memory.sales_intelligence;
       if (si.pain_points?.length) contextInfo += `\n- Dores: ${si.pain_points.join(', ')}`;
       if (si.next_best_action) contextInfo += `\n- Próxima ação sugerida: ${si.next_best_action}`;
     }
+  }
+
+  if (conversation?.metadata?.outbound) {
+    contextInfo += `\n\nCONTEXTO DE ORIGEM:`;
+    contextInfo += `\n- Este lead veio de uma campanha de prospecção ativa.`;
+    if (conversation.metadata.campaign_name) {
+      contextInfo += `\n- Campanha: ${conversation.metadata.campaign_name}`;
+    }
+    if (conversation.metadata.pdf_filename) {
+      contextInfo += `\n- Material enviado: ${conversation.metadata.pdf_filename}`;
+    }
+    contextInfo += `\n- IMPORTANTE: Você iniciou o contato. Use o protocolo de abertura outbound.`;
   }
 
   return basePrompt + contextInfo;

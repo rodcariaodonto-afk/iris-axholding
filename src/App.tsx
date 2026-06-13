@@ -16,6 +16,7 @@ import LandingPage from './pages/LandingPage';
 import MeetingRoom from './pages/MeetingRoom';
 import InviteAccept from './pages/InviteAccept';
 import Unsubscribe from './pages/Unsubscribe';
+import Campaigns from './pages/Campaigns';
 import ProtectedRoute from './components/ProtectedRoute';
 import AccountLayout from './components/account/AccountLayout';
 import AccountOverview from './components/account/AccountOverview';
@@ -112,6 +113,7 @@ const App: React.FC = () => {
               <Route path="/reports" element={<Reports />} />
               <Route path="/team" element={<Team />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/meeting/:id" element={<MeetingRoom />} />
 
               <Route path="/account" element={<AccountLayout />}>

@@ -327,6 +327,41 @@ async function handleEvolutionWebhook(
     console.log('[Webhook:Evolution] Created conversation:', conversation.id, 'session:', sessionId);
   }
 
+  // Detect outbound campaign lead: check if this phone has a recent campaign dispatch
+  const { data: campaignContact } = await supabase
+    .from('campaign_contacts')
+    .select('id, campaign_id, status, campaign:outbound_campaigns(name, pdf_filename)')
+    .eq('phone_number', phoneNumber)
+    .in('status', ['sent', 'pending'])
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (campaignContact && campaignContact.status === 'sent') {
+    await supabase
+      .from('campaign_contacts')
+      .update({
+        status: 'replied',
+        replied_at: new Date().toISOString(),
+        conversation_id: conversation.id,
+      })
+      .eq('id', campaignContact.id);
+
+    await supabase
+      .from('conversations')
+      .update({
+        metadata: {
+          outbound: true,
+          campaign_id: campaignContact.campaign_id,
+          campaign_name: campaignContact.campaign?.name,
+          pdf_filename: campaignContact.campaign?.pdf_filename,
+        },
+      })
+      .eq('id', conversation.id);
+
+    console.log('[Webhook:Evolution] Outbound campaign reply detected, campaign_contact marked as replied:', campaignContact.id);
+  }
+
   // Determine message content and type
   let messageContent = '';
   let messageType = 'text';

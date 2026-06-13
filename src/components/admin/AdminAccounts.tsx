@@ -144,6 +144,19 @@ export default function AdminAccounts() {
     }
   };
 
+  const toggleOutboundModule = async (account: AccountRow, enabled: boolean) => {
+    const prev = accounts;
+    setAccounts(prev.map(a => a.id === account.id ? { ...a, settings: { ...(a.settings || {}), outbound_campaigns_enabled: enabled } } : a));
+    const newSettings = { ...(account.settings || {}), outbound_campaigns_enabled: enabled };
+    const { error } = await supabase.from("accounts").update({ settings: newSettings }).eq("id", account.id);
+    if (error) {
+      setAccounts(prev);
+      toast.error("Falha ao atualizar módulo Campanhas");
+    } else {
+      toast.success(enabled ? "Módulo Campanhas liberado" : "Módulo Campanhas desabilitado");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
@@ -209,6 +222,15 @@ export default function AdminAccounts() {
                   <Switch
                     checked={!!a.settings?.coworking_module_available}
                     onCheckedChange={(v) => toggleCoworkingModule(a, v)}
+                  />
+                </div>
+              )}
+              {!a.is_internal && (
+                <div className="flex items-center gap-2 px-2 border-l border-border/40" title="Liberar módulo Campanhas Outbound">
+                  <span className="text-[11px] text-muted-foreground">Campanhas</span>
+                  <Switch
+                    checked={!!a.settings?.outbound_campaigns_enabled}
+                    onCheckedChange={(v) => toggleOutboundModule(a, v)}
                   />
                 </div>
               )}
