@@ -41,17 +41,36 @@ serve(async (req) => {
 
     const results: ValidationResult[] = [];
 
-    // Get settings with triple fallback
-    let settings = null;
-    const { data: s1 } = await supabase.from('nina_settings').select('*').eq('user_id', user.id).maybeSingle();
-    settings = s1;
-    if (!settings) {
-      const { data: s2 } = await supabase.from('nina_settings').select('*').is('user_id', null).maybeSingle();
-      settings = s2;
+    // Resolve the active account (multi-tenant). Prefer the x-account-id header,
+    // fall back to the user's active membership.
+    let accountId: string | null = req.headers.get('x-account-id');
+    if (!accountId) {
+      const { data: member } = await supabase
+        .from('account_members')
+        .select('account_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      accountId = member?.account_id ?? null;
     }
+
+    // Get settings scoped to the active account
+    let settings = null;
+    if (accountId) {
+      const { data: s1 } = await supabase
+        .from('nina_settings')
+        .select('*')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      settings = s1;
+    }
+    // Legacy fallback: row tied directly to the user
     if (!settings) {
-      const { data: s3 } = await supabase.from('nina_settings').select('*').limit(1).maybeSingle();
-      settings = s3;
+      const { data: s2 } = await supabase.from('nina_settings').select('*').eq('user_id', user.id).maybeSingle();
+      settings = s2;
     }
 
     if (!settings) {
