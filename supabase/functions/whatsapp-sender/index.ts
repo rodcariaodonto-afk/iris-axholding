@@ -209,10 +209,39 @@ async function sendMessageEvolution(supabase: any, settings: any, queueItem: any
       endpoint = `/message/sendWhatsAppAudio/${instance}`;
       body = { number: recipient, audio: queueItem.media_url };
       break;
-    case 'document':
+    case 'document': {
       endpoint = `/message/sendMedia/${instance}`;
-      body = { number: recipient, mediatype: 'document', media: queueItem.media_url, fileName: queueItem.content || 'document' };
+      // Derive a proper fileName (with extension) and mimetype so WhatsApp
+      // renders the file as a document instead of raw "data".
+      const urlExt = (queueItem.media_url?.split('?')[0].split('.').pop() || '').toLowerCase();
+      const metaFileName = queueItem.metadata?.file_name as string | undefined;
+      const mimeMap: Record<string, string> = {
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        txt: 'text/plain',
+        csv: 'text/csv',
+      };
+      // Build a filename that ends with the correct extension.
+      let fileName = metaFileName || queueItem.content || 'documento';
+      if (urlExt && !fileName.toLowerCase().endsWith(`.${urlExt}`)) {
+        fileName = `${fileName}.${urlExt}`;
+      }
+      const mimetype = mimeMap[urlExt] || 'application/octet-stream';
+      body = {
+        number: recipient,
+        mediatype: 'document',
+        media: queueItem.media_url,
+        fileName,
+        mimetype,
+        caption: queueItem.content || '',
+      };
       break;
+    }
     default:
       endpoint = `/message/sendText/${instance}`;
       body = { number: recipient, text: queueItem.content };
