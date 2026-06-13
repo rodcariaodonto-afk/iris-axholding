@@ -16,6 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { getActiveAccountId } from '@/lib/activeAccount';
 import { supabase } from '@/integrations/supabase/client';
 
 interface HealthCheckResult {
