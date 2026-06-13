@@ -156,8 +156,10 @@ serve(async (req) => {
       message: lovableApiKey && lovableApiKey.length > 10 ? 'Lovable AI configurada' : 'LOVABLE_API_KEY não configurada',
     });
 
-    // Pipeline
-    const { count: stagesCount } = await supabase.from('pipeline_stages').select('*', { count: 'exact', head: true }).eq('is_active', true);
+    // Pipeline (scoped to the active account)
+    let stagesQuery = supabase.from('pipeline_stages').select('*', { count: 'exact', head: true }).eq('is_active', true);
+    if (accountId) stagesQuery = stagesQuery.eq('account_id', accountId);
+    const { count: stagesCount } = await stagesQuery;
     results.push({
       component: 'pipeline',
       status: stagesCount && stagesCount > 0 ? 'ok' : 'warning',
