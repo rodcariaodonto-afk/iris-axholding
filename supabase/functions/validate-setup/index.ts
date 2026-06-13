@@ -83,20 +83,13 @@ serve(async (req) => {
         results.push({ component: 'identity', status: 'warning', message: 'Identidade não configurada', details: 'Configure nome da empresa e SDR' });
       }
 
-      // Check WhatsApp based on whatsapp_sessions (multi-instance, per account)
-      // Resolve user's account(s)
-      const { data: memberships } = await supabase
-        .from('account_members')
-        .select('account_id')
-        .eq('user_id', user.id);
-      const accountIds = (memberships || []).map((m: any) => m.account_id);
-
+      // Check WhatsApp based on whatsapp_sessions (multi-instance) for the active account
       let sessions: any[] = [];
-      if (accountIds.length > 0) {
+      if (accountId) {
         const { data: sess } = await supabase
           .from('whatsapp_sessions')
           .select('id, session_name, status, provider, phone_number, evolution_instance_name')
-          .in('account_id', accountIds);
+          .eq('account_id', accountId);
         sessions = sess || [];
       }
 
