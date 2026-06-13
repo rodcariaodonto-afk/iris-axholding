@@ -204,6 +204,23 @@ export default function InviteAccept() {
                     <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" required minLength={6} />
                   </div>
+                  {mode === "login" && (
+                    <div className="text-right">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { error } = await supabase.auth.resetPasswordForEmail(preview.email, {
+                            redirectTo: `${window.location.origin}/reset-password`,
+                          });
+                          if (error) toast.error(error.message);
+                          else toast.success("Enviamos um link de recuperação de senha para seu email.");
+                        }}
+                        className="text-xs text-primary hover:text-primary/80 font-medium"
+                      >
+                        Esqueceu sua senha?
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
