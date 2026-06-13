@@ -58,6 +58,7 @@ const SidebarContent = () => {
   const { companyName, companyLogoUrl } = useCompanySettings();
   const { user, signOut } = useAuth();
   const { role, isSuperAdmin } = useActiveAccount();
+  const { available: campaignsAvailable } = useOutboundCampaignsModuleAvailable();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.substring(1) || 'dashboard';
