@@ -855,18 +855,22 @@ async function sendFileFromLibrary(
   supabase: any,
   conversationId: string,
   contactId: string,
+  accountId: string | null,
+  sessionId: string | null,
   args: { search_query: string; reason?: string }
 ): Promise<any> {
   console.log('[Nina] Searching media library for:', args.search_query);
 
-  // Search by name, description and tags using ilike
+  // Search by name, description and tags using ilike (scoped to account)
   const query = args.search_query.toLowerCase();
-  const { data: files } = await supabase
+  let mediaQuery = supabase
     .from('media_library')
     .select('*')
     .eq('is_active', true)
     .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
     .limit(5);
+  if (accountId) mediaQuery = mediaQuery.eq('account_id', accountId);
+  const { data: files } = await mediaQuery;
 
   if (!files || files.length === 0) {
     console.log('[Nina] No files found in media library for:', args.search_query);
@@ -881,6 +885,8 @@ async function sendFileFromLibrary(
   const { error } = await supabase.from('send_queue').insert({
     conversation_id: conversationId,
     contact_id: contactId,
+    account_id: accountId,
+    session_id: sessionId,
     content: file.name,
     from_type: 'nina',
     message_type: messageType,
@@ -1225,6 +1231,8 @@ async function processQueueItem(
           supabase,
           conversation.id,
           conversation.contact_id,
+          conversation.account_id,
+          conversation.session_id,
           args
         );
         
