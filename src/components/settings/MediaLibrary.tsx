@@ -55,7 +55,7 @@ const MediaLibrary: React.FC = () => {
 
     try {
       const ext = selectedFile.name.split('.').pop();
-      const path = `library/${accountId}/${Date.now()}.${ext}`;
+      const path = `${accountId}/library/${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('media-files')
