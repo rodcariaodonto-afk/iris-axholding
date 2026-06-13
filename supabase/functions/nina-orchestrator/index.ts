@@ -894,6 +894,7 @@ async function sendFileFromLibrary(
     priority: 1,
     metadata: {
       media_library_id: file.id,
+      file_name: file.file_name || file.name,
       send_reason: args.reason || 'client_request'
     }
   });
