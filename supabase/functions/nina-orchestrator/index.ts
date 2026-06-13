@@ -1231,6 +1231,8 @@ async function processQueueItem(
           supabase,
           conversation.id,
           conversation.contact_id,
+          conversation.account_id,
+          conversation.session_id,
           args
         );
         
