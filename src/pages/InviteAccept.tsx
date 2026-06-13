@@ -87,7 +87,17 @@ export default function InviteAccept() {
           try { await supabase.rpc("set_active_account", { _account_id: data.account_id }); } catch {}
         }
         const { data: sd, error: se } = await supabase.auth.signInWithPassword({ email: preview.email, password });
-        if (se) { toast.error(se.message); return; }
+        if (se) {
+          // A conta já existia com outra senha (a digitada aqui não foi aplicada).
+          if (data?.user_exists) {
+            toast.error("Você já tem uma conta com este email. Entre com sua senha atual ou redefina a senha.");
+            setMode("login");
+            setPassword("");
+          } else {
+            toast.error(se.message);
+          }
+          return;
+        }
         userId = sd.user?.id || data?.user_id || null;
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
