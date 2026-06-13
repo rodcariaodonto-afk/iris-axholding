@@ -89,25 +89,33 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
       setLoading(false);
       return;
     }
-    
+
+    const accountId = getActiveAccountId();
+    if (!accountId) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Fetch global nina_settings (no user_id filter - single tenant)
+      // Fetch settings scoped to the active account (multi-tenant)
       const { data, error } = await supabase
         .from('nina_settings')
         .select('*')
+        .eq('account_id', accountId)
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
 
-      // Se não existe registro, admin precisa configurar via onboarding
+      // Se não existe registro para esta conta, mantém os defaults.
+      // O registro será criado ao salvar.
       if (!data) {
-        console.log('[AgentSettings] No global settings found');
+        console.log('[AgentSettings] No settings found for account', accountId);
         setLoading(false);
         return;
       }
 
-      // Load settings from global data
+      // Load settings from account data
       setSettings({
         id: data.id,
         system_prompt_override: data.system_prompt_override,
@@ -134,29 +142,47 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   };
 
   const handleSave = async () => {
+    const accountId = getActiveAccountId();
+    if (!accountId) {
+      toast.error('Nenhuma conta ativa selecionada. Recarregue a página.');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Update global settings (no user_id filter needed - RLS handles admin check)
-      const { error } = await supabase
-        .from('nina_settings')
-        .update({
-          system_prompt_override: settings.system_prompt_override,
-          is_active: settings.is_active,
-          auto_response_enabled: settings.auto_response_enabled,
-          ai_model_mode: settings.ai_model_mode,
-          message_breaking_enabled: settings.message_breaking_enabled,
-          business_hours_start: settings.business_hours_start,
-          business_hours_end: settings.business_hours_end,
-          business_days: settings.business_days,
-          company_name: settings.company_name,
-          sdr_name: settings.sdr_name,
-          ai_scheduling_enabled: settings.ai_scheduling_enabled,
-          company_logo_url: settings.company_logo_url,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq('id', settings.id!);
+      const payload = {
+        system_prompt_override: settings.system_prompt_override,
+        is_active: settings.is_active,
+        auto_response_enabled: settings.auto_response_enabled,
+        ai_model_mode: settings.ai_model_mode,
+        message_breaking_enabled: settings.message_breaking_enabled,
+        business_hours_start: settings.business_hours_start,
+        business_hours_end: settings.business_hours_end,
+        business_days: settings.business_days,
+        company_name: settings.company_name,
+        sdr_name: settings.sdr_name,
+        ai_scheduling_enabled: settings.ai_scheduling_enabled,
+        company_logo_url: settings.company_logo_url,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      if (settings.id) {
+        // Update existing account settings
+        const { error } = await supabase
+          .from('nina_settings')
+          .update(payload as any)
+          .eq('id', settings.id);
+        if (error) throw error;
+      } else {
+        // Create settings row for this account
+        const { data, error } = await supabase
+          .from('nina_settings')
+          .insert({ ...payload, account_id: accountId } as any)
+          .select('id')
+          .single();
+        if (error) throw error;
+        if (data?.id) setSettings(prev => ({ ...prev, id: data.id }));
+      }
 
       await refetchCompanySettings();
       toast.success('Configurações do agente salvas com sucesso!');
