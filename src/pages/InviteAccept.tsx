@@ -87,7 +87,17 @@ export default function InviteAccept() {
           try { await supabase.rpc("set_active_account", { _account_id: data.account_id }); } catch {}
         }
         const { data: sd, error: se } = await supabase.auth.signInWithPassword({ email: preview.email, password });
-        if (se) { toast.error(se.message); return; }
+        if (se) {
+          // A conta já existia com outra senha (a digitada aqui não foi aplicada).
+          if (data?.user_exists) {
+            toast.error("Você já tem uma conta com este email. Entre com sua senha atual ou redefina a senha.");
+            setMode("login");
+            setPassword("");
+          } else {
+            toast.error(se.message);
+          }
+          return;
+        }
         userId = sd.user?.id || data?.user_id || null;
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -194,6 +204,23 @@ export default function InviteAccept() {
                     <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" required minLength={6} />
                   </div>
+                  {mode === "login" && (
+                    <div className="text-right">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { error } = await supabase.auth.resetPasswordForEmail(preview.email, {
+                            redirectTo: `${window.location.origin}/reset-password`,
+                          });
+                          if (error) toast.error(error.message);
+                          else toast.success("Enviamos um link de recuperação de senha para seu email.");
+                        }}
+                        className="text-xs text-primary hover:text-primary/80 font-medium"
+                      >
+                        Esqueceu sua senha?
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
