@@ -880,23 +880,18 @@ async function sendFileFromLibrary(
   const file = files[0];
   console.log('[Nina] Found file:', file.name, file.file_url);
 
-  // Queue file for sending
-  const messageType = file.file_type === 'image' ? 'image' : 'document';
+  // PASSO 1 — Envia o arquivo
   const { error } = await supabase.from('send_queue').insert({
     conversation_id: conversationId,
     contact_id: contactId,
     account_id: accountId,
     session_id: sessionId,
-    content: file.name,
+    message_type: 'document',
     from_type: 'nina',
-    message_type: messageType,
     media_url: file.file_url,
+    content: file.name,
     priority: 1,
-    metadata: {
-      media_library_id: file.id,
-      file_name: file.file_name || file.name,
-      send_reason: args.reason || 'client_request'
-    }
+    metadata: { media_library_id: file.id, send_reason: args.reason || 'client_request' }
   });
 
   if (error) {
@@ -904,21 +899,17 @@ async function sendFileFromLibrary(
     return { error: error.message };
   }
 
-  // Follow-up text 2 seconds after the file
+  // PASSO 2 — Mensagem de follow-up 2 segundos depois
   const { error: followUpError } = await supabase.from('send_queue').insert({
     conversation_id: conversationId,
     contact_id: contactId,
     account_id: accountId,
     session_id: sessionId,
-    content: 'Dá uma olhada quando puder. Se tiver alguma dúvida depois de ver, é só me chamar — estou por aqui. 😊',
-    from_type: 'nina',
     message_type: 'text',
+    from_type: 'nina',
+    content: 'Dá uma olhada quando puder. Se tiver alguma dúvida depois de ver, é só me chamar — estou por aqui. 😊',
     priority: 1,
-    scheduled_at: new Date(Date.now() + 2000).toISOString(),
-    metadata: {
-      media_library_id: file.id,
-      send_reason: args.reason || 'client_request'
-    }
+    scheduled_at: new Date(Date.now() + 2000).toISOString()
   });
 
   if (followUpError) {
@@ -926,7 +917,7 @@ async function sendFileFromLibrary(
   }
 
   console.log('[Nina] File queued for sending:', file.name);
-  return { success: true, file_name: file.name, file_type: messageType };
+  return { success: true, file_name: file.name, file_type: 'document' };
 }
 
 async function processQueueItem(
@@ -1261,6 +1252,8 @@ async function processQueueItem(
         
         if (result.success) {
           fileQueued = true;
+          // Suppress any AI-generated text: the file + follow-up are the only messages
+          aiContent = '';
           console.log('[Nina] File queued, follow-up text scheduled at +2s');
         } else if (result.error === 'no_file_found') {
           console.log('[Nina] No file found for query:', args.search_query);
