@@ -101,7 +101,10 @@ export const StepFinish: React.FC<StepFinishProps> = ({
   const runValidation = useCallback(async () => {
     setIsValidating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-setup');
+      const accountId = getActiveAccountId();
+      const { data, error } = await supabase.functions.invoke('validate-setup', {
+        headers: accountId ? { 'x-account-id': accountId } : undefined,
+      });
       if (error) throw error;
       setValidation(data);
       
