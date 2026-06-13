@@ -1677,7 +1677,7 @@ function buildEnhancedPrompt(basePrompt: string, contact: any, memory: any, conv
     }
   }
 
-  if (conversation?.metadata?.outbound) {
+  if (conversation?.metadata?.outbound === true) {
     contextInfo += `\n\nCONTEXTO DE ORIGEM:`;
     contextInfo += `\n- Este lead veio de uma campanha de prospecção ativa.`;
     if (conversation.metadata.campaign_name) {
