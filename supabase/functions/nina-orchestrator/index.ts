@@ -885,6 +885,8 @@ async function sendFileFromLibrary(
   const { error } = await supabase.from('send_queue').insert({
     conversation_id: conversationId,
     contact_id: contactId,
+    account_id: accountId,
+    session_id: sessionId,
     content: file.name,
     from_type: 'nina',
     message_type: messageType,
