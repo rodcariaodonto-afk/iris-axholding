@@ -41,17 +41,36 @@ serve(async (req) => {
 
     const results: ValidationResult[] = [];
 
-    // Get settings with triple fallback
-    let settings = null;
-    const { data: s1 } = await supabase.from('nina_settings').select('*').eq('user_id', user.id).maybeSingle();
-    settings = s1;
-    if (!settings) {
-      const { data: s2 } = await supabase.from('nina_settings').select('*').is('user_id', null).maybeSingle();
-      settings = s2;
+    // Resolve the active account (multi-tenant). Prefer the x-account-id header,
+    // fall back to the user's active membership.
+    let accountId: string | null = req.headers.get('x-account-id');
+    if (!accountId) {
+      const { data: member } = await supabase
+        .from('account_members')
+        .select('account_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      accountId = member?.account_id ?? null;
     }
+
+    // Get settings scoped to the active account
+    let settings = null;
+    if (accountId) {
+      const { data: s1 } = await supabase
+        .from('nina_settings')
+        .select('*')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      settings = s1;
+    }
+    // Legacy fallback: row tied directly to the user
     if (!settings) {
-      const { data: s3 } = await supabase.from('nina_settings').select('*').limit(1).maybeSingle();
-      settings = s3;
+      const { data: s2 } = await supabase.from('nina_settings').select('*').eq('user_id', user.id).maybeSingle();
+      settings = s2;
     }
 
     if (!settings) {
@@ -64,20 +83,13 @@ serve(async (req) => {
         results.push({ component: 'identity', status: 'warning', message: 'Identidade não configurada', details: 'Configure nome da empresa e SDR' });
       }
 
-      // Check WhatsApp based on whatsapp_sessions (multi-instance, per account)
-      // Resolve user's account(s)
-      const { data: memberships } = await supabase
-        .from('account_members')
-        .select('account_id')
-        .eq('user_id', user.id);
-      const accountIds = (memberships || []).map((m: any) => m.account_id);
-
+      // Check WhatsApp based on whatsapp_sessions (multi-instance) for the active account
       let sessions: any[] = [];
-      if (accountIds.length > 0) {
+      if (accountId) {
         const { data: sess } = await supabase
           .from('whatsapp_sessions')
           .select('id, session_name, status, provider, phone_number, evolution_instance_name')
-          .in('account_id', accountIds);
+          .eq('account_id', accountId);
         sessions = sess || [];
       }
 
@@ -144,8 +156,10 @@ serve(async (req) => {
       message: lovableApiKey && lovableApiKey.length > 10 ? 'Lovable AI configurada' : 'LOVABLE_API_KEY não configurada',
     });
 
-    // Pipeline
-    const { count: stagesCount } = await supabase.from('pipeline_stages').select('*', { count: 'exact', head: true }).eq('is_active', true);
+    // Pipeline (scoped to the active account)
+    let stagesQuery = supabase.from('pipeline_stages').select('*', { count: 'exact', head: true }).eq('is_active', true);
+    if (accountId) stagesQuery = stagesQuery.eq('account_id', accountId);
+    const { count: stagesCount } = await stagesQuery;
     results.push({
       component: 'pipeline',
       status: stagesCount && stagesCount > 0 ? 'ok' : 'warning',
