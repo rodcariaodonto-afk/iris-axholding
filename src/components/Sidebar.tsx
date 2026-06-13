@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3, Building2 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, Settings as SettingsIcon, LogOut, ShieldCheck, Calendar, Kanban, BarChart3, Building2, Megaphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useOutboundCampaignsModuleAvailable } from '@/hooks/useOutboundCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { canManageAccount } from '@/lib/permissions';
