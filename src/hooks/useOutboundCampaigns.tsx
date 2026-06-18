@@ -261,18 +261,74 @@ export function useUploadCampaignContacts() {
   const accountId = useCurrentAccountId();
 
   /**
-   * Parses a CSV string expecting at minimum a "phone" column.
-   * Accepts headers: phone / telefone / numero (case-insensitive).
-   * An optional "name" / "nome" column is used when present.
+   * Robust CSV parser tuned for common Brazilian spreadsheet exports.
+   * Supports:
+   *  - comma or semicolon separators
+   *  - Windows (CRLF) or Unix (LF) line breaks
+   *  - UTF-8 BOM at the start of the file
+   *  - quoted fields with escaped double quotes
+   *  - headers with or without accents
+   * Phone column accepts: phone / telefone / numero / celular / whatsapp / phone_number
+   * Name column (optional) accepts: name / nome / call_name
    * Pass preview=true to return only the first 5 rows (for UI preview).
    */
   const parseCSV = useCallback((csvText: string, preview = false): CampaignContactRow[] => {
-    const lines = csvText.trim().split('\n').filter(Boolean);
+    // Remove UTF-8 BOM if present
+    const clean = csvText.replace(/^\uFEFF/, '');
+
+    // Split into lines (CRLF or LF) and drop empty lines
+    const lines = clean.split(/\r\n|\n|\r/).filter(l => l.trim().length > 0);
     if (lines.length < 2) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-    const phoneIdx = headers.findIndex(h => h === 'phone' || h === 'telefone' || h === 'numero');
-    const nameIdx = headers.findIndex(h => h === 'name' || h === 'nome');
+    // Parse a single line respecting quotes; separator is comma or semicolon
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let field = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (inQuotes) {
+          if (char === '"') {
+            if (line[i + 1] === '"') {
+              // Escaped double quote
+              field += '"';
+              i++;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            field += char;
+          }
+        } else if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',' || char === ';') {
+          result.push(field);
+          field = '';
+        } else {
+          field += char;
+        }
+      }
+      result.push(field);
+      return result.map(f => f.trim());
+    };
+
+    const normalize = (h: string) =>
+      h
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // strip accents
+        .replace(/['"]/g, '');
+
+    const headers = parseLine(lines[0]).map(normalize);
+
+    const phoneAliases = ['phone', 'telefone', 'numero', 'celular', 'whatsapp', 'phone_number'];
+    const nameAliases = ['name', 'nome', 'call_name'];
+
+    const phoneIdx = headers.findIndex(h => phoneAliases.includes(h));
+    const nameIdx = headers.findIndex(h => nameAliases.includes(h));
 
     if (phoneIdx === -1) return [];
 
@@ -280,9 +336,9 @@ export function useUploadCampaignContacts() {
 
     return dataLines
       .map(line => {
-        const cols = line.split(',').map(c => c.trim().replace(/['"]/g, ''));
+        const cols = parseLine(line);
         return {
-          phone_number: cols[phoneIdx] || '',
+          phone_number: (cols[phoneIdx] || '').replace(/['"]/g, '').trim(),
           name: nameIdx !== -1 ? (cols[nameIdx] || undefined) : undefined,
         };
       })
