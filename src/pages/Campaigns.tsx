@@ -249,25 +249,45 @@ function NewCampaignModal({ onClose, onCreated }: NewCampaignModalProps) {
     setPdfFile(file);
   };
 
-  // CSV file selection + preview
-  const handleCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // CSV file selection + preview (local upload)
+  const handleCsvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setCsvText(text);
+
+    const isCsv = /\.csv$/i.test(file.name) || file.type.includes('csv');
+    if (!isCsv) {
+      toast.error('Selecione um arquivo CSV');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const text = await file.text();
       const preview = parseCSV(text, true);
       const all = parseCSV(text, false);
+
+      if (all.length === 0) {
+        setCsvText('');
+        setCsvPreview([]);
+        setAllRows([]);
+        toast.error('CSV inválido — use as colunas phone/telefone e, opcionalmente, name/nome');
+        return;
+      }
+
+      setCsvText(text);
       setCsvPreview(preview);
       setAllRows(all);
-      if (all.length === 0) {
-        toast.error('CSV inválido — coluna "phone" não encontrada');
-      } else {
-        toast.success(`${all.length} contatos detectados`);
-      }
-    };
-    reader.readAsText(file);
+      toast.success(`${all.length} contatos detectados em "${file.name}"`);
+    } catch (err) {
+      console.error('[Campaigns] CSV read error:', err);
+      setCsvText('');
+      setCsvPreview([]);
+      setAllRows([]);
+      toast.error('Erro ao ler o arquivo CSV');
+    } finally {
+      // Allow selecting the same file again
+      e.target.value = '';
+    }
   };
 
   const handleSubmit = async () => {
