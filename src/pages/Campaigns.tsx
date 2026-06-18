@@ -430,18 +430,30 @@ function NewCampaignModal({ onClose, onCreated }: NewCampaignModalProps) {
               Lista de contatos (CSV) *{' '}
               <span className="text-slate-600 font-normal">— colunas: phone (obrigatório), name (opcional)</span>
             </label>
-            <div
-              onClick={() => csvRef.current?.click()}
-              className="flex items-center gap-3 border border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-slate-600 hover:bg-slate-800/30 transition-all"
+            <label
+              htmlFor="campaign-csv-input"
+              className="relative flex items-center gap-3 border border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-slate-600 hover:bg-slate-800/30 transition-all"
             >
               <Upload className="w-4 h-4 text-slate-500 flex-shrink-0" />
               <span className="text-sm text-slate-500 truncate">
                 {allRows.length > 0
                   ? `${allRows.length} contatos carregados`
-                  : 'Clique para selecionar o arquivo CSV'}
+                  : 'Clique para selecionar o arquivo CSV no computador'}
               </span>
-            </div>
-            <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvChange} />
+              <input
+                id="campaign-csv-input"
+                ref={csvRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleCsvChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </label>
+            <p className="mt-1.5 text-[11px] text-slate-600">
+              Formatos aceitos: CSV com coluna phone ou telefone; nome/name é opcional.
+              Também aceita arquivos separados por vírgula ou ponto e vírgula.
+            </p>
+
 
             {/* CSV preview */}
             {csvPreview.length > 0 && (
