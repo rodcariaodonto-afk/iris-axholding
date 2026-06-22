@@ -160,6 +160,7 @@ serve(async (req) => {
               status: 'nina',
               is_active: true,
               user_id: null,
+              session_id: campaignSessionId,
               metadata: {
                 outbound: true,
                 campaign_id: campaign.id,
