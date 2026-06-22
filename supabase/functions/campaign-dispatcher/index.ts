@@ -219,6 +219,7 @@ serve(async (req) => {
                 account_id: campaign.account_id,
                 conversation_id: conversation.id,
                 contact_id: contact.id,
+                session_id: campaignSessionId,
                 content: campaign.pdf_filename || 'document',
                 from_type: 'nina',
                 message_type: 'document',
