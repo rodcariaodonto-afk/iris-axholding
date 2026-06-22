@@ -354,7 +354,10 @@ function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelet
             {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             {session.status === "connected" ? "Reconectar" : "Conectar"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={onCheck} disabled={acting}>Verificar status</Button>
+          <Button size="sm" variant="ghost" onClick={onCheck} disabled={acting || liveCheck?.loading} className="gap-1.5">
+            {liveCheck?.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Verificar conexão real
+          </Button>
           {!session.is_default && (
             <Button size="sm" variant="ghost" onClick={onSetDefault} className="gap-1.5">
               <Star className="w-3.5 h-3.5" /> Tornar padrão
