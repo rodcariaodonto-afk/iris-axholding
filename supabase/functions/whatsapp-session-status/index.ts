@@ -78,11 +78,65 @@ Deno.serve(async (req) => {
       qr_code: newStatus === "connected" ? null : session.qr_code,
     }).eq("id", session_id);
 
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true });
+    // Reenfileira automaticamente mensagens que falharam por desconexão
+    // (e travadas em "processing") assim que a conexão real volta a ficar online.
+    let requeued = 0;
+    if (live) {
+      requeued = await requeueDisconnectedMessages(session.account_id, session_id);
+    }
+
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
+
+async function requeueDisconnectedMessages(accountId: string, sessionId: string): Promise<number> {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // Busca itens falhados/travados desta sessão por problema de conexão
+    const { data: items } = await admin
+      .from("send_queue")
+      .select("id, status, error_message")
+      .eq("account_id", accountId)
+      .eq("session_id", sessionId)
+      .in("status", ["failed", "processing"])
+      .order("created_at", { ascending: true })
+      .limit(500);
+
+    if (!items || items.length === 0) return 0;
+
+    const connKeywords = ["connection closed", "internal server error", "timeout", "econn", "fetch", "503", "502", "500"];
+    const toRequeue = items.filter((it) => {
+      if (it.status === "processing") return true; // travado
+      const msg = String(it.error_message ?? "").toLowerCase();
+      return connKeywords.some((k) => msg.includes(k));
+    });
+
+    if (toRequeue.length === 0) return 0;
+
+    // Reenfileira com espaçamento (anti-ban): ~40s entre cada mensagem.
+    const SPACING_MS = 40000;
+    let i = 0;
+    for (const it of toRequeue) {
+      const scheduledAt = new Date(Date.now() + i * SPACING_MS).toISOString();
+      await admin.from("send_queue").update({
+        status: "pending",
+        retry_count: 0,
+        error_message: null,
+        scheduled_at: scheduledAt,
+      }).eq("id", it.id);
+      i++;
+    }
+    return toRequeue.length;
+  } catch (_e) {
+    return 0;
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
