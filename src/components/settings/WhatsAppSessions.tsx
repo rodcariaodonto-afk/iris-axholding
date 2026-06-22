@@ -264,8 +264,8 @@ export default function WhatsAppSessions() {
   );
 }
 
-function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDefault, onShowQR, onUpdated }: {
-  session: Session; acting: boolean; onConnect: () => void; onCheck: () => void;
+function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelete, onSetDefault, onShowQR, onUpdated }: {
+  session: Session; acting: boolean; liveCheck?: LiveCheck; onConnect: () => void; onCheck: () => void;
   onDelete: () => void; onSetDefault: () => void; onShowQR: () => void; onUpdated: () => void;
 }) {
   const meta = statusMeta[session.status];
