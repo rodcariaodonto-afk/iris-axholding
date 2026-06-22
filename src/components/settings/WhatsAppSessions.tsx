@@ -309,7 +309,9 @@ function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelet
             <Icon className={`w-3 h-3 ${session.status === "connecting" ? "animate-spin" : ""}`} />
             {meta.label}
           </Badge>
+          {session.provider === "evolution" && <LiveIndicator liveCheck={liveCheck} status={session.status} />}
         </div>
+
         <div className="flex flex-wrap gap-2 justify-end">
           {session.status === "qr_pending" && session.qr_code && (
             <Button size="sm" variant="secondary" onClick={onShowQR} className="gap-1.5"><QrCode className="w-3.5 h-3.5" /> Ver QR</Button>
