@@ -1,0 +1,1 @@
+update public.campaign_contacts set status='pending', error_message=null where status='failed';
