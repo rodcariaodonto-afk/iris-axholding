@@ -343,7 +343,7 @@ function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelet
             <Icon className={`w-3 h-3 ${session.status === "connecting" ? "animate-spin" : ""}`} />
             {meta.label}
           </Badge>
-          {session.provider === "evolution" && <LiveIndicator liveCheck={liveCheck} status={session.status} />}
+          {session.provider === "evolution" && <LiveIndicator liveCheck={liveCheck} />}
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
