@@ -522,7 +522,7 @@ function CampaignCard({ campaign: c, onSelect, onStatusChange }: CampaignCardPro
         const rows = data || [];
         setCounts({
           total: rows.length,
-          sent: rows.filter(r => r.status !== 'pending').length,
+          sent: rows.filter(r => r.status === 'sent' || r.status === 'replied' || r.status === 'converted').length,
           replied: rows.filter(r => r.status === 'replied' || r.status === 'converted').length,
         });
       });
