@@ -137,9 +137,14 @@ export default function WhatsAppSessions() {
     } else {
       setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, reason: data?.reason ?? null, checkedAt: Date.now() } }));
       if (!silent) {
-        if (data?.live) toast.success("Conexão real confirmada (online)");
+        if (data?.live) {
+          toast.success("Conexão real confirmada (online)");
+          if (data?.requeued > 0) toast.success(`${data.requeued} mensagem(ns) reenfileirada(s) para reenvio`);
+        }
         else if (data?.reachable === false) toast.warning("Servidor Evolution inacessível");
         else toast.warning("WhatsApp não está conectado de verdade");
+      } else if (data?.live && data?.requeued > 0) {
+        toast.success(`${data.requeued} mensagem(ns) reenfileirada(s) automaticamente`);
       }
     }
     load();
