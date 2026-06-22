@@ -22,6 +22,15 @@ import { toast } from "sonner";
 type Provider = "evolution" | "meta_cloud";
 type Status = "disconnected" | "qr_pending" | "connecting" | "connected" | "error";
 
+interface LiveCheck {
+  loading: boolean;
+  live: boolean | null;
+  reachable: boolean | null;
+  evolution_state: string | null;
+  reason?: string | null;
+  checkedAt: number | null;
+}
+
 interface Session {
   id: string;
   account_id: string;
