@@ -189,6 +189,7 @@ serve(async (req) => {
               account_id: campaign.account_id,
               conversation_id: conversation.id,
               contact_id: contact.id,
+              session_id: campaignSessionId,
               content: campaign.opening_message,
               from_type: 'nina',
               message_type: 'text',
