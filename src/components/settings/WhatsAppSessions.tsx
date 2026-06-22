@@ -162,6 +162,14 @@ export default function WhatsAppSessions() {
     load();
   }
 
+  // Auto-verifica conexão real do Evolution ao selecionar uma sessão
+  useEffect(() => {
+    if (!selected || selected.provider !== "evolution") return;
+    if (liveChecks[selected.id]?.checkedAt) return;
+    checkStatus(selected, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selected?.provider]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
   }
