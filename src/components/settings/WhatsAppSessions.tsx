@@ -22,6 +22,15 @@ import { toast } from "sonner";
 type Provider = "evolution" | "meta_cloud";
 type Status = "disconnected" | "qr_pending" | "connecting" | "connected" | "error";
 
+interface LiveCheck {
+  loading: boolean;
+  live: boolean | null;
+  reachable: boolean | null;
+  evolution_state: string | null;
+  reason?: string | null;
+  checkedAt: number | null;
+}
+
 interface Session {
   id: string;
   account_id: string;
@@ -64,6 +73,7 @@ export default function WhatsAppSessions() {
   const [qrOpen, setQrOpen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [liveChecks, setLiveChecks] = useState<Record<string, LiveCheck>>({});
 
   const load = useCallback(async () => {
     if (!activeAccountId) return;
@@ -118,12 +128,22 @@ export default function WhatsAppSessions() {
     else if (data?.status === "connected") toast.success("Conectado!");
     load();
   }
-  async function checkStatus(s: Session) {
-    setActing(s.id);
-    await supabase.functions.invoke("whatsapp-session-status", { body: { session_id: s.id } });
-    setActing(null);
+  const checkStatus = useCallback(async (s: Session, silent = false) => {
+    setLiveChecks(prev => ({ ...prev, [s.id]: { ...(prev[s.id] || { live: null, reachable: null, evolution_state: null, checkedAt: null }), loading: true } }));
+    const { data, error } = await supabase.functions.invoke("whatsapp-session-status", { body: { session_id: s.id } });
+    if (error || data?.error) {
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: false, reachable: false, evolution_state: null, reason: data?.error || error?.message, checkedAt: Date.now() } }));
+      if (!silent) toast.error("Falha ao verificar conexão");
+    } else {
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, reason: data?.reason ?? null, checkedAt: Date.now() } }));
+      if (!silent) {
+        if (data?.live) toast.success("Conexão real confirmada (online)");
+        else if (data?.reachable === false) toast.warning("Servidor Evolution inacessível");
+        else toast.warning("WhatsApp não está conectado de verdade");
+      }
+    }
     load();
-  }
+  }, [load]);
   async function remove(s: Session) {
     if (!confirm(`Excluir sessão "${s.session_name}"? Esta ação não pode ser desfeita.`)) return;
     setActing(s.id);
@@ -141,6 +161,14 @@ export default function WhatsAppSessions() {
     toast.success(`"${s.session_name}" agora é a sessão padrão`);
     load();
   }
+
+  // Auto-verifica conexão real do Evolution ao selecionar uma sessão
+  useEffect(() => {
+    if (!selected || selected.provider !== "evolution") return;
+    if (liveChecks[selected.id]?.checkedAt) return;
+    checkStatus(selected, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selected?.provider]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
@@ -219,9 +247,11 @@ export default function WhatsAppSessions() {
           </div>
         ) : (
           <SessionDetail session={selected} acting={acting === selected.id}
+            liveCheck={liveChecks[selected.id]}
             onConnect={() => connect(selected)} onCheck={() => checkStatus(selected)}
             onDelete={() => remove(selected)} onSetDefault={() => setDefault(selected)}
             onShowQR={() => setQrOpen(true)} onUpdated={load} />
+
         )}
       </div>
 
@@ -234,8 +264,42 @@ export default function WhatsAppSessions() {
   );
 }
 
-function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDefault, onShowQR, onUpdated }: {
-  session: Session; acting: boolean; onConnect: () => void; onCheck: () => void;
+function LiveIndicator({ liveCheck }: { liveCheck?: LiveCheck }) {
+  if (!liveCheck || (liveCheck.loading && liveCheck.checkedAt === null)) {
+    return (
+      <Badge variant="outline" className="bg-slate-500/10 text-slate-400 border-slate-500/30 gap-1 text-[10px]">
+        <Loader2 className="w-3 h-3 animate-spin" /> Verificando conexão real…
+      </Badge>
+    );
+  }
+  if (liveCheck.reachable === false) {
+    return (
+      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.reason || undefined}>
+        <AlertCircle className="w-3 h-3" /> Servidor Evolution inacessível
+      </Badge>
+    );
+  }
+  if (liveCheck.live === true) {
+    return (
+      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1 text-[10px]">
+        <CheckCircle2 className="w-3 h-3" /> Conexão real: online
+      </Badge>
+    );
+  }
+  if (liveCheck.live === false) {
+    return (
+      <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 gap-1 text-[10px]">
+        <AlertCircle className="w-3 h-3" /> Conexão real: offline{liveCheck.evolution_state ? ` (${liveCheck.evolution_state})` : ""}
+      </Badge>
+    );
+  }
+  return null;
+}
+
+
+
+function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelete, onSetDefault, onShowQR, onUpdated }: {
+  session: Session; acting: boolean; liveCheck?: LiveCheck; onConnect: () => void; onCheck: () => void;
   onDelete: () => void; onSetDefault: () => void; onShowQR: () => void; onUpdated: () => void;
 }) {
   const meta = statusMeta[session.status];
@@ -279,7 +343,9 @@ function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDef
             <Icon className={`w-3 h-3 ${session.status === "connecting" ? "animate-spin" : ""}`} />
             {meta.label}
           </Badge>
+          {session.provider === "evolution" && <LiveIndicator liveCheck={liveCheck} />}
         </div>
+
         <div className="flex flex-wrap gap-2 justify-end">
           {session.status === "qr_pending" && session.qr_code && (
             <Button size="sm" variant="secondary" onClick={onShowQR} className="gap-1.5"><QrCode className="w-3.5 h-3.5" /> Ver QR</Button>
@@ -288,7 +354,10 @@ function SessionDetail({ session, acting, onConnect, onCheck, onDelete, onSetDef
             {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             {session.status === "connected" ? "Reconectar" : "Conectar"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={onCheck} disabled={acting}>Verificar status</Button>
+          <Button size="sm" variant="ghost" onClick={onCheck} disabled={acting || liveCheck?.loading} className="gap-1.5">
+            {liveCheck?.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Verificar conexão real
+          </Button>
           {!session.is_default && (
             <Button size="sm" variant="ghost" onClick={onSetDefault} className="gap-1.5">
               <Star className="w-3.5 h-3.5" /> Tornar padrão

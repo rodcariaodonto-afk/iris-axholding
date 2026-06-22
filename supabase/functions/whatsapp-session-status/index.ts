@@ -29,27 +29,35 @@ Deno.serve(async (req) => {
 
     if (session.provider === "meta_cloud") {
       // Same logic as connect for meta
-      return json({ ok: true, status: session.status, phone_number: session.phone_number });
+      return json({ ok: true, status: session.status, phone_number: session.phone_number, live: null, evolution_state: null });
     }
 
     const { data: settings } = await supabase
       .from("whatsapp_account_settings").select("evolution_api_url, evolution_api_key")
       .eq("account_id", session.account_id).maybeSingle();
     if (!settings?.evolution_api_url || !settings?.evolution_api_key) {
-      return json({ ok: true, status: session.status });
+      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "no_credentials" });
     }
 
     const baseUrl = settings.evolution_api_url.replace(/\/$/, "");
-    const r = await fetch(`${baseUrl}/instance/connectionState/${session.evolution_instance_name}`, {
-      headers: { apikey: settings.evolution_api_key },
-    });
-    if (!r.ok) return json({ ok: true, status: session.status });
+    let r: Response;
+    try {
+      r = await fetch(`${baseUrl}/instance/connectionState/${session.evolution_instance_name}`, {
+        headers: { apikey: settings.evolution_api_key },
+      });
+    } catch (_e) {
+      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed" });
+    }
+    if (!r.ok) {
+      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: `http_${r.status}` });
+    }
     const data = await r.json();
     const state = data?.instance?.state ?? data?.state;
     let newStatus: string = session.status;
     let phoneNumber: string | null = session.phone_number;
     const normalizedState = String(state ?? "").toLowerCase();
-    if (["open", "connected"].includes(normalizedState)) {
+    const live = ["open", "connected"].includes(normalizedState);
+    if (live) {
       newStatus = "connected";
       // Try fetch profile
       const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${session.evolution_instance_name}`, {
@@ -70,7 +78,7 @@ Deno.serve(async (req) => {
       qr_code: newStatus === "connected" ? null : session.qr_code,
     }).eq("id", session_id);
 
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
