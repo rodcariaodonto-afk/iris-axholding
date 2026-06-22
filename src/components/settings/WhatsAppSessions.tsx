@@ -264,6 +264,40 @@ export default function WhatsAppSessions() {
   );
 }
 
+function LiveIndicator({ liveCheck, status }: { liveCheck?: LiveCheck; status: Status }) {
+  if (!liveCheck || (liveCheck.loading && liveCheck.checkedAt === null)) {
+    return (
+      <Badge variant="outline" className="bg-slate-500/10 text-slate-400 border-slate-500/30 gap-1 text-[10px]">
+        <Loader2 className="w-3 h-3 animate-spin" /> Verificando conexão real…
+      </Badge>
+    );
+  }
+  if (liveCheck.reachable === false) {
+    return (
+      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.reason || undefined}>
+        <AlertCircle className="w-3 h-3" /> Servidor Evolution inacessível
+      </Badge>
+    );
+  }
+  if (liveCheck.live === true) {
+    return (
+      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1 text-[10px]">
+        <CheckCircle2 className="w-3 h-3" /> Conexão real: online
+      </Badge>
+    );
+  }
+  if (liveCheck.live === false) {
+    return (
+      <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 gap-1 text-[10px]">
+        <AlertCircle className="w-3 h-3" /> Conexão real: offline{liveCheck.evolution_state ? ` (${liveCheck.evolution_state})` : ""}
+      </Badge>
+    );
+  }
+  return null;
+}
+
+
+
 function SessionDetail({ session, acting, liveCheck, onConnect, onCheck, onDelete, onSetDefault, onShowQR, onUpdated }: {
   session: Session; acting: boolean; liveCheck?: LiveCheck; onConnect: () => void; onCheck: () => void;
   onDelete: () => void; onSetDefault: () => void; onShowQR: () => void; onUpdated: () => void;
