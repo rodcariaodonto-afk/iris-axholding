@@ -128,12 +128,22 @@ export default function WhatsAppSessions() {
     else if (data?.status === "connected") toast.success("Conectado!");
     load();
   }
-  async function checkStatus(s: Session) {
-    setActing(s.id);
-    await supabase.functions.invoke("whatsapp-session-status", { body: { session_id: s.id } });
-    setActing(null);
+  const checkStatus = useCallback(async (s: Session, silent = false) => {
+    setLiveChecks(prev => ({ ...prev, [s.id]: { ...(prev[s.id] || { live: null, reachable: null, evolution_state: null, checkedAt: null }), loading: true } }));
+    const { data, error } = await supabase.functions.invoke("whatsapp-session-status", { body: { session_id: s.id } });
+    if (error || data?.error) {
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: false, reachable: false, evolution_state: null, reason: data?.error || error?.message, checkedAt: Date.now() } }));
+      if (!silent) toast.error("Falha ao verificar conexão");
+    } else {
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, reason: data?.reason ?? null, checkedAt: Date.now() } }));
+      if (!silent) {
+        if (data?.live) toast.success("Conexão real confirmada (online)");
+        else if (data?.reachable === false) toast.warning("Servidor Evolution inacessível");
+        else toast.warning("WhatsApp não está conectado de verdade");
+      }
+    }
     load();
-  }
+  }, [load]);
   async function remove(s: Session) {
     if (!confirm(`Excluir sessão "${s.session_name}"? Esta ação não pode ser desfeita.`)) return;
     setActing(s.id);
