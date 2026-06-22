@@ -73,6 +73,7 @@ export default function WhatsAppSessions() {
   const [qrOpen, setQrOpen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [liveChecks, setLiveChecks] = useState<Record<string, LiveCheck>>({});
 
   const load = useCallback(async () => {
     if (!activeAccountId) return;
