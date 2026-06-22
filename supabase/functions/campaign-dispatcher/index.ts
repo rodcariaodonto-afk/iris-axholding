@@ -114,6 +114,7 @@ serve(async (req) => {
             const { data: newContact, error: contactError } = await supabase
               .from('contacts')
               .insert({
+                account_id: campaign.account_id,
                 phone_number: campaignContact.phone_number,
                 whatsapp_id: campaignContact.phone_number,
                 name: campaignContact.name || null,
@@ -138,6 +139,7 @@ serve(async (req) => {
           const { data: conversation, error: convError } = await supabase
             .from('conversations')
             .insert({
+              account_id: campaign.account_id,
               contact_id: contact.id,
               status: 'nina',
               is_active: true,
@@ -167,6 +169,7 @@ serve(async (req) => {
           const { error: textQueueError } = await supabase
             .from('send_queue')
             .insert({
+              account_id: campaign.account_id,
               conversation_id: conversation.id,
               contact_id: contact.id,
               content: campaign.opening_message,
@@ -195,6 +198,7 @@ serve(async (req) => {
             await supabase
               .from('send_queue')
               .insert({
+                account_id: campaign.account_id,
                 conversation_id: conversation.id,
                 contact_id: contact.id,
                 content: campaign.pdf_filename || 'document',
