@@ -247,9 +247,11 @@ export default function WhatsAppSessions() {
           </div>
         ) : (
           <SessionDetail session={selected} acting={acting === selected.id}
+            liveCheck={liveChecks[selected.id]}
             onConnect={() => connect(selected)} onCheck={() => checkStatus(selected)}
             onDelete={() => remove(selected)} onSetDefault={() => setDefault(selected)}
             onShowQR={() => setQrOpen(true)} onUpdated={load} />
+
         )}
       </div>
 
