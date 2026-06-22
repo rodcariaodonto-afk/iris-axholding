@@ -264,7 +264,7 @@ export default function WhatsAppSessions() {
   );
 }
 
-function LiveIndicator({ liveCheck, status }: { liveCheck?: LiveCheck; status: Status }) {
+function LiveIndicator({ liveCheck }: { liveCheck?: LiveCheck }) {
   if (!liveCheck || (liveCheck.loading && liveCheck.checkedAt === null)) {
     return (
       <Badge variant="outline" className="bg-slate-500/10 text-slate-400 border-slate-500/30 gap-1 text-[10px]">
