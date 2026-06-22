@@ -52,6 +52,22 @@ serve(async (req) => {
         continue;
       }
 
+      // Resolve the WhatsApp session to send from. Prefer a connected session,
+      // falling back to the default one. Without this the sender uses stale
+      // account-level settings (e.g. a non-existent Evolution instance).
+      let campaignSessionId: string | null = null;
+      const { data: sessions } = await supabase
+        .from('whatsapp_sessions')
+        .select('id, status, is_default')
+        .eq('account_id', campaign.account_id);
+
+      if (sessions && sessions.length > 0) {
+        const connected = sessions.find((s: any) => s.status === 'connected');
+        const fallback = sessions.find((s: any) => s.is_default) || sessions[0];
+        campaignSessionId = (connected || fallback)?.id || null;
+      }
+      console.log(`[Dispatcher] Campaign ${campaign.id}: using session ${campaignSessionId}`);
+
       // Count contacts already sent today
       const todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
@@ -144,6 +160,7 @@ serve(async (req) => {
               status: 'nina',
               is_active: true,
               user_id: null,
+              session_id: campaignSessionId,
               metadata: {
                 outbound: true,
                 campaign_id: campaign.id,
@@ -172,6 +189,7 @@ serve(async (req) => {
               account_id: campaign.account_id,
               conversation_id: conversation.id,
               contact_id: contact.id,
+              session_id: campaignSessionId,
               content: campaign.opening_message,
               from_type: 'nina',
               message_type: 'text',
@@ -201,6 +219,7 @@ serve(async (req) => {
                 account_id: campaign.account_id,
                 conversation_id: conversation.id,
                 contact_id: contact.id,
+                session_id: campaignSessionId,
                 content: campaign.pdf_filename || 'document',
                 from_type: 'nina',
                 message_type: 'document',
