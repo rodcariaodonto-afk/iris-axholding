@@ -56,17 +56,25 @@ serve(async (req) => {
       // falling back to the default one. Without this the sender uses stale
       // account-level settings (e.g. a non-existent Evolution instance).
       let campaignSessionId: string | null = null;
+      let campaignProvider: string | null = null;
       const { data: sessions } = await supabase
         .from('whatsapp_sessions')
-        .select('id, status, is_default')
+        .select('id, status, is_default, provider')
         .eq('account_id', campaign.account_id);
 
       if (sessions && sessions.length > 0) {
         const connected = sessions.find((s: any) => s.status === 'connected');
         const fallback = sessions.find((s: any) => s.is_default) || sessions[0];
-        campaignSessionId = (connected || fallback)?.id || null;
+        const chosen = connected || fallback;
+        campaignSessionId = chosen?.id || null;
+        campaignProvider = chosen?.provider || null;
       }
-      console.log(`[Dispatcher] Campaign ${campaign.id}: using session ${campaignSessionId}`);
+
+      // Meta Cloud API requires an approved template for business-initiated
+      // messages to cold leads (outside the 24h window). Free text is rejected.
+      const useTemplate = campaignProvider === 'meta_cloud' && !!campaign.template_name;
+      console.log(`[Dispatcher] Campaign ${campaign.id}: using session ${campaignSessionId} (provider=${campaignProvider}, template=${useTemplate ? campaign.template_name : 'none'})`);
+
 
       // Count contacts already sent today
       const todayStart = new Date();
