@@ -1,37 +1,50 @@
-## Problema
+# Plano: Envio da campanha via template aprovado do Meta
 
-A validação da conta **Vila do Corpo** continua com erro em **Pipeline** e **Perfil** porque os dados realmente não existem no banco — não é um bug de tela, é falta de registro:
+## Contexto
+Hoje o `campaign-dispatcher` enfileira a mensagem de abertura como **texto livre** e o `whatsapp-sender` envia como texto puro. Pelo Meta Cloud API, texto livre para lead frio (fora da janela de 24h) é aceito na API mas marcado como `failed` na entrega — foi exatamente o que aconteceu (0 entregues de ~80).
 
-- **Pipeline**: a conta Vila do Corpo (`fbb1ad4b…`) tem **0 estágios**. Todos os 6 estágios existentes pertencem só à conta AXHolding.
-- **Perfil**: o usuário dono da Vila do Corpo (`rodcaria.odonto@gmail.com`) **não tem linha na tabela `profiles`**. Por isso, mesmo "configurando o perfil" na tela, a validação não encontra o registro.
+O template aprovado é:
+- **Nome:** `sofia_mensagem1`
+- **Idioma:** `pt_BR`
+- **Estrutura:** só corpo de texto, **sem header, sem documento, sem variáveis**
 
-O botão "Inicializar Sistema" não resolve: a função `initialize-system` só cria dados globais para o *primeiro* usuário e não escreve `account_id`, então não serve para uma segunda conta.
+Como o template não tem header de documento, o **PDF não pode ir junto** nem ser enviado proativamente para lead frio. O PDF só pode ser enviado **depois que o contato responder** (aí abre a janela de 24h e a Nina/atendente envia o material na conversa).
 
-## Solução
+## O que será feito
 
-Inserir os dados que faltam, isolados pela conta Vila do Corpo.
+### 1. Banco de dados (migration + dados)
+- Adicionar em `outbound_campaigns` as colunas `template_name` (texto) e `template_language` (texto, padrão `pt_BR`).
+- Preencher a campanha atual "Recuperação Leads Frios - Permissão PDF" com `template_name = 'sofia_mensagem1'`.
 
-### 1. Criar o perfil do usuário
-Inserir uma linha em `profiles` para o usuário `14a5d0a5…` (rodcaria.odonto@gmail.com) com `full_name` = "teste 1".
-
-### 2. Criar os estágios de pipeline da Vila do Corpo
-Inserir os 6 estágios padrão com `account_id = fbb1ad4b…`, espelhando o padrão da AXHolding:
-
+### 2. `whatsapp-sender` (envio ao Meta)
+- Adicionar suporte a `message_type = 'template'` na função do Cloud API, montando:
 ```text
-Novos Leads      (pos 0,  azul)
-Em Qualificação  (pos 1,  amarelo, IA)
-Oportunidade     (pos 2,  roxo, IA)
-Fechamento       (pos 3,  laranja)
-Ganho            (pos 4,  verde, sistema)
-Perdido          (pos 5,  vermelho, sistema)
+{ messaging_product, to, type: "template",
+  template: { name, language: { code } } }
 ```
+- Nome/idioma do template vêm da metadata do item da fila.
+- O registro em `messages` continua guardando o texto de exibição (`opening_message`) para aparecer no CRM.
+
+### 3. `campaign-dispatcher`
+- Quando a sessão for **Meta Cloud** e a campanha tiver `template_name`: enfileirar a abertura como `message_type: 'template'` com a metadata do template.
+- **Não enfileirar o PDF proativamente** (registrar em log que o PDF será enviado após a resposta do lead).
+- Manter o comportamento antigo de texto livre para sessões que não são Meta Cloud (ex.: Evolution/QR), onde texto livre é permitido.
+
+### 4. Frontend (`Campaigns.tsx` + `useOutboundCampaigns.tsx`)
+- Adicionar no formulário de criação de campanha os campos **Nome do template** e **Idioma** (padrão `pt_BR`).
+- Incluir esses campos em `CreateCampaignInput` e no insert.
+- Deixar claro na UI que, para o número Meta Cloud, a abertura precisa de um template aprovado.
+
+### 5. Reenvio dos contatos que falharam
+- Resetar para `pending` os contatos da campanha atual que ficaram como `sent`/`failed` mas cujas mensagens não foram entregues, para que o dispatcher os reenvie via template.
+- Limpar da `send_queue` os itens antigos (`completed`/`failed`) desta campanha para não duplicar.
+- O reenvio respeita o **limite diário (40/dia)** e o **delay (~45s)** entre mensagens, então a base será processada aos poucos ao longo dos próximos dias.
 
 ## Detalhes técnicos
+- Payload de template sem variáveis não leva `components`.
+- Envio segue em `https://graph.facebook.com/v18.0/{phone_number_id}/messages` com `Authorization: Bearer {access_token}` (já existente).
+- Status real de entrega continua chegando pelo `whatsapp-webhook` (`sent`/`delivered`/`read`/`failed`), então dá pra confirmar a entrega de verdade após o reenvio.
+- A janela de 24h para enviar o PDF é aberta pela resposta do contato; o fluxo de PDF pós-resposta fica a cargo da Nina/atendente na conversa.
 
-- Inserção via ferramenta de dados (insert), escopada por `account_id`/`user_id` — não altera schema.
-- `pipeline_stages.account_id` é `NOT NULL`; cada linha receberá `fbb1ad4b-7d44-4994-842a-b091fc33dcf0`.
-- Após inserir, revalido com consulta ao banco para confirmar 6 estágios + perfil presentes, de modo que `validate-setup` retorne tudo OK para a Vila do Corpo.
-
-## Fora de escopo
-
-Não vou reescrever a função `initialize-system` para multi-tenant nesta etapa (correção maior, opcional). Posso fazer depois se você quiser que novas contas recebam pipeline/tags automaticamente.
+## Validação
+Após implementar, disparo um lote pequeno via `campaign-dispatcher` e confirmo no banco/webhook se os status chegam como `delivered` (e não `failed`), comprovando que o template está sendo entregue de verdade.
