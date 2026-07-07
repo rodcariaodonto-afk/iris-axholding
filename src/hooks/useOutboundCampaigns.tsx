@@ -17,6 +17,8 @@ export interface Campaign {
   daily_limit: number;
   delay_seconds: number;
   scheduled_start_at: string | null;
+  template_name: string | null;
+  template_language: string;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
