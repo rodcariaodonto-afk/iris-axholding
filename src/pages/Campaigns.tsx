@@ -227,7 +227,10 @@ function NewCampaignModal({ onClose, onCreated }: NewCampaignModalProps) {
     session_id: null,
     pdf_url: null,
     pdf_filename: null,
+    template_name: '',
+    template_language: 'pt_BR',
   });
+
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
