@@ -193,6 +193,8 @@ export function useCreateCampaign() {
           daily_limit: dailyLimit,
           delay_seconds: delaySeconds,
           scheduled_start_at: input.scheduled_start_at ?? null,
+          template_name: input.template_name?.trim() || null,
+          template_language: input.template_language?.trim() || 'pt_BR',
           status: 'draft',
         })
         .select()
