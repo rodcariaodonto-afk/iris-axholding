@@ -288,8 +288,28 @@ async function sendMessageCloudAPI(supabase: any, settings: any, queueItem: any)
     case 'image': payload.type = 'image'; payload.image = { link: queueItem.media_url, caption: queueItem.content || undefined }; break;
     case 'audio': payload.type = 'audio'; payload.audio = { link: queueItem.media_url }; break;
     case 'document': payload.type = 'document'; payload.document = { link: queueItem.media_url, filename: queueItem.content || 'document' }; break;
+    case 'template': {
+      // Meta approved template — required for business-initiated messages to
+      // cold leads outside the 24h customer-service window. Free text is
+      // rejected (delivered as "failed"), templates are not.
+      const templateName = queueItem.metadata?.template_name;
+      const templateLanguage = queueItem.metadata?.template_language || 'pt_BR';
+      if (!templateName) throw new Error('template_name missing in queue metadata');
+      payload.type = 'template';
+      payload.template = {
+        name: templateName,
+        language: { code: templateLanguage },
+      };
+      // Only include components if variables/params were provided.
+      const components = queueItem.metadata?.template_components;
+      if (Array.isArray(components) && components.length > 0) {
+        payload.template.components = components;
+      }
+      break;
+    }
     default: payload.type = 'text'; payload.text = { body: queueItem.content };
   }
+
 
   const response = await fetch(`${WHATSAPP_API_URL}/${settings.whatsapp_phone_number_id}/messages`, {
     method: 'POST',
@@ -314,10 +334,12 @@ async function updateMessageRecord(supabase: any, queueItem: any, whatsappMessag
     }).eq('id', queueItem.message_id);
     if (error) throw error;
   } else {
+    // Store template messages as "text" so the CRM renders the opening copy.
+    const displayType = queueItem.message_type === 'template' ? 'text' : queueItem.message_type;
     const { error } = await supabase.from('messages').insert({
       account_id: queueItem.account_id,
       conversation_id: queueItem.conversation_id, whatsapp_message_id: whatsappMessageId,
-      content: queueItem.content, type: queueItem.message_type, from_type: queueItem.from_type,
+      content: queueItem.content, type: displayType, from_type: queueItem.from_type,
       status: 'sent', media_url: queueItem.media_url || null,
       session_id: queueItem.session_id || null,
       sent_at: new Date().toISOString(), metadata: queueItem.metadata || {}
