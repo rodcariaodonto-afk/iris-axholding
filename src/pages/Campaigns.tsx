@@ -373,7 +373,39 @@ function NewCampaignModal({ onClose, onCreated }: NewCampaignModalProps) {
             />
           </div>
 
+          {/* Template do Meta */}
+          <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Template aprovado do Meta</label>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Para números via <span className="text-slate-400">Meta Cloud API</span>, a mensagem de abertura para leads frios
+                precisa usar um template aprovado (texto livre é bloqueado pela Meta). Informe o nome exato do template aprovado.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Nome do template</label>
+                <input
+                  value={form.template_name ?? ''}
+                  onChange={e => set('template_name', e.target.value)}
+                  placeholder="ex: sofia_mensagem1"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Idioma</label>
+                <input
+                  value={form.template_language ?? 'pt_BR'}
+                  onChange={e => set('template_language', e.target.value)}
+                  placeholder="pt_BR"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Limites */}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
