@@ -49,7 +49,6 @@ export default function AdminAccounts() {
   const [resultLink, setResultLink] = useState<{ url: string; emailSent: boolean; emailError: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // action dialog state
   const [pendingAction, setPendingAction] = useState<{ account: AccountRow; action: ActionType } | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [actionConfirm, setActionConfirm] = useState(false);
@@ -157,6 +156,24 @@ export default function AdminAccounts() {
     }
   };
 
+  const toggleFollowupModule = async (account: AccountRow, enabled: boolean) => {
+    const prev = accounts;
+    setAccounts(prev.map(a => a.id === account.id ? { ...a, settings: { ...(a.settings || {}), followup_enabled: enabled } } : a));
+    const newSettings = {
+      ...(account.settings || {}),
+      followup_enabled: enabled,
+      followup_delay_minutes: account.settings?.followup_delay_minutes ?? 120,
+      followup_max_attempts: account.settings?.followup_max_attempts ?? 2,
+    };
+    const { error } = await supabase.from("accounts").update({ settings: newSettings }).eq("id", account.id);
+    if (error) {
+      setAccounts(prev);
+      toast.error("Falha ao atualizar módulo Follow-up");
+    } else {
+      toast.success(enabled ? "Follow-up automático ativado" : "Follow-up automático desativado");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
@@ -235,6 +252,15 @@ export default function AdminAccounts() {
                 </div>
               )}
               {!a.is_internal && (
+                <div className="flex items-center gap-2 px-2 border-l border-border/40" title="Follow-up automático quando lead não responde em 2h">
+                  <span className="text-[11px] text-muted-foreground">Follow-up</span>
+                  <Switch
+                    checked={!!a.settings?.followup_enabled}
+                    onCheckedChange={(v) => toggleFollowupModule(a, v)}
+                  />
+                </div>
+              )}
+              {!a.is_internal && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
@@ -264,7 +290,6 @@ export default function AdminAccounts() {
         {filtered.length === 0 && <div className="p-12 text-center text-muted-foreground">Nenhuma conta encontrada.</div>}
       </div>
 
-      {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={(o) => !o && closeCreate()}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -315,7 +340,6 @@ export default function AdminAccounts() {
         </DialogContent>
       </Dialog>
 
-      {/* Action confirmation */}
       <AlertDialog open={!!pendingAction} onOpenChange={(o) => !o && closeAction()}>
         <AlertDialogContent>
           {pendingAction && (
