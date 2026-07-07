@@ -334,10 +334,12 @@ async function updateMessageRecord(supabase: any, queueItem: any, whatsappMessag
     }).eq('id', queueItem.message_id);
     if (error) throw error;
   } else {
+    // Store template messages as "text" so the CRM renders the opening copy.
+    const displayType = queueItem.message_type === 'template' ? 'text' : queueItem.message_type;
     const { error } = await supabase.from('messages').insert({
       account_id: queueItem.account_id,
       conversation_id: queueItem.conversation_id, whatsapp_message_id: whatsappMessageId,
-      content: queueItem.content, type: queueItem.message_type, from_type: queueItem.from_type,
+      content: queueItem.content, type: displayType, from_type: queueItem.from_type,
       status: 'sent', media_url: queueItem.media_url || null,
       session_id: queueItem.session_id || null,
       sent_at: new Date().toISOString(), metadata: queueItem.metadata || {}
