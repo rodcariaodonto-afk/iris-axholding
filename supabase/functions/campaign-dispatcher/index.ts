@@ -190,27 +190,36 @@ serve(async (req) => {
 
           const textScheduledAt = new Date(Date.now() + delayOffsetMs).toISOString();
 
-          // Queue the opening text message
+          // Queue the opening message. For Meta Cloud we MUST use an approved
+          // template (business-initiated / cold lead); otherwise free text.
+          const openingInsert: any = {
+            account_id: campaign.account_id,
+            conversation_id: conversation.id,
+            contact_id: contact.id,
+            session_id: campaignSessionId,
+            content: campaign.opening_message,
+            from_type: 'nina',
+            message_type: useTemplate ? 'template' : 'text',
+            priority: 1,
+            scheduled_at: textScheduledAt,
+            metadata: {
+              campaign_id: campaign.id,
+              campaign_contact_id: campaignContact.id,
+              ...(useTemplate
+                ? {
+                    template_name: campaign.template_name,
+                    template_language: campaign.template_language || 'pt_BR',
+                  }
+                : {}),
+            },
+          };
+
           const { error: textQueueError } = await supabase
             .from('send_queue')
-            .insert({
-              account_id: campaign.account_id,
-              conversation_id: conversation.id,
-              contact_id: contact.id,
-              session_id: campaignSessionId,
-              content: campaign.opening_message,
-              from_type: 'nina',
-              message_type: 'text',
-              priority: 1,
-              scheduled_at: textScheduledAt,
-              metadata: {
-                campaign_id: campaign.id,
-                campaign_contact_id: campaignContact.id,
-              },
-            });
+            .insert(openingInsert);
 
           if (textQueueError) {
-            console.error(`[Dispatcher] Error queuing text for contact ${contact.id}:`, textQueueError);
+            console.error(`[Dispatcher] Error queuing opening for contact ${contact.id}:`, textQueueError);
             await supabase
               .from('campaign_contacts')
               .update({ status: 'failed', error_message: textQueueError.message })
@@ -218,8 +227,10 @@ serve(async (req) => {
             continue;
           }
 
-          // Queue the PDF document 3 seconds after the text (if present)
-          if (campaign.pdf_url) {
+          // Queue the PDF document 3 seconds after the text (if present).
+          // On Meta Cloud the 24h window is only opened by the lead's reply, so
+          // a proactive PDF would be rejected — skip it and send after reply.
+          if (campaign.pdf_url && !useTemplate) {
             const pdfScheduledAt = new Date(Date.now() + delayOffsetMs + 3000).toISOString();
             await supabase
               .from('send_queue')
@@ -239,7 +250,10 @@ serve(async (req) => {
                   campaign_contact_id: campaignContact.id,
                 },
               });
+          } else if (campaign.pdf_url && useTemplate) {
+            console.log(`[Dispatcher] Meta template flow: skipping proactive PDF for ${campaignContact.phone_number}; PDF will be sent after the lead replies (opens 24h window).`);
           }
+
 
           // Mark contact as sent and link conversation
           await supabase
