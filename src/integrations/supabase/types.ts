@@ -1942,6 +1942,8 @@ export type Database = {
           scheduled_start_at: string | null
           session_id: string | null
           status: string
+          template_language: string
+          template_name: string | null
           updated_at: string
         }
         Insert: {
@@ -1958,6 +1960,8 @@ export type Database = {
           scheduled_start_at?: string | null
           session_id?: string | null
           status?: string
+          template_language?: string
+          template_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -1974,6 +1978,8 @@ export type Database = {
           scheduled_start_at?: string | null
           session_id?: string | null
           status?: string
+          template_language?: string
+          template_name?: string | null
           updated_at?: string
         }
         Relationships: [
