@@ -77,8 +77,9 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   useEffect(() => {
+    if (accountLoading) return;
     fetchSettings();
-  }, [user]);
+  }, [user, activeAccountId, accountLoading]);
 
   const value: CompanySettings = {
     companyName,
