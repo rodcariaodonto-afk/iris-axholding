@@ -1313,7 +1313,10 @@ export const api = {
    * Fetch conversations with messages from database
    */
   fetchConversations: async (): Promise<UIConversation[]> => {
-    console.log('[API] Fetching conversations from Supabase...');
+    // Scope to the active account. Super admins bypass RLS across accounts,
+    // so we MUST filter explicitly here to avoid leaking other tenants' chats.
+    const accountId = requireActiveAccountId();
+    console.log('[API] Fetching conversations from Supabase for account:', accountId);
     
     // Fetch active conversations with contact data
     const { data: conversations, error: convError } = await supabase
@@ -1322,6 +1325,7 @@ export const api = {
         *,
         contact:contacts(*)
       `)
+      .eq('account_id', accountId)
       .eq('is_active', true)
       .order('last_message_at', { ascending: false })
       .limit(50);
