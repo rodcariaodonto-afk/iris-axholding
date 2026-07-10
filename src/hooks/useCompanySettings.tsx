@@ -21,9 +21,10 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
 
   const fetchSettings = async () => {
-    if (!user) {
+    if (!user || !activeAccountId) {
       setLoading(false);
       return;
     }
