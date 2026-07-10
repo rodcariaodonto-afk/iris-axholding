@@ -756,8 +756,10 @@ export type Database = {
           assigned_user_id: string | null
           contact_id: string
           created_at: string
+          followup_count: number
           id: string
           is_active: boolean
+          last_followup_at: string | null
           last_message_at: string
           metadata: Json | null
           nina_context: Json | null
@@ -774,8 +776,10 @@ export type Database = {
           assigned_user_id?: string | null
           contact_id: string
           created_at?: string
+          followup_count?: number
           id?: string
           is_active?: boolean
+          last_followup_at?: string | null
           last_message_at?: string
           metadata?: Json | null
           nina_context?: Json | null
@@ -792,8 +796,10 @@ export type Database = {
           assigned_user_id?: string | null
           contact_id?: string
           created_at?: string
+          followup_count?: number
           id?: string
           is_active?: boolean
+          last_followup_at?: string | null
           last_message_at?: string
           metadata?: Json | null
           nina_context?: Json | null
@@ -2795,6 +2801,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
