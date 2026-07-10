@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 interface CompanySettings {
   companyName: string;
@@ -20,9 +21,10 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
 
   const fetchSettings = async () => {
-    if (!user) {
+    if (!user || !activeAccountId) {
       setLoading(false);
       return;
     }
@@ -35,6 +37,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
         .from('account_members')
         .select('role')
         .eq('user_id', user.id)
+        .eq('account_id', activeAccountId)
         .eq('status', 'active')
         .in('role', ['owner', 'admin'])
         .limit(1)
@@ -42,10 +45,13 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
 
       setIsAdmin(!!memberRow);
       
-      // Fetch global nina_settings (no user_id filter)
+      // Fetch nina_settings scoped to the ACTIVE account.
+      // Super admins bypass RLS across accounts, so we must filter explicitly
+      // to avoid showing another tenant's company name/logo in the sidebar.
       const { data, error } = await supabase
         .from('nina_settings')
         .select('company_name, sdr_name, company_logo_url')
+        .eq('account_id', activeAccountId)
         .limit(1)
         .maybeSingle();
 
@@ -71,8 +77,9 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   useEffect(() => {
+    if (accountLoading) return;
     fetchSettings();
-  }, [user]);
+  }, [user, activeAccountId, accountLoading]);
 
   const value: CompanySettings = {
     companyName,
