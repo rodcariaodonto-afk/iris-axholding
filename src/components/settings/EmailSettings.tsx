@@ -5,8 +5,10 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 const EmailSettings: React.FC = () => {
+  const { activeAccountId } = useActiveAccount();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -16,13 +18,23 @@ const EmailSettings: React.FC = () => {
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeAccountId]);
 
   const load = async () => {
+    if (!activeAccountId) {
+      setLoading(false);
+      setSettingsId(null);
+      setFromEmail('');
+      setFromName('');
+      setVerifiedAt(null);
+      return;
+    }
+
     setLoading(true);
     const { data } = await supabase
       .from('nina_settings')
       .select('id, invite_from_email, invite_from_name, invite_email_verified_at')
+      .eq('account_id', activeAccountId)
       .limit(1)
       .maybeSingle();
     if (data) {
@@ -30,6 +42,11 @@ const EmailSettings: React.FC = () => {
       setFromEmail(data.invite_from_email || '');
       setFromName(data.invite_from_name || '');
       setVerifiedAt(data.invite_email_verified_at);
+    } else {
+      setSettingsId(null);
+      setFromEmail('');
+      setFromName('');
+      setVerifiedAt(null);
     }
     setLoading(false);
   };
@@ -48,7 +65,8 @@ const EmailSettings: React.FC = () => {
         invite_from_name: fromName.trim() || null,
         invite_email_verified_at: null, // exige nova validação
       })
-      .eq('id', settingsId);
+      .eq('id', settingsId)
+      .eq('account_id', activeAccountId);
     setSaving(false);
     if (error) return toast.error('Erro ao salvar: ' + error.message);
     setVerifiedAt(null);

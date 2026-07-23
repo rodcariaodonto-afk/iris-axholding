@@ -171,7 +171,8 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         const { error } = await supabase
           .from('nina_settings')
           .update(payload as any)
-          .eq('id', settings.id);
+          .eq('id', settings.id)
+          .eq('account_id', accountId);
         if (error) throw error;
       } else {
         // Create settings row for this account

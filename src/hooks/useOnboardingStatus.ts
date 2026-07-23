@@ -98,6 +98,8 @@ export function useOnboardingStatus(): OnboardingStatus {
     if (accountLoading) return;
 
     if (!user || !activeAccountId) {
+      setHasSeenWizard(false);
+      setSteps(prev => prev.map(step => ({ ...step, isComplete: false })));
       setLoading(false);
       return;
     }
