@@ -1,38 +1,39 @@
 ## Objetivo
-Pausar temporariamente a conta **Vila do Corpo** (`fbb1ad4b-7d44-4994-842a-b091fc33dcf0`) para parar de consumir Cloud/IA, sem apagar nenhum dado. Reversível a qualquer momento.
+Adicionar **Ricardo Bahls (rico@axhub.com.br)** como Super Admin global, com acesso equivalente ao seu (caria@axhub.com.br).
 
-## O que vou fazer
+## Como funciona o Super Admin neste sistema
+Não é um cargo separado — é derivado automaticamente por esta regra na função `is_super_admin()`:
 
-1. **Suspender a conta**
-   - `accounts.status = 'suspended'` para Vila do Corpo.
-   - Isso bloqueia login dos usuários dessa conta e impede novas mutações.
+> "É super admin quem é `owner` ou `admin` de uma conta marcada como `is_internal = true`."
 
-2. **Desligar a IA (Nina) da Vila do Corpo**
-   - `nina_settings` da conta: `is_active = false`, `auto_response_enabled = false`.
-   - Garante que nenhuma mensagem recebida via webhook consuma IA / AI Gateway.
+A conta **AXHolding Internal** já tem `is_internal = true`. Basta o Ricardo ser membro `admin` dela.
 
-3. **Pausar campanhas outbound da conta**
-   - `outbound_campaigns.status = 'paused'` para as campanhas ativas da Vila do Corpo.
-   - Evita que o cron `trigger-campaign-dispatcher` continue disparando mensagens dessa conta.
+## Passos
 
-4. **Congelar a fila de envio pendente da conta**
-   - `send_queue` da Vila do Corpo com status `pending`/`processing` → `status = 'paused'` (ou similar já suportado).
-   - Impede que o `whatsapp-sender` (cron por minuto) processe itens dessa conta enquanto suspensa.
+1. **Criar o usuário no Auth** (via admin API, e-mail já confirmado)
+   - Email: `rico@axhub.com.br`
+   - Senha temporária gerada (te entrego no chat, só para você — ele deve trocar no primeiro login)
+   - Nome no perfil: "Ricardo Bahls"
 
-## O que NÃO será feito
-- **Nenhum dado é apagado** (contatos, conversas, mensagens, deals, agendamentos permanecem intactos).
-- Não mexo em outras contas (AXHolding Internal e demais seguem normais).
-- Não removo integrações (WhatsApp/Meta), só desativo o processamento.
-- Não mexo nos crons globais — eles continuam rodando para as outras contas.
+2. **Criar o `profile`** correspondente (linha em `public.profiles`).
 
-## Como reativar depois
-Quando você quiser voltar a Vila do Corpo, executo o inverso em uma única migração:
-- `accounts.status = 'active'`
-- `nina_settings.is_active = true`, `auto_response_enabled = true`
-- Campanhas voltam para `active` (as que você escolher)
-- `send_queue` volta os itens de `paused` para `pending`
+3. **Vincular como admin da AXHolding Internal**
+   - Insert em `public.account_members` com `role = 'admin'`, `status = 'active'`.
+   - Isso automaticamente ativa `is_super_admin() = true` para ele — libera o painel `/admin`, criação de clientes, gestão de planos etc.
 
-## Detalhes técnicos
-Tudo será feito em **uma migração SQL** com `UPDATE` escopado por `account_id = 'fbb1ad4b-7d44-4994-842a-b091fc33dcf0'`. Sem alterações de código no frontend/edge functions. Sem risco para as outras contas.
+4. **Confirmar acesso** rodando `is_super_admin()` no contexto dele.
 
-Confirma que posso aplicar?
+## O que ele vai poder fazer
+- Ver e gerenciar todas as contas (inclusive Vila do Corpo, futuros clientes)
+- Criar novos clientes (Super Admin → Contas → Nova conta)
+- Ativar/desativar módulos (Coworking, Campanhas Outbound)
+- Alterar planos, suspender contas, ver auditoria global
+
+## O que ele **não** vai poder fazer
+- Acessar o **Lovable Cloud/billing** — isso é acesso ao workspace Lovable, separado. Se quiser que ele também administre infra/custos, precisamos convidá-lo pelo Lovable (Settings → People no workspace). Me diga se quer que eu te oriente isso também.
+
+## Entrega
+Depois de aplicado, te devolvo aqui no chat:
+- E-mail: rico@axhub.com.br
+- Senha temporária: (gerada na hora)
+- URL de login: https://iris.axholding.com.br/auth
