@@ -284,6 +284,19 @@ export default function AdminAccounts() {
                   />
                 </div>
               )}
+              {!a.is_internal && (a.status === "active" || a.status === "suspended") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8"
+                  disabled={impersonating === a.id}
+                  onClick={() => impersonate(a)}
+                  title="Acessar workspace deste cliente como admin"
+                >
+                  {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
+                  Acessar
+                </Button>
+              )}
               {!a.is_internal && (
                 <Popover>
                   <PopoverTrigger asChild>
