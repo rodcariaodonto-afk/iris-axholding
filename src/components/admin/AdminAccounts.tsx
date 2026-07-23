@@ -44,6 +44,9 @@ type ActionType = "suspend" | "reactivate" | "delete" | "cancel_deletion";
 export default function AdminAccounts() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { switchAccount, refresh: refreshAccounts } = useActiveAccount();
+  const [impersonating, setImpersonating] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
