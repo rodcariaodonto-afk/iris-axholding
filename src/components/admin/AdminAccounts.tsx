@@ -74,12 +74,12 @@ export default function AdminAccounts() {
     if (uid) {
       const { data: mine } = await supabase
         .from("account_members")
-        .select("account_id, metadata")
+        .select("account_id, permissions")
         .eq("user_id", uid)
         .eq("status", "active");
       const set = new Set<string>();
       (mine || []).forEach((m: any) => {
-        if (m?.metadata?.impersonation) set.add(m.account_id);
+        if (m?.permissions?.impersonation) set.add(m.account_id);
       });
       setActiveImpersonations(set);
     }
