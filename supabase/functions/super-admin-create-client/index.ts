@@ -68,13 +68,64 @@ Deno.serve(async (req) => {
       if (i > 50) { slug = `${baseSlug}-${Date.now()}`; break; }
     }
 
-    // Cria a conta
+    // Cria a conta (nasce zerada — onboarding pendente)
     const { data: account, error: accErr } = await admin
       .from("accounts")
-      .insert({ name, slug, plan, status: "active", is_internal: false })
+      .insert({
+        name,
+        slug,
+        plan,
+        status: "active",
+        is_internal: false,
+        settings: { onboarding_pending: true },
+      })
       .select()
       .single();
     if (accErr) throw accErr;
+
+    // BOOTSTRAP DA CONTA — garante isolamento e ambiente zerado.
+    // Todos os inserts abaixo rodam com service_role (RLS não bloqueia)
+    // e são estritamente escopados por account_id.
+    const bootstrapErrors: string[] = [];
+
+    // 1) nina_settings inicial (IA desligada até o cliente configurar)
+    {
+      const { error } = await admin.from("nina_settings").insert({
+        account_id: account.id,
+        is_active: false,
+        company_name: name,
+        auto_response_enabled: false,
+      });
+      if (error) bootstrapErrors.push(`nina_settings: ${error.message}`);
+    }
+
+    // 2) pipeline_stages padrão
+    {
+      const defaultStages = [
+        { title: "Novo Lead", position: 1, color: "border-slate-500" },
+        { title: "Qualificação", position: 2, color: "border-blue-500" },
+        { title: "Proposta", position: 3, color: "border-yellow-500" },
+        { title: "Negociação", position: 4, color: "border-orange-500" },
+        { title: "Fechado Ganho", position: 5, color: "border-green-500" },
+        { title: "Fechado Perdido", position: 6, color: "border-red-500" },
+      ].map((s) => ({ ...s, account_id: account.id, is_active: true, is_system: false }));
+      const { error } = await admin.from("pipeline_stages").insert(defaultStages);
+      if (error) bootstrapErrors.push(`pipeline_stages: ${error.message}`);
+    }
+
+    // 3) whatsapp_account_settings container vazio
+    {
+      const { error } = await admin
+        .from("whatsapp_account_settings")
+        .insert({ account_id: account.id });
+      if (error && !String(error.message).includes("duplicate")) {
+        bootstrapErrors.push(`whatsapp_account_settings: ${error.message}`);
+      }
+    }
+
+    if (bootstrapErrors.length) {
+      console.warn("[super-admin-create-client] bootstrap warnings", bootstrapErrors);
+    }
 
     // Cria invite
     const inviteToken = generateToken();

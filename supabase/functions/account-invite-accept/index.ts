@@ -133,6 +133,14 @@ Deno.serve(async (req) => {
         );
       if (memberErr) throw memberErr;
 
+      // Garante profile do usuário (evita queries quebrarem no primeiro login)
+      await admin
+        .from("profiles")
+        .upsert(
+          { user_id: targetUserId, full_name: full_name || invite.email },
+          { onConflict: "user_id" },
+        );
+
       await admin
         .from("account_invites")
         .update({ accepted_at: new Date().toISOString() })
