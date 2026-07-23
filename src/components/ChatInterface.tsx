@@ -73,6 +73,12 @@ const ChatInterface: React.FC = () => {
 
   // Load tag definitions and team members
   useEffect(() => {
+    if (!activeAccountId) {
+      setAvailableTags([]);
+      setTeamMembers([]);
+      return;
+    }
+
     api.fetchTagDefinitions().then(setAvailableTags).catch(err => {
       console.error('Error loading tags:', err);
       toast.error('Erro ao carregar tags');
@@ -81,7 +87,7 @@ const ChatInterface: React.FC = () => {
     api.fetchTeam().then(setTeamMembers).catch(err => {
       console.error('Error loading team members:', err);
     });
-  }, []);
+  }, [activeAccountId]);
 
   // Load current user id (for own-conversation filter)
   useEffect(() => {
