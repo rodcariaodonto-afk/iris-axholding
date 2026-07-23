@@ -46,15 +46,20 @@ export default function AccountUsers() {
     if (!activeAccountId) return;
     setLoading(true);
 
-    const { data: mems } = await supabase
+    const { data: memsRaw } = await supabase
       .from("account_members")
-      .select("id, user_id, role, status, joined_at")
+      .select("id, user_id, role, status, joined_at, permissions")
       .eq("account_id", activeAccountId)
       .eq("status", "active")
       .order("joined_at", { ascending: true });
 
+    // Ocultar sessões de suporte/impersonação do Super Admin
+    const mems = (memsRaw || []).filter(
+      (m: any) => !(m.permissions && m.permissions.impersonation === true),
+    );
+
     // Buscar nomes dos perfis
-    const userIds = (mems || []).map((m) => m.user_id);
+    const userIds = mems.map((m) => m.user_id);
     let profilesMap: Record<string, { full_name: string | null }> = {};
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
@@ -62,7 +67,7 @@ export default function AccountUsers() {
       profilesMap = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]));
     }
 
-    setMembers((mems || []).map((m) => ({ ...m, profile: profilesMap[m.user_id] || null } as MemberRow)));
+    setMembers(mems.map((m) => ({ ...m, profile: profilesMap[m.user_id] || null } as MemberRow)));
 
     const { data: invs } = await supabase
       .from("account_invites")
