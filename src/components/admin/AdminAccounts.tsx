@@ -324,17 +324,31 @@ export default function AdminAccounts() {
                 </div>
               )}
               {!a.is_internal && (a.status === "active" || a.status === "suspended") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-8"
-                  disabled={impersonating === a.id}
-                  onClick={() => impersonate(a)}
-                  title="Acessar workspace deste cliente como admin"
-                >
-                  {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
-                  Acessar
-                </Button>
+                activeImpersonations.has(a.id) ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    disabled={impersonating === a.id}
+                    onClick={() => endImpersonation(a)}
+                    title="Encerrar acesso de suporte a esta conta"
+                  >
+                    {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                    Encerrar acesso
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8"
+                    disabled={impersonating === a.id}
+                    onClick={() => impersonate(a)}
+                    title="Acessar workspace deste cliente como admin"
+                  >
+                    {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
+                    Acessar
+                  </Button>
+                )
               )}
               {!a.is_internal && (
                 <Popover>
