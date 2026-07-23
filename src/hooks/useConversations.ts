@@ -63,6 +63,7 @@ export function useConversations() {
       const { data: messages, error: msgError } = await supabase
         .from('messages')
         .select('*')
+        .eq('account_id', activeAccountId)
         .eq('conversation_id', conversationId)
         .order('sent_at', { ascending: true });
       
