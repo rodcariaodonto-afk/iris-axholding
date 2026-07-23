@@ -64,7 +64,7 @@ export default function AdminAccounts() {
     setLoading(true);
     const { data: accs } = await supabase.from("accounts").select("*").order("created_at", { ascending: false });
     const withCounts = await Promise.all((accs || []).map(async (a: any) => {
-      const { count } = await supabase.from("account_members").select("id", { count: "exact", head: true }).eq("account_id", a.id).eq("status", "active");
+      const { count } = await supabase.from("account_members").select("id", { count: "exact", head: true }).eq("account_id", a.id).eq("status", "active").or("permissions.is.null,permissions->>impersonation.neq.true");
       return { ...a, member_count: count || 0 };
     }));
     setAccounts(withCounts as AccountRow[]);
