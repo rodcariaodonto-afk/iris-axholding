@@ -68,6 +68,21 @@ export default function AdminAccounts() {
       return { ...a, member_count: count || 0 };
     }));
     setAccounts(withCounts as AccountRow[]);
+    // Detecta impersonações ativas do usuário atual
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes?.user?.id;
+    if (uid) {
+      const { data: mine } = await supabase
+        .from("account_members")
+        .select("account_id, metadata")
+        .eq("user_id", uid)
+        .eq("status", "active");
+      const set = new Set<string>();
+      (mine || []).forEach((m: any) => {
+        if (m?.metadata?.impersonation) set.add(m.account_id);
+      });
+      setActiveImpersonations(set);
+    }
     setLoading(false);
   };
 
