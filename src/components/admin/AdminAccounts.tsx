@@ -47,6 +47,7 @@ export default function AdminAccounts() {
   const navigate = useNavigate();
   const { switchAccount, refresh: refreshAccounts } = useActiveAccount();
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [activeImpersonations, setActiveImpersonations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
