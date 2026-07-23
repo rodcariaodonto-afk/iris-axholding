@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2, LogIn } from "lucide-react";
+import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2, LogIn, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ export default function AdminAccounts() {
   const navigate = useNavigate();
   const { switchAccount, refresh: refreshAccounts } = useActiveAccount();
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [activeImpersonations, setActiveImpersonations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -67,6 +68,21 @@ export default function AdminAccounts() {
       return { ...a, member_count: count || 0 };
     }));
     setAccounts(withCounts as AccountRow[]);
+    // Detecta impersonações ativas do usuário atual
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes?.user?.id;
+    if (uid) {
+      const { data: mine } = await supabase
+        .from("account_members")
+        .select("account_id, metadata")
+        .eq("user_id", uid)
+        .eq("status", "active");
+      const set = new Set<string>();
+      (mine || []).forEach((m: any) => {
+        if (m?.metadata?.impersonation) set.add(m.account_id);
+      });
+      setActiveImpersonations(set);
+    }
     setLoading(false);
   };
 
@@ -198,6 +214,29 @@ export default function AdminAccounts() {
     }
   };
 
+  const endImpersonation = async (account: AccountRow) => {
+    setImpersonating(account.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("super-admin-impersonate", {
+        body: { action: "revoke", account_id: account.id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao encerrar acesso");
+      // Se estiver no contexto dessa conta, volta para a conta interna (AXHolding)
+      const internal = accounts.find((x) => x.is_internal);
+      if (internal) {
+        await switchAccount(internal.id);
+      }
+      await refreshAccounts();
+      await reload();
+      toast.success(`Acesso à conta "${account.name}" encerrado`);
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao encerrar acesso");
+    } finally {
+      setImpersonating(null);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
@@ -285,17 +324,31 @@ export default function AdminAccounts() {
                 </div>
               )}
               {!a.is_internal && (a.status === "active" || a.status === "suspended") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-8"
-                  disabled={impersonating === a.id}
-                  onClick={() => impersonate(a)}
-                  title="Acessar workspace deste cliente como admin"
-                >
-                  {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
-                  Acessar
-                </Button>
+                activeImpersonations.has(a.id) ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    disabled={impersonating === a.id}
+                    onClick={() => endImpersonation(a)}
+                    title="Encerrar acesso de suporte a esta conta"
+                  >
+                    {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                    Encerrar acesso
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8"
+                    disabled={impersonating === a.id}
+                    onClick={() => impersonate(a)}
+                    title="Acessar workspace deste cliente como admin"
+                  >
+                    {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
+                    Acessar
+                  </Button>
+                )
               )}
               {!a.is_internal && (
                 <Popover>
