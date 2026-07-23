@@ -7,6 +7,7 @@ import { api } from '../services/api';
 import { Contact } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { requireActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +24,15 @@ const Contacts: React.FC = () => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', notes: '' });
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { activeAccountId } = useActiveAccount();
 
   const loadContacts = async () => {
+    if (!activeAccountId) {
+      setContacts([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await api.fetchContacts();
@@ -36,7 +44,7 @@ const Contacts: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadContacts(); }, []);
+  useEffect(() => { loadContacts(); }, [activeAccountId]);
 
   const filteredContacts = contacts.filter(c => {
     const term = searchTerm.toLowerCase();
@@ -93,6 +101,7 @@ const Contacts: React.FC = () => {
       const { data, error } = await supabase
         .from('contacts')
         .select('name, call_name, phone_number, email, notes, tags, created_at, last_activity')
+        .eq('account_id', requireActiveAccountId())
         .order('created_at', { ascending: false });
       if (error) throw error;
       if (!data || !data.length) { toast.info('Nenhum contato para exportar'); return; }
@@ -162,12 +171,14 @@ const Contacts: React.FC = () => {
       const rows = parseCsv(text);
       if (!rows.length) { toast.error('CSV vazio'); return; }
       const { data: { user } } = await supabase.auth.getUser();
+      const accountId = requireActiveAccountId();
       const records = rows
         .map(r => {
           const phone = normalizePhone(r.telefone || r.phone || r.phone_number || r.celular || '');
           const name = (r.nome || r.name || r.call_name || '').trim();
           if (!phone) return null;
           return {
+            account_id: accountId,
             name: name || phone,
             call_name: name || phone,
             phone_number: phone,
@@ -185,6 +196,7 @@ const Contacts: React.FC = () => {
       const { data: existing } = await supabase
         .from('contacts')
         .select('phone_number')
+        .eq('account_id', accountId)
         .in('phone_number', phones);
       const existingSet = new Set((existing || []).map(c => c.phone_number));
       const toInsert = records.filter(r => !existingSet.has(r.phone_number));
