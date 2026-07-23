@@ -34,6 +34,8 @@ export function useConversations() {
 
   // Fetch a single conversation and add it to state
   const fetchAndAddConversation = useCallback(async (conversationId: string) => {
+    if (!activeAccountId) return;
+
     // Prevent duplicate fetches
     if (fetchingConversationIds.current.has(conversationId)) {
       console.log('[Realtime] Already fetching conversation:', conversationId);
