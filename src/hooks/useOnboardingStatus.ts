@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 export interface OnboardingStep {
   id: string;
@@ -25,8 +26,19 @@ export interface OnboardingStatus {
 
 const WIZARD_SEEN_KEY = 'onboarding_wizard_seen';
 
+const getWizardSeenKey = (accountId: string | null) => `${WIZARD_SEEN_KEY}:${accountId || 'none'}`;
+
+const getWizardSeen = (accountId: string | null) => {
+  try {
+    return localStorage.getItem(getWizardSeenKey(accountId)) === 'true';
+  } catch {
+    return false;
+  }
+};
+
 export function useOnboardingStatus(): OnboardingStatus {
   const { user } = useAuth();
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [steps, setSteps] = useState<OnboardingStep[]>([
@@ -80,18 +92,23 @@ export function useOnboardingStatus(): OnboardingStatus {
       isRequired: false,
     },
   ]);
-  const [hasSeenWizard, setHasSeenWizard] = useState(() => {
-    return localStorage.getItem(WIZARD_SEEN_KEY) === 'true';
-  });
+  const [hasSeenWizard, setHasSeenWizard] = useState(() => getWizardSeen(null));
 
   const fetchStatus = useCallback(async () => {
-    if (!user) {
+    if (accountLoading) return;
+
+    if (!user || !activeAccountId) {
+      setHasSeenWizard(false);
+      setSteps(prev => prev.map(step => ({ ...step, isComplete: false })));
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
+      const accountWizardSeen = getWizardSeen(activeAccountId);
+      setHasSeenWizard(accountWizardSeen);
+
       // Check if user is admin
       const { data: roleData } = await supabase
         .from('user_roles')
@@ -102,10 +119,12 @@ export function useOnboardingStatus(): OnboardingStatus {
       const userIsAdmin = roleData?.role === 'admin';
       setIsAdmin(userIsAdmin);
 
-      // Fetch global nina_settings (no user_id filter)
+      // Fetch nina_settings scoped to the active account.
+      // Super admins can see multiple tenants, so this explicit filter is mandatory.
       const { data: settings } = await supabase
         .from('nina_settings')
         .select('*')
+        .eq('account_id', activeAccountId)
         .limit(1)
         .maybeSingle();
 
@@ -151,7 +170,7 @@ export function useOnboardingStatus(): OnboardingStatus {
                 JSON.stringify(settings.business_days) === '[1,2,3,4,5]';
               return {
                 ...step,
-                isComplete: !isDefaultConfig || hasSeenWizard,
+                isComplete: !isDefaultConfig || accountWizardSeen,
               };
             case 'verification': {
               const hasIdentity = !!(settings.company_name && settings.sdr_name);
@@ -167,39 +186,41 @@ export function useOnboardingStatus(): OnboardingStatus {
             case 'finish':
               return {
                 ...step,
-                isComplete: hasSeenWizard,
+                isComplete: accountWizardSeen,
               };
             default:
               return step;
           }
         }));
+      } else {
+        setSteps(prev => prev.map(step => ({ ...step, isComplete: false })));
       }
     } catch (error) {
       console.error('Error fetching onboarding status:', error);
     } finally {
       setLoading(false);
     }
-  }, [hasSeenWizard, user]);
+  }, [accountLoading, activeAccountId, user]);
 
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
 
   const markWizardSeen = useCallback(() => {
-    localStorage.setItem(WIZARD_SEEN_KEY, 'true');
+    localStorage.setItem(getWizardSeenKey(activeAccountId), 'true');
     setHasSeenWizard(true);
     setSteps(prev => prev.map(step => 
       step.id === 'finish' ? { ...step, isComplete: true } : step
     ));
-  }, []);
+  }, [activeAccountId]);
 
   const resetWizard = useCallback(() => {
-    localStorage.removeItem(WIZARD_SEEN_KEY);
+    localStorage.removeItem(getWizardSeenKey(activeAccountId));
     setHasSeenWizard(false);
     setSteps(prev => prev.map(step => 
       step.id === 'finish' ? { ...step, isComplete: false } : step
     ));
-  }, []);
+  }, [activeAccountId]);
 
   const requiredSteps = steps.filter(s => s.isRequired);
   const completedRequired = requiredSteps.filter(s => s.isComplete).length;

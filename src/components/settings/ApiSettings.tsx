@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 interface NinaSettings {
   id?: string;
@@ -67,6 +68,7 @@ export interface ApiSettingsRef {
 const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const { companyName } = useCompanySettings();
   const { user } = useAuth();
+  const { activeAccountId } = useActiveAccount();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showWhatsAppToken, setShowWhatsAppToken] = useState(false);
@@ -127,7 +129,7 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   // Auto-save ElevenLabs API key when field loses focus
   const handleElevenLabsKeyBlur = async () => {
-    if (!settings.id || !settings.elevenlabs_api_key) return;
+    if (!settings.id || !settings.elevenlabs_api_key || !activeAccountId) return;
     
     try {
       const { error } = await supabase
@@ -136,7 +138,8 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           elevenlabs_api_key: settings.elevenlabs_api_key,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', settings.id);
+        .eq('id', settings.id)
+        .eq('account_id', activeAccountId);
 
       if (error) throw error;
       toast.success('API Key da ElevenLabs salva automaticamente');
@@ -153,7 +156,7 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [user?.id, activeAccountId]);
 
   useImperativeHandle(ref, () => ({
     save: handleSave,
@@ -162,17 +165,37 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   }));
 
   const loadSettings = async () => {
-    if (!user?.id) {
-      console.log('[ApiSettings] No user, skipping load');
+    if (!user?.id || !activeAccountId) {
+      console.log('[ApiSettings] No user or active account, skipping load');
+      setSettings({
+        whatsapp_provider: 'evolution',
+        evolution_api_url: null,
+        evolution_api_key: null,
+        evolution_instance_name: null,
+        whatsapp_access_token: null,
+        whatsapp_phone_number_id: null,
+        whatsapp_business_account_id: null,
+        whatsapp_verify_token: null,
+        elevenlabs_api_key: null,
+        elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
+        elevenlabs_model: 'eleven_turbo_v2_5',
+        elevenlabs_stability: 0.75,
+        elevenlabs_similarity_boost: 0.80,
+        elevenlabs_style: 0.30,
+        elevenlabs_speed: 1.0,
+        elevenlabs_speaker_boost: true,
+        audio_response_enabled: false,
+      });
       setLoading(false);
       return;
     }
     
     try {
-      // Fetch global nina_settings (no user_id filter - single tenant)
+      // Fetch settings scoped to the active account.
       const { data, error } = await supabase
         .from('nina_settings')
         .select('*')
+        .eq('account_id', activeAccountId)
         .limit(1)
         .maybeSingle();
 
@@ -180,7 +203,26 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
       // Se não existe registro, admin precisa configurar via onboarding
       if (!data) {
-        console.log('[ApiSettings] No global settings found');
+        console.log('[ApiSettings] No settings found for active account');
+        setSettings({
+          whatsapp_provider: 'evolution',
+          evolution_api_url: null,
+          evolution_api_key: null,
+          evolution_instance_name: null,
+          whatsapp_access_token: null,
+          whatsapp_phone_number_id: null,
+          whatsapp_business_account_id: null,
+          whatsapp_verify_token: null,
+          elevenlabs_api_key: null,
+          elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
+          elevenlabs_model: 'eleven_turbo_v2_5',
+          elevenlabs_stability: 0.75,
+          elevenlabs_similarity_boost: 0.80,
+          elevenlabs_style: 0.30,
+          elevenlabs_speed: 1.0,
+          elevenlabs_speaker_boost: true,
+          audio_response_enabled: false,
+        });
         setLoading(false);
         return;
       }
@@ -216,34 +258,52 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   };
 
   const handleSave = async () => {
+    if (!activeAccountId) {
+      toast.error('Nenhuma conta ativa selecionada. Recarregue a página.');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Update global settings
-      const { error } = await supabase
-        .from('nina_settings')
-        .update({
-          whatsapp_provider: settings.whatsapp_provider,
-          evolution_api_url: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_url : null,
-          evolution_api_key: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_key : null,
-          evolution_instance_name: settings.whatsapp_provider === 'evolution' ? settings.evolution_instance_name : null,
-          whatsapp_access_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_access_token : null,
-          whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
-          whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
-          whatsapp_verify_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_verify_token : null,
-          elevenlabs_api_key: settings.elevenlabs_api_key,
-          elevenlabs_voice_id: settings.elevenlabs_voice_id,
-          elevenlabs_model: settings.elevenlabs_model,
-          elevenlabs_stability: settings.elevenlabs_stability,
-          elevenlabs_similarity_boost: settings.elevenlabs_similarity_boost,
-          elevenlabs_style: settings.elevenlabs_style,
-          elevenlabs_speed: settings.elevenlabs_speed,
-          elevenlabs_speaker_boost: settings.elevenlabs_speaker_boost,
-          audio_response_enabled: settings.audio_response_enabled,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq('id', settings.id!);
+      const payload = {
+        whatsapp_provider: settings.whatsapp_provider,
+        evolution_api_url: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_url : null,
+        evolution_api_key: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_key : null,
+        evolution_instance_name: settings.whatsapp_provider === 'evolution' ? settings.evolution_instance_name : null,
+        whatsapp_access_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_access_token : null,
+        whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
+        whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
+        whatsapp_verify_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_verify_token : null,
+        elevenlabs_api_key: settings.elevenlabs_api_key,
+        elevenlabs_voice_id: settings.elevenlabs_voice_id,
+        elevenlabs_model: settings.elevenlabs_model,
+        elevenlabs_stability: settings.elevenlabs_stability,
+        elevenlabs_similarity_boost: settings.elevenlabs_similarity_boost,
+        elevenlabs_style: settings.elevenlabs_style,
+        elevenlabs_speed: settings.elevenlabs_speed,
+        elevenlabs_speaker_boost: settings.elevenlabs_speaker_boost,
+        audio_response_enabled: settings.audio_response_enabled,
+        updated_at: new Date().toISOString(),
+      };
+
+      const result = settings.id
+        ? await supabase
+            .from('nina_settings')
+            .update(payload as any)
+            .eq('id', settings.id)
+            .eq('account_id', activeAccountId)
+            .select('id')
+            .single()
+        : await supabase
+            .from('nina_settings')
+            .insert({ ...payload, account_id: activeAccountId } as any)
+            .select('id')
+            .single();
+
+      const { data, error } = result;
 
       if (error) throw error;
+      if (data?.id) setSettings(prev => ({ ...prev, id: data.id }));
       toast.success('Configurações de APIs salvas com sucesso!');
     } catch (error) {
       console.error('Error saving settings:', error);
