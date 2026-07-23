@@ -214,6 +214,29 @@ export default function AdminAccounts() {
     }
   };
 
+  const endImpersonation = async (account: AccountRow) => {
+    setImpersonating(account.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("super-admin-impersonate", {
+        body: { action: "revoke", account_id: account.id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao encerrar acesso");
+      // Se estiver no contexto dessa conta, volta para a conta interna (AXHolding)
+      const internal = accounts.find((x) => x.is_internal);
+      if (internal) {
+        await switchAccount(internal.id);
+      }
+      await refreshAccounts();
+      await reload();
+      toast.success(`Acesso à conta "${account.name}" encerrado`);
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao encerrar acesso");
+    } finally {
+      setImpersonating(null);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
