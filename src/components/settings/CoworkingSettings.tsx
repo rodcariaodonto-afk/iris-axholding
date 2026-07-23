@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2, Building2, RefreshCw, Check, X, Lock } from 'lucide-react';
-import { useBookableResources, useCoworkingEnabled, useToggleCoworking, useBootstrapDefaults } from '@/hooks/useCoworking';
+import { useBookableResources, useCoworkingEnabled, useToggleCoworking, useBootstrapDefaults, useCoworkingModuleAvailable } from '@/hooks/useCoworking';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 export default function CoworkingSettings() {
   const { role, isSuperAdmin } = useActiveAccount();
   const canManage = isSuperAdmin || role === 'owner' || role === 'admin';
+  const { available: moduleAvailable, loading: loadingModule } = useCoworkingModuleAvailable();
   const { enabled, loading: loadingEnabled, refresh } = useCoworkingEnabled();
   const { toggle, saving } = useToggleCoworking();
   const { resources, loading: loadingRes } = useBookableResources();
@@ -16,6 +17,11 @@ export default function CoworkingSettings() {
   const [bootstrapping, setBootstrapping] = useState(false);
 
   const handleToggle = async (val: boolean) => {
+    if (val && !moduleAvailable) {
+      toast.error('Módulo Coworking não liberado para esta conta');
+      return;
+    }
+
     try {
       await toggle(val);
       toast.success(val ? 'Coworking ativado — salas padrão criadas' : 'Coworking desativado');
@@ -35,7 +41,7 @@ export default function CoworkingSettings() {
     } finally { setBootstrapping(false); }
   };
 
-  if (loadingEnabled) {
+  if (loadingEnabled || loadingModule) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
   }
 
@@ -52,13 +58,13 @@ export default function CoworkingSettings() {
               Gestão de salas reserváveis, controle de conflitos e validação de pagamento PIX manual.
             </p>
           </div>
-          {canManage ? (
+          {canManage && moduleAvailable ? (
             <Switch checked={enabled} disabled={saving} onCheckedChange={handleToggle} />
           ) : (
-            <span className="flex items-center gap-1.5 text-xs text-amber-400"><Lock className="w-3 h-3" /> Somente leitura</span>
+            <span className="flex items-center gap-1.5 text-xs text-amber-400"><Lock className="w-3 h-3" /> {moduleAvailable ? 'Somente leitura' : 'Não liberado'}</span>
           )}
         </div>
-        {!enabled && (
+        {!enabled && moduleAvailable && (
           <p className="text-xs text-slate-500 mt-4">
             Ao ativar, 4 salas padrão (Sala 01-04) serão criadas automaticamente. O campo "Sala" aparecerá no modal de novo agendamento.
           </p>

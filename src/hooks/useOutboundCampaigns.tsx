@@ -224,6 +224,11 @@ export function useUpdateCampaignStatus() {
     campaignId: string,
     status: Campaign['status']
   ): Promise<boolean> => {
+    if (!activeAccountId) {
+      toast.error('Conta não identificada');
+      return false;
+    }
+
     setLoading(true);
     try {
       const patch: Record<string, unknown> = { status };
