@@ -170,6 +170,7 @@ export const CreateDealModal: React.FC<CreateDealModalProps> = ({
   const onSubmit = async (data: DealFormValues) => {
     setIsSubmitting(true);
     try {
+      const accountId = requireActiveAccountId();
       let contactId = data.contact_mode === 'existing' ? data.contact_id : '';
 
       // Se for novo contato, criar primeiro
@@ -178,6 +179,7 @@ export const CreateDealModal: React.FC<CreateDealModalProps> = ({
         const { data: existingContact } = await supabase
           .from('contacts')
           .select('id')
+          .eq('account_id', accountId)
           .eq('phone_number', data.new_contact_phone)
           .maybeSingle();
 
@@ -191,7 +193,7 @@ export const CreateDealModal: React.FC<CreateDealModalProps> = ({
         const { data: newContact, error: contactError } = await supabase
           .from('contacts')
           .insert({
-            account_id: requireActiveAccountId(),
+            account_id: accountId,
             name: data.new_contact_name,
             phone_number: data.new_contact_phone,
             email: data.new_contact_email || null,
@@ -213,6 +215,7 @@ export const CreateDealModal: React.FC<CreateDealModalProps> = ({
         await supabase
           .from('deals')
           .delete()
+          .eq('account_id', accountId)
           .eq('contact_id', contactId);
       }
 

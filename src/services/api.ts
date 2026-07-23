@@ -773,6 +773,7 @@ export const api = {
       await supabase
         .from('appointments')
         .update({ meeting_url: autoMeetingUrl })
+        .eq('account_id', requireActiveAccountId())
         .eq('id', data.id);
       data.meeting_url = autoMeetingUrl;
     }
