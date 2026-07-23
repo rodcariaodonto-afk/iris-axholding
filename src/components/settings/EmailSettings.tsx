@@ -53,6 +53,10 @@ const EmailSettings: React.FC = () => {
 
   const handleSave = async () => {
     if (!settingsId) return;
+    if (!activeAccountId) {
+      toast.error('Nenhuma conta ativa selecionada. Recarregue a página.');
+      return;
+    }
     if (!fromEmail.includes('@')) {
       toast.error('Informe um email de remetente válido');
       return;
