@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2 } from "lucide-react";
+import { useActiveAccount } from "@/hooks/useActiveAccount";
+import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,9 @@ type ActionType = "suspend" | "reactivate" | "delete" | "cancel_deletion";
 export default function AdminAccounts() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { switchAccount, refresh: refreshAccounts } = useActiveAccount();
+  const [impersonating, setImpersonating] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -174,6 +179,25 @@ export default function AdminAccounts() {
     }
   };
 
+  const impersonate = async (account: AccountRow) => {
+    setImpersonating(account.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("super-admin-impersonate", {
+        body: { action: "grant", account_id: account.id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao acessar conta");
+      await refreshAccounts();
+      await switchAccount(account.id);
+      toast.success(`Acessando conta "${account.name}"`);
+      navigate("/");
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao acessar conta");
+    } finally {
+      setImpersonating(null);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const ACTION_LABELS: Record<ActionType, { title: string; desc: string; confirm: string }> = {
@@ -259,6 +283,19 @@ export default function AdminAccounts() {
                     onCheckedChange={(v) => toggleFollowupModule(a, v)}
                   />
                 </div>
+              )}
+              {!a.is_internal && (a.status === "active" || a.status === "suspended") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8"
+                  disabled={impersonating === a.id}
+                  onClick={() => impersonate(a)}
+                  title="Acessar workspace deste cliente como admin"
+                >
+                  {impersonating === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
+                  Acessar
+                </Button>
               )}
               {!a.is_internal && (
                 <Popover>
