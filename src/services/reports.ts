@@ -38,16 +38,17 @@ export interface ReportData {
 export async function fetchReportData(range: DateRange): Promise<ReportData> {
   const startIso = range.start.toISOString();
   const endIso = range.end.toISOString();
+  const accountId = requireActiveAccountId();
 
   const [contactsRes, conversationsRes, messagesRes, dealsRes, stagesRes, appointmentsRes, teamRes] =
     await Promise.all([
-      supabase.from("contacts").select("*").gte("created_at", startIso).lte("created_at", endIso),
-      supabase.from("conversations").select("*").gte("created_at", startIso).lte("created_at", endIso),
-      supabase.from("messages").select("*").gte("created_at", startIso).lte("created_at", endIso).limit(5000),
-      supabase.from("deals").select("*"),
-      supabase.from("pipeline_stages").select("*").eq("is_active", true).order("position"),
-      supabase.from("appointments").select("*").gte("created_at", startIso).lte("created_at", endIso),
-      supabase.from("team_members").select("*"),
+      supabase.from("contacts").select("*").eq("account_id", accountId).gte("created_at", startIso).lte("created_at", endIso),
+      supabase.from("conversations").select("*").eq("account_id", accountId).gte("created_at", startIso).lte("created_at", endIso),
+      supabase.from("messages").select("*").eq("account_id", accountId).gte("created_at", startIso).lte("created_at", endIso).limit(5000),
+      supabase.from("deals").select("*").eq("account_id", accountId),
+      supabase.from("pipeline_stages").select("*").eq("account_id", accountId).eq("is_active", true).order("position"),
+      supabase.from("appointments").select("*").eq("account_id", accountId).gte("created_at", startIso).lte("created_at", endIso),
+      supabase.from("team_members").select("*").eq("account_id", accountId),
     ]);
 
   return {
