@@ -24,7 +24,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const ChatInterface: React.FC = () => {
   const { conversations, loading, sendMessage, updateStatus, markAsRead, assignConversation } = useConversations();
-  const { role } = useActiveAccount();
+  const { role, activeAccountId } = useActiveAccount();
   const canSeeAll = role === 'owner' || role === 'admin' || role === 'manager';
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
@@ -55,6 +55,13 @@ const ChatInterface: React.FC = () => {
   
   const activeChat = conversations.find(c => c.id === selectedChatId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSelectedChatId(null);
+    setMobileView('list');
+    setInputText('');
+    setNotesValue('');
+  }, [activeAccountId]);
   
   // Format audio time helper
   const formatAudioTime = (seconds: number): string => {

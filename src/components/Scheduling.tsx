@@ -81,7 +81,7 @@ const Scheduling: React.FC = () => {
   const { enabled: coworkingEnabled, refresh: refreshCoworking } = useCoworkingEnabled();
   const { available: coworkingModuleAvailable } = useCoworkingModuleAvailable();
   const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
-  const { role, isSuperAdmin, activeAccountId, memberships, loading: accountLoading } = useActiveAccount();
+  const { isSuperAdmin, activeAccountId, memberships, loading: accountLoading } = useActiveAccount();
   const activeMembership = memberships.find((membership) => membership.account_id === activeAccountId);
   const showCoworkingAdminControls = isSuperAdmin && !!activeMembership?.account.is_internal;
   const [followupEnabled, setFollowupEnabled] = useState(false);
