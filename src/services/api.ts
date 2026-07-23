@@ -28,7 +28,8 @@ const getSystemStageIds = async (): Promise<{ ganhoId: string | null; perdidoId:
   const accountId = requireActiveAccountId();
   
   if (systemStagesCacheByAccount.has(accountId)) {
-    return systemStagesCacheByAccount.get(accountId)!;
+    const cachedStages = systemStagesCacheByAccount.get(accountId);
+    if (cachedStages) return cachedStages;
   }
   
   const { data: stages } = await supabase
