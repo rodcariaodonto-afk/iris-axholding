@@ -28,7 +28,7 @@ export default function AccountOverview() {
         supabase.from("contacts").select("*", { count: "exact", head: true }).eq("account_id", activeAccountId),
         supabase.from("deals").select("*", { count: "exact", head: true }).eq("account_id", activeAccountId),
         supabase.from("conversations").select("*", { count: "exact", head: true }).eq("account_id", activeAccountId),
-        supabase.from("account_members").select("*", { count: "exact", head: true }).eq("account_id", activeAccountId).eq("status", "active"),
+        supabase.from("account_members").select("*", { count: "exact", head: true }).eq("account_id", activeAccountId).eq("status", "active").or("permissions.is.null,permissions->>impersonation.neq.true"),
       ]);
       setCounts({ contacts: contacts || 0, deals: deals || 0, conversations: conversations || 0, members: members || 0 });
     })();
