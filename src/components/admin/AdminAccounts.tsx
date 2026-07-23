@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
-import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2, LogIn } from "lucide-react";
+import { Loader2, Building2, Users as UsersIcon, Plus, Copy, Check, ExternalLink, MoreVertical, Pause, Play, Trash2, Undo2, LogIn, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
