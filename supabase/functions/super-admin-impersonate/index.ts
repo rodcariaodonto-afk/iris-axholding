@@ -62,14 +62,14 @@ Deno.serve(async (req) => {
     // Verifica membership existente
     const { data: existing } = await admin
       .from("account_members")
-      .select("id, status, role, metadata")
+      .select("id, status, role, permissions")
       .eq("account_id", targetAccountId)
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (action === "revoke") {
       // Só remove se foi criado via impersonação
-      if (existing && (existing.metadata as any)?.impersonation) {
+      if (existing && (existing.permissions as any)?.impersonation) {
         await admin.from("account_members").delete().eq("id", existing.id);
       }
       return json({ success: true, revoked: true });
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       role: "admin",
       status: "active",
-      metadata: { impersonation: true, granted_at: new Date().toISOString() },
+      permissions: { impersonation: true, granted_at: new Date().toISOString() },
     });
     if (insErr) return json({ error: insErr.message }, 500);
 
@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
         metadata: { account_name: acc.name },
       });
     } catch { /* ignore */ }
+
 
     return json({ success: true, account_id: targetAccountId, account_name: acc.name });
   } catch (e: any) {
