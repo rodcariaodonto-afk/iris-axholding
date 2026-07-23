@@ -25,6 +25,10 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
 
   const fetchSettings = async () => {
     if (!user || !activeAccountId) {
+      setCompanyName('Sua Empresa');
+      setSdrName('Agente');
+      setCompanyLogoUrl(null);
+      setIsAdmin(false);
       setLoading(false);
       return;
     }
@@ -68,6 +72,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
         // No settings exist - use defaults (admin will need to configure via wizard)
         setCompanyName('Sua Empresa');
         setSdrName('Agente');
+        setCompanyLogoUrl(null);
       }
     } catch (error) {
       console.error('[useCompanySettings] Error:', error);

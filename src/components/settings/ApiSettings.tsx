@@ -129,7 +129,7 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
   // Auto-save ElevenLabs API key when field loses focus
   const handleElevenLabsKeyBlur = async () => {
-    if (!settings.id || !settings.elevenlabs_api_key) return;
+    if (!settings.id || !settings.elevenlabs_api_key || !activeAccountId) return;
     
     try {
       const { error } = await supabase
@@ -138,7 +138,8 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
           elevenlabs_api_key: settings.elevenlabs_api_key,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', settings.id);
+        .eq('id', settings.id)
+        .eq('account_id', activeAccountId);
 
       if (error) throw error;
       toast.success('API Key da ElevenLabs salva automaticamente');
@@ -166,6 +167,25 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
   const loadSettings = async () => {
     if (!user?.id || !activeAccountId) {
       console.log('[ApiSettings] No user or active account, skipping load');
+      setSettings({
+        whatsapp_provider: 'evolution',
+        evolution_api_url: null,
+        evolution_api_key: null,
+        evolution_instance_name: null,
+        whatsapp_access_token: null,
+        whatsapp_phone_number_id: null,
+        whatsapp_business_account_id: null,
+        whatsapp_verify_token: null,
+        elevenlabs_api_key: null,
+        elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
+        elevenlabs_model: 'eleven_turbo_v2_5',
+        elevenlabs_stability: 0.75,
+        elevenlabs_similarity_boost: 0.80,
+        elevenlabs_style: 0.30,
+        elevenlabs_speed: 1.0,
+        elevenlabs_speaker_boost: true,
+        audio_response_enabled: false,
+      });
       setLoading(false);
       return;
     }
@@ -184,6 +204,25 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
       // Se não existe registro, admin precisa configurar via onboarding
       if (!data) {
         console.log('[ApiSettings] No settings found for active account');
+        setSettings({
+          whatsapp_provider: 'evolution',
+          evolution_api_url: null,
+          evolution_api_key: null,
+          evolution_instance_name: null,
+          whatsapp_access_token: null,
+          whatsapp_phone_number_id: null,
+          whatsapp_business_account_id: null,
+          whatsapp_verify_token: null,
+          elevenlabs_api_key: null,
+          elevenlabs_voice_id: '33B4UnXyTNbgLmdEDh5P',
+          elevenlabs_model: 'eleven_turbo_v2_5',
+          elevenlabs_stability: 0.75,
+          elevenlabs_similarity_boost: 0.80,
+          elevenlabs_style: 0.30,
+          elevenlabs_speed: 1.0,
+          elevenlabs_speaker_boost: true,
+          audio_response_enabled: false,
+        });
         setLoading(false);
         return;
       }
