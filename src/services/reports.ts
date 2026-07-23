@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { requireActiveAccountId } from "@/lib/activeAccount";
 
 export type DateRange = { start: Date; end: Date };
 
