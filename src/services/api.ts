@@ -20,20 +20,21 @@ const getCurrentUserId = async (): Promise<string> => {
   return user.id;
 };
 
-// Cache for system stage IDs (Ganho/Perdido) - keyed by user_id for multi-tenant
-const systemStagesCacheByUser: Map<string, { ganhoId: string | null; perdidoId: string | null }> = new Map();
+// Cache for system stage IDs (Ganho/Perdido) - keyed by active account for multi-tenant isolation
+const systemStagesCacheByAccount: Map<string, { ganhoId: string | null; perdidoId: string | null }> = new Map();
 
 // Helper function to get system stage IDs dynamically
 const getSystemStageIds = async (): Promise<{ ganhoId: string | null; perdidoId: string | null }> => {
-  const userId = await getCurrentUserId();
+  const accountId = requireActiveAccountId();
   
-  if (systemStagesCacheByUser.has(userId)) {
-    return systemStagesCacheByUser.get(userId)!;
+  if (systemStagesCacheByAccount.has(accountId)) {
+    return systemStagesCacheByAccount.get(accountId)!;
   }
   
   const { data: stages } = await supabase
     .from('pipeline_stages')
     .select('id, title, is_system')
+    .eq('account_id', accountId)
     .eq('is_system', true)
     .eq('is_active', true);
   
@@ -45,13 +46,13 @@ const getSystemStageIds = async (): Promise<{ ganhoId: string | null; perdidoId:
     perdidoId: perdidoStage?.id || null
   };
   
-  systemStagesCacheByUser.set(userId, result);
+  systemStagesCacheByAccount.set(accountId, result);
   return result;
 };
 
 // Clear cache (call when stages are modified)
 export const clearStagesCache = () => {
-  systemStagesCacheByUser.clear();
+  systemStagesCacheByAccount.clear();
 };
 
 // Helper functions for dashboard metrics
@@ -94,6 +95,7 @@ export const api = {
    * @param days - Number of days to fetch (1 = today, 7 = last 7 days, 30 = last 30 days)
    */
   fetchDashboardMetrics: async (days: number = 1): Promise<StatMetric[]> => {
+    const accountId = requireActiveAccountId();
     const now = new Date();
     now.setHours(23, 59, 59, 999);
     
@@ -129,34 +131,40 @@ export const api = {
         supabase
           .from('conversations')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('last_message_at', periodStartStr),
         // Atendimentos no período anterior
         supabase
           .from('conversations')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('last_message_at', prevPeriodStartStr)
           .lt('last_message_at', periodStartStr),
         // New contacts in period
         supabase
           .from('contacts')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('created_at', periodStartStr),
         // New contacts in previous period
         supabase
           .from('contacts')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('created_at', prevPeriodStartStr)
           .lt('created_at', periodStartStr),
         // Won deals in period
         supabase
           .from('deals')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .not('won_at', 'is', null)
           .gte('won_at', periodStartStr),
         // Won deals in previous period
         supabase
           .from('deals')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .not('won_at', 'is', null)
           .gte('won_at', prevPeriodStartStr)
           .lt('won_at', periodStartStr),
@@ -164,17 +172,20 @@ export const api = {
         supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('created_at', periodStartStr),
         // Appointments in previous period
         supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
           .gte('created_at', prevPeriodStartStr)
           .lt('created_at', periodStartStr),
         // Average response time (for the period)
         supabase
           .from('messages')
           .select('nina_response_time')
+          .eq('account_id', accountId)
           .not('nina_response_time', 'is', null)
           .gt('nina_response_time', 0)
           .gte('sent_at', periodStartStr)
@@ -237,6 +248,7 @@ export const api = {
    * @param days - Number of days to fetch
    */
   fetchChartData: async (days: number = 7): Promise<any[]> => {
+    const accountId = requireActiveAccountId();
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - (days - 1));
     periodStart.setHours(0, 0, 0, 0);
@@ -246,15 +258,18 @@ export const api = {
         supabase
           .from('messages')
           .select('sent_at')
+          .eq('account_id', accountId)
           .gte('sent_at', periodStart.toISOString()),
         supabase
           .from('deals')
           .select('won_at')
+          .eq('account_id', accountId)
           .not('won_at', 'is', null)
           .gte('won_at', periodStart.toISOString()),
         supabase
           .from('appointments')
           .select('created_at')
+          .eq('account_id', accountId)
           .gte('created_at', periodStart.toISOString())
       ]);
 
@@ -326,9 +341,11 @@ export const api = {
    * Fetch contacts from database
    */
   fetchContacts: async (): Promise<Contact[]> => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('contacts')
       .select('*')
+      .eq('account_id', accountId)
       .order('last_activity', { ascending: false })
       .limit(100);
 
@@ -343,10 +360,13 @@ export const api = {
 
     // Buscar deals para derivar status real (customer = ganhou, churned = perdeu)
     const contactIds = data.map(c => c.id);
-    const { data: dealsData } = await supabase
-      .from('deals')
-      .select('contact_id, stage, won_at, lost_at')
-      .in('contact_id', contactIds);
+    const { data: dealsData } = contactIds.length > 0
+      ? await supabase
+          .from('deals')
+          .select('contact_id, stage, won_at, lost_at')
+          .eq('account_id', accountId)
+          .in('contact_id', contactIds)
+      : { data: [] };
 
     const dealStatusByContact = new Map<string, 'customer' | 'churned' | 'lead'>();
     (dealsData || []).forEach(d => {
@@ -381,6 +401,7 @@ export const api = {
    * Fetch team members from database
    */
   fetchTeam: async (): Promise<TeamMember[]> => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('team_members')
       .select(`
@@ -388,6 +409,7 @@ export const api = {
         team:teams(*),
         function:team_functions(*)
       `)
+      .eq('account_id', accountId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -477,6 +499,7 @@ export const api = {
     const { error } = await supabase
       .from('team_members')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -492,6 +515,7 @@ export const api = {
     const { error } = await supabase
       .from('team_members')
       .delete()
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -504,9 +528,11 @@ export const api = {
    * Fetch teams
    */
   fetchTeams: async () => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('teams')
       .select('*')
+      .eq('account_id', accountId)
       .eq('is_active', true)
       .order('name', { ascending: true });
 
@@ -551,6 +577,7 @@ export const api = {
     const { error } = await supabase
       .from('teams')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -566,6 +593,7 @@ export const api = {
     const { error } = await supabase
       .from('teams')
       .update({ is_active: false })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -578,9 +606,11 @@ export const api = {
    * Fetch team functions
    */
   fetchTeamFunctions: async () => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('team_functions')
       .select('*')
+      .eq('account_id', accountId)
       .eq('is_active', true)
       .order('name', { ascending: true });
 
@@ -624,6 +654,7 @@ export const api = {
     const { error } = await supabase
       .from('team_functions')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -639,6 +670,7 @@ export const api = {
     const { error } = await supabase
       .from('team_functions')
       .update({ is_active: false })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -651,12 +683,14 @@ export const api = {
    * Fetch appointments from database
    */
   fetchAppointments: async (): Promise<Appointment[]> => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('appointments')
       .select(`
         *,
         contact:contacts(id, name, phone_number)
       `)
+      .eq('account_id', accountId)
       .order('date', { ascending: true })
       .order('time', { ascending: true });
 
@@ -773,6 +807,7 @@ export const api = {
     const { error } = await supabase
       .from('appointments')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -788,6 +823,7 @@ export const api = {
     const { error } = await supabase
       .from('appointments')
       .delete()
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -800,6 +836,7 @@ export const api = {
    * Fetch pipeline/deals with real data
    */
   fetchPipeline: async (): Promise<Deal[]> => {
+    const accountId = requireActiveAccountId();
     const { data, error } = await supabase
       .from('deals')
       .select(`
@@ -807,6 +844,7 @@ export const api = {
         contact:contacts(name, call_name, phone_number, email, client_memory),
         owner:team_members(name, avatar)
       `)
+      .eq('account_id', accountId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -817,10 +855,13 @@ export const api = {
     // Buscar conversation IDs para cada deal com contact_id
     const contactIds = (data?.filter(d => d.contact_id).map(d => d.contact_id) || []).filter((id): id is string => id !== null);
     
-    const { data: conversations } = await supabase
-      .from('conversations')
-      .select('id, contact_id')
-      .in('contact_id', contactIds);
+    const { data: conversations } = contactIds.length > 0
+      ? await supabase
+          .from('conversations')
+          .select('id, contact_id')
+          .eq('account_id', accountId)
+          .in('contact_id', contactIds)
+      : { data: [] };
 
     const convMap = new Map(conversations?.map(c => [c.contact_id, c.id]) || []);
 
@@ -851,11 +892,12 @@ export const api = {
 
   // Pipeline Stages CRUD
   fetchPipelineStages: async (): Promise<any[]> => {
-    const userId = await getCurrentUserId();
+    const accountId = requireActiveAccountId();
     
     const { data, error } = await supabase
       .from('pipeline_stages')
       .select('*')
+      .eq('account_id', accountId)
       .eq('is_active', true)
       .order('position', { ascending: true });
 
@@ -877,12 +919,13 @@ export const api = {
   },
 
   createPipelineStage: async (stage: { title: string; color: string; isAiManaged?: boolean; aiTriggerCriteria?: string }): Promise<any> => {
-    const userId = await getCurrentUserId();
+    const accountId = requireActiveAccountId();
     
     // Get the highest position for all active stages
     const { data: stages } = await supabase
       .from('pipeline_stages')
       .select('position')
+      .eq('account_id', accountId)
       .eq('is_active', true)
       .order('position', { ascending: false })
       .limit(1);
@@ -892,7 +935,7 @@ export const api = {
     const { data, error } = await supabase
       .from('pipeline_stages')
       .insert({
-        account_id: requireActiveAccountId(),
+        account_id: accountId,
         title: stage.title,
         color: stage.color,
         position: nextPosition,
@@ -938,6 +981,7 @@ export const api = {
     const { error } = await supabase
       .from('pipeline_stages')
       .update(dbUpdates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -955,6 +999,7 @@ export const api = {
       const { error: moveError } = await supabase
         .from('deals')
         .update({ stage_id: moveToStageId })
+        .eq('account_id', requireActiveAccountId())
         .eq('stage_id', id);
 
       if (moveError) {
@@ -967,6 +1012,7 @@ export const api = {
     const { error } = await supabase
       .from('pipeline_stages')
       .delete()
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -984,6 +1030,7 @@ export const api = {
       supabase
         .from('pipeline_stages')
         .update({ position: index })
+        .eq('account_id', requireActiveAccountId())
         .eq('id', id)
     );
 
@@ -1092,6 +1139,7 @@ export const api = {
     const { error } = await supabase
       .from('deals')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -1107,6 +1155,7 @@ export const api = {
     const { error } = await supabase
       .from('deals')
       .delete()
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -1135,6 +1184,7 @@ export const api = {
     const { error } = await supabase
       .from('deals')
       .update(updates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -1161,6 +1211,7 @@ export const api = {
         stage_id: ganhoId,
         won_at: new Date().toISOString()
       })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', dealId);
       
     if (error) {
@@ -1188,6 +1239,7 @@ export const api = {
         lost_at: new Date().toISOString(),
         lost_reason: reason
       })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', dealId);
       
     if (error) {
@@ -1203,6 +1255,7 @@ export const api = {
     const { error } = await supabase
       .from('deals')
       .update({ owner_id: ownerId })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', dealId);
       
     if (error) {
@@ -1221,6 +1274,7 @@ export const api = {
         *,
         created_by_member:team_members!deal_activities_created_by_fkey(name)
       `)
+      .eq('account_id', requireActiveAccountId())
       .eq('deal_id', dealId)
       .order('created_at', { ascending: false });
 
@@ -1286,6 +1340,7 @@ export const api = {
     const { error } = await supabase
       .from('deal_activities')
       .update(dbUpdates)
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -1301,6 +1356,7 @@ export const api = {
     const { error } = await supabase
       .from('deal_activities')
       .delete()
+      .eq('account_id', requireActiveAccountId())
       .eq('id', id);
 
     if (error) {
@@ -1348,6 +1404,7 @@ export const api = {
         const { data: messages, error: msgError } = await supabase
           .from('messages')
           .select('*')
+          .eq('account_id', accountId)
           .eq('conversation_id', conv.id)
           .order('sent_at', { ascending: false })
           .limit(100);
@@ -1371,12 +1428,14 @@ export const api = {
    * Returns the ID of the created message
    */
   sendMessage: async (conversationId: string, content: string): Promise<string> => {
+    const accountId = requireActiveAccountId();
     console.log(`[API] Sending message to conversation ${conversationId}`);
 
     // Get conversation to find contact_id
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .select('contact_id')
+      .eq('account_id', accountId)
       .eq('id', conversationId)
       .single();
 
@@ -1389,7 +1448,7 @@ export const api = {
     const { data: msgData, error: msgError } = await supabase
       .from('messages')
       .insert({
-        account_id: requireActiveAccountId(),
+        account_id: accountId,
         conversation_id: conversationId,
         content: content,
         type: 'text',
@@ -1411,7 +1470,7 @@ export const api = {
     const { error: sendError } = await supabase
       .from('send_queue')
       .insert({
-        account_id: requireActiveAccountId(),
+        account_id: accountId,
         conversation_id: conversationId,
         contact_id: conversation.contact_id,
         content: content,
@@ -1457,6 +1516,7 @@ export const api = {
     const { error } = await supabase
       .from('conversations')
       .update({ status })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', conversationId);
 
     if (error) {
@@ -1477,6 +1537,7 @@ export const api = {
         status: 'read',
         read_at: new Date().toISOString()
       })
+      .eq('account_id', requireActiveAccountId())
       .eq('conversation_id', conversationId)
       .eq('from_type', 'user')
       .in('status', ['sent', 'delivered']);
@@ -1497,6 +1558,7 @@ export const api = {
     const { error: convError } = await supabase
       .from('conversations')
       .update({ assigned_user_id: userId })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', conversationId);
 
     if (convError) {
@@ -1508,6 +1570,7 @@ export const api = {
     const { error: dealError } = await supabase
       .from('deals')
       .update({ owner_id: userId })
+      .eq('account_id', requireActiveAccountId())
       .eq('contact_id', contactId);
 
     if (dealError) {
@@ -1525,6 +1588,7 @@ export const api = {
     const { error } = await supabase
       .from('contacts')
       .update({ notes })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', contactId);
 
     if (error) {
@@ -1544,6 +1608,7 @@ export const api = {
         blocked_at: blocked ? new Date().toISOString() : null,
         blocked_reason: blocked ? reason : null
       })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', contactId);
 
     if (error) {
@@ -1559,6 +1624,7 @@ export const api = {
     const { data, error } = await supabase
       .from('tag_definitions')
       .select('*')
+      .eq('account_id', requireActiveAccountId())
       .eq('is_active', true)
       .order('category', { ascending: true });
     
@@ -1576,6 +1642,7 @@ export const api = {
     const { error } = await supabase
       .from('contacts')
       .update({ tags })
+      .eq('account_id', requireActiveAccountId())
       .eq('id', contactId);
     
     if (error) {
@@ -1618,6 +1685,7 @@ export const api = {
     const { data, error } = await supabase
       .from('messages')
       .select('id, content, from_type, type, sent_at, media_url')
+      .eq('account_id', requireActiveAccountId())
       .eq('conversation_id', conversationId)
       .order('sent_at', { ascending: false })
       .limit(limit);
