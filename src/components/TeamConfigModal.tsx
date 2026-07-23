@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { api } from '../services/api';
 import { Team, TeamFunction } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 interface TeamConfigModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface TeamConfigModalProps {
 type TabType = 'teams' | 'functions';
 
 const TeamConfigModal: React.FC<TeamConfigModalProps> = ({ isOpen, onClose, onUpdate }) => {
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [activeTab, setActiveTab] = useState<TabType>('teams');
   const [teams, setTeams] = useState<Team[]>([]);
   const [functions, setFunctions] = useState<TeamFunction[]>([]);
@@ -23,11 +25,11 @@ const TeamConfigModal: React.FC<TeamConfigModalProps> = ({ isOpen, onClose, onUp
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !accountLoading && activeAccountId) {
       loadData();
-      setupRealtime();
+      return setupRealtime(activeAccountId);
     }
-  }, [isOpen]);
+  }, [isOpen, activeAccountId, accountLoading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -45,17 +47,17 @@ const TeamConfigModal: React.FC<TeamConfigModalProps> = ({ isOpen, onClose, onUp
     }
   };
 
-  const setupRealtime = () => {
+  const setupRealtime = (accountId: string) => {
     const teamsChannel = supabase
-      .channel('teams-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
+      .channel(`teams-changes-${accountId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: `account_id=eq.${accountId}` }, () => {
         loadData();
       })
       .subscribe();
 
     const functionsChannel = supabase
-      .channel('functions-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_functions' }, () => {
+      .channel(`functions-changes-${accountId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_functions', filter: `account_id=eq.${accountId}` }, () => {
         loadData();
       })
       .subscribe();

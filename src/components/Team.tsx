@@ -6,8 +6,10 @@ import { TeamMember, type Team as TeamType, type TeamFunction } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import TeamConfigModal from './TeamConfigModal';
 import { toast } from 'sonner';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 const Team: React.FC = () => {
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [teams, setTeams] = useState<TeamType[]>([]);
   const [functions, setFunctions] = useState<TeamFunction[]>([]);
@@ -37,10 +39,19 @@ const Team: React.FC = () => {
   });
 
   useEffect(() => {
+    if (accountLoading) return;
+    if (!activeAccountId) {
+      setMembers([]);
+      setTeams([]);
+      setFunctions([]);
+      setLoading(false);
+      return;
+    }
+
     loadAllData();
     const cleanup = setupRealtime();
     return cleanup;
-  }, []);
+  }, [activeAccountId, accountLoading]);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -61,9 +72,11 @@ const Team: React.FC = () => {
   };
 
   const setupRealtime = () => {
+    if (!activeAccountId) return () => undefined;
+
     const channel = supabase
-      .channel('team-members-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, () => {
+      .channel(`team-members-changes-${activeAccountId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members', filter: `account_id=eq.${activeAccountId}` }, () => {
         loadAllData();
       })
       .subscribe();

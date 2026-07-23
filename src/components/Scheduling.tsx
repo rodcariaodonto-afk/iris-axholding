@@ -7,7 +7,7 @@ import { api } from '../services/api';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
-import { useCoworkingEnabled, useBookableResources, useEnableCoworking, useDisableCoworking } from '@/hooks/useCoworking';
+import { useCoworkingEnabled, useBookableResources, useEnableCoworking, useDisableCoworking, useCoworkingModuleAvailable } from '@/hooks/useCoworking';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 type ViewMode = 'month' | 'week' | 'day';
@@ -79,9 +79,12 @@ const Scheduling: React.FC = () => {
     resource_id: '' as string,
   });
   const { enabled: coworkingEnabled, refresh: refreshCoworking } = useCoworkingEnabled();
+  const { available: coworkingModuleAvailable } = useCoworkingModuleAvailable();
   const { resources: coworkingResources } = useBookableResources({ onlyActive: true });
-  const { role, isSuperAdmin } = useActiveAccount();
-  const canEnableCoworking = isSuperAdmin || role === 'owner' || role === 'admin';
+  const { isSuperAdmin, activeAccountId, memberships, loading: accountLoading } = useActiveAccount();
+  const activeMembership = memberships.find((membership) => membership.account_id === activeAccountId);
+  const showCoworkingAdminControls = isSuperAdmin && !!activeMembership?.account.is_internal;
+  const [followupEnabled, setFollowupEnabled] = useState(false);
   const { enable: enableCoworking, enabling: enablingCoworking } = useEnableCoworking();
   const { disable: disableCoworking, disabling: disablingCoworking } = useDisableCoworking();
 
@@ -150,6 +153,18 @@ const Scheduling: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (accountLoading) return;
+    if (!activeAccountId) {
+      setAppointments([]);
+      setContacts([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setSelectedAppointment(null);
+    setSelectedContactId(null);
+
     const loadData = async () => {
       try {
         const [appointmentsData, contactsData] = await Promise.all([
@@ -169,13 +184,14 @@ const Scheduling: React.FC = () => {
 
     // Setup realtime subscription
     const channel = supabase
-      .channel('appointments-changes')
+      .channel(`appointments-changes-${activeAccountId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'appointments'
+          table: 'appointments',
+          filter: `account_id=eq.${activeAccountId}`
         },
         () => {
           console.log('Appointment changed, refetching...');
@@ -187,7 +203,24 @@ const Scheduling: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [activeAccountId, accountLoading]);
+
+  useEffect(() => {
+    if (!activeAccountId) {
+      setFollowupEnabled(false);
+      return;
+    }
+
+    supabase
+      .from('accounts')
+      .select('settings')
+      .eq('id', activeAccountId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const settings = (data?.settings || {}) as Record<string, unknown>;
+        setFollowupEnabled(!!settings.followup_enabled);
+      });
+  }, [activeAccountId]);
 
   // Navigation Logic
   const navigateDate = (direction: number) => {
@@ -694,7 +727,7 @@ const Scheduling: React.FC = () => {
               )
             )}
 
-            {!coworkingEnabled && canEnableCoworking && (
+            {!coworkingEnabled && showCoworkingAdminControls && (
               <button
                 onClick={handleEnableCoworking}
                 disabled={enablingCoworking}
@@ -706,7 +739,7 @@ const Scheduling: React.FC = () => {
               </button>
             )}
 
-            {coworkingEnabled && canEnableCoworking && (
+            {coworkingEnabled && showCoworkingAdminControls && (
               <button
                 onClick={handleDisableCoworking}
                 disabled={disablingCoworking}
@@ -813,11 +846,11 @@ const Scheduling: React.FC = () => {
                             <option value="demo">Demo</option>
                             <option value="meeting">Reunião</option>
                             <option value="support">Suporte</option>
-                            <option value="followup">Follow-up</option>
+                            {followupEnabled && <option value="followup">Follow-up</option>}
                          </select>
                     </div>
 
-                    {coworkingEnabled && (
+                    {coworkingEnabled && coworkingModuleAvailable && (
                       <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
                           <Building2 className="w-3 h-3" /> Sala (opcional)

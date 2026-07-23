@@ -73,7 +73,11 @@ export function useToggleCoworking() {
     setSaving(true);
     try {
       const { data: acc } = await supabase.from('accounts').select('settings').eq('id', activeAccountId).single();
-      const settings = { ...((acc?.settings as Record<string, unknown>) || {}), coworking_enabled: value };
+      const currentSettings = ((acc?.settings as Record<string, unknown>) || {});
+      if (value && !currentSettings.coworking_module_available) {
+        throw new Error('Módulo Coworking não liberado para esta conta');
+      }
+      const settings = { ...currentSettings, coworking_enabled: value };
       const { error } = await supabase.from('accounts').update({ settings }).eq('id', activeAccountId);
       if (error) throw error;
       if (value) {
@@ -87,11 +91,15 @@ export function useToggleCoworking() {
 
 /** Libera e ativa o módulo Coworking de uma vez (Owner/Admin). Cria as salas padrão. */
 export function useEnableCoworking() {
-  const { activeAccountId } = useActiveAccount();
+  const { activeAccountId, memberships, isSuperAdmin } = useActiveAccount();
   const [enabling, setEnabling] = useState(false);
 
   const enable = useCallback(async () => {
     if (!activeAccountId) return;
+    const activeMembership = memberships.find((membership) => membership.account_id === activeAccountId);
+    if (!isSuperAdmin || !activeMembership?.account.is_internal) {
+      throw new Error('Módulo Coworking só pode ser liberado no Super Admin');
+    }
     setEnabling(true);
     try {
       const { data: acc } = await supabase.from('accounts').select('settings').eq('id', activeAccountId).single();
@@ -104,7 +112,7 @@ export function useEnableCoworking() {
       if (error) throw error;
       await supabase.rpc('bootstrap_coworking_defaults', { _account_id: activeAccountId });
     } finally { setEnabling(false); }
-  }, [activeAccountId]);
+  }, [activeAccountId, memberships, isSuperAdmin]);
 
   return { enable, enabling };
 }

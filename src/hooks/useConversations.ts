@@ -34,6 +34,8 @@ export function useConversations() {
 
   // Fetch a single conversation and add it to state
   const fetchAndAddConversation = useCallback(async (conversationId: string) => {
+    if (!activeAccountId) return;
+
     // Prevent duplicate fetches
     if (fetchingConversationIds.current.has(conversationId)) {
       console.log('[Realtime] Already fetching conversation:', conversationId);
@@ -63,6 +65,7 @@ export function useConversations() {
       const { data: messages, error: msgError } = await supabase
         .from('messages')
         .select('*')
+        .eq('account_id', activeAccountId)
         .eq('conversation_id', conversationId)
         .order('sent_at', { ascending: true });
       

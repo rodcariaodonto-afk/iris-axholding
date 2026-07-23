@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { OnboardingBanner } from './OnboardingBanner';
 import { SystemHealthCard } from './SystemHealthCard';
 import { useOutletContext } from 'react-router-dom';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 interface OutletContext {
   showOnboarding: boolean;
@@ -32,8 +33,17 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodFilter>('today');
   const { setShowOnboarding } = useOutletContext<OutletContext>();
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
 
   useEffect(() => {
+    if (accountLoading) return;
+    if (!activeAccountId) {
+      setMetrics([]);
+      setChartData([]);
+      setLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
       try {
@@ -52,7 +62,7 @@ const Dashboard: React.FC = () => {
     };
 
     loadData();
-  }, [period]);
+  }, [period, activeAccountId, accountLoading]);
 
   const getIcon = (label: string) => {
     if (label.includes('Conversões')) return <DollarSign className="h-5 w-5 text-emerald-400" />;

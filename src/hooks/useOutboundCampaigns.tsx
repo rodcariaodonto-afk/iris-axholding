@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { toast } from 'sonner';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,20 +69,21 @@ export function useOutboundCampaignsModuleAvailable() {
   const [available, setAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { activeAccountId } = useActiveAccount();
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !activeAccountId) {
+      setAvailable(false);
       setLoading(false);
       return;
     }
 
     const fetch = async () => {
       try {
-        // RLS ensures the user only sees their own account
         const { data } = await db
           .from('accounts')
           .select('settings')
-          .limit(1)
+          .eq('id', activeAccountId)
           .maybeSingle();
 
         setAvailable(!!data?.settings?.outbound_campaigns_enabled);
@@ -94,7 +96,7 @@ export function useOutboundCampaignsModuleAvailable() {
     };
 
     fetch();
-  }, [user]);
+  }, [user, activeAccountId]);
 
   return { available, loading };
 }
@@ -103,20 +105,8 @@ export function useOutboundCampaignsModuleAvailable() {
 // Internal helper — resolves the caller's account_id once.
 
 function useCurrentAccountId() {
-  const [accountId, setAccountId] = useState<string | null>(null);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user) return;
-    db
-      .from('accounts')
-      .select('id')
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }: { data: { id: string } | null }) => setAccountId(data?.id ?? null));
-  }, [user]);
-
-  return accountId;
+  const { activeAccountId } = useActiveAccount();
+  return activeAccountId;
 }
 
 // ─── useCampaigns ─────────────────────────────────────────────────────────────
@@ -125,12 +115,20 @@ export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { activeAccountId } = useActiveAccount();
 
   const fetchCampaigns = useCallback(async () => {
+    if (!activeAccountId) {
+      setCampaigns([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await db
         .from('outbound_campaigns')
         .select('*')
+        .eq('account_id', activeAccountId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -141,24 +139,24 @@ export function useCampaigns() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeAccountId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeAccountId) return;
 
     fetchCampaigns();
 
     const channel = supabase
-      .channel('outbound-campaigns-realtime')
+      .channel(`outbound-campaigns-realtime-${activeAccountId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'outbound_campaigns' },
+        { event: '*', schema: 'public', table: 'outbound_campaigns', filter: `account_id=eq.${activeAccountId}` },
         () => fetchCampaigns()
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, fetchCampaigns]);
+  }, [user, activeAccountId, fetchCampaigns]);
 
   return { campaigns, loading, refetch: fetchCampaigns };
 }
@@ -220,11 +218,17 @@ export function useCreateCampaign() {
 
 export function useUpdateCampaignStatus() {
   const [loading, setLoading] = useState(false);
+  const { activeAccountId } = useActiveAccount();
 
   const updateStatus = useCallback(async (
     campaignId: string,
     status: Campaign['status']
   ): Promise<boolean> => {
+    if (!activeAccountId) {
+      toast.error('Conta não identificada');
+      return false;
+    }
+
     setLoading(true);
     try {
       const patch: Record<string, unknown> = { status };
@@ -235,6 +239,7 @@ export function useUpdateCampaignStatus() {
       const { error } = await db
         .from('outbound_campaigns')
         .update(patch)
+        .eq('account_id', activeAccountId)
         .eq('id', campaignId);
 
       if (error) throw error;
@@ -255,7 +260,7 @@ export function useUpdateCampaignStatus() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeAccountId]);
 
   return { updateStatus, loading };
 }

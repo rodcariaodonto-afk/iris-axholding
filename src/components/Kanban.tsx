@@ -15,9 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { RequireRole } from './RequireRole';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 const Kanban: React.FC = () => {
   const { sdrName } = useCompanySettings();
+  const { activeAccountId, loading: accountLoading } = useActiveAccount();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [stages, setStages] = useState<KanbanColumn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,17 @@ const Kanban: React.FC = () => {
   };
 
   useEffect(() => {
+    if (accountLoading) return;
+    if (!activeAccountId) {
+      setDeals([]);
+      setStages([]);
+      setTeamMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setSelectedDeal(null);
     const loadStages = async () => {
       try {
         const data = await api.fetchPipelineStages();
@@ -104,7 +117,8 @@ const Kanban: React.FC = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'deals'
+          table: 'deals',
+          filter: `account_id=eq.${activeAccountId}`
         },
         async () => {
           const data = await api.fetchPipeline();
@@ -120,7 +134,8 @@ const Kanban: React.FC = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'pipeline_stages'
+          table: 'pipeline_stages',
+          filter: `account_id=eq.${activeAccountId}`
         },
         async () => {
           const data = await api.fetchPipelineStages();
@@ -133,7 +148,7 @@ const Kanban: React.FC = () => {
       supabase.removeChannel(dealsChannel);
       supabase.removeChannel(stagesChannel);
     };
-  }, []);
+  }, [activeAccountId, accountLoading]);
 
   // Load activities when deal is selected
   useEffect(() => {
