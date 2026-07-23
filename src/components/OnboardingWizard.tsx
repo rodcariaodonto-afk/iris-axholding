@@ -14,6 +14,7 @@ import { StepVerification } from './onboarding/StepVerification';
 import { StepFinish } from './onboarding/StepFinish';
 import { supabase } from '@/integrations/supabase/client';
 import { requireActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './settings/PromptGeneratorSheet';
 import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
@@ -188,6 +189,7 @@ const ConnectingLine = ({ isCompleted }: { isCompleted: boolean }) => (
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onClose }) => {
   const { steps, currentStep, refetch, markWizardSeen } = useOnboardingStatus();
   const { user } = useAuth();
+  const { activeAccountId } = useActiveAccount();
   const [activeStep, setActiveStep] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -238,48 +240,56 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       setIsInitializing(true);
       
       try {
-        // System already initialized during signUp (useAuth.tsx calls initialize-system)
-        // Just load the settings for this user
-        // Single-tenant: busca configuração global (user_id pode ser NULL)
-        const { data } = await supabase
+        if (!activeAccountId) return;
+
+        // Load settings strictly scoped to the active account.
+        // Super admins can access several accounts, so a global query can leak another tenant's identity.
+        const { data: settingsData, error: settingsError } = await supabase
           .from('nina_settings')
           .select('*')
+          .eq('account_id', activeAccountId)
           .limit(1)
           .maybeSingle();
 
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          console.error('[OnboardingWizard] Error loading account settings:', settingsError);
+        }
+
+        const { data: activeAccount } = await supabase
+          .from('accounts')
+          .select('name')
+          .eq('id', activeAccountId)
+          .maybeSingle();
+
+        const data = settingsData || null;
+
+        // Reset fields before applying tenant data, preventing stale values from a previous account.
+        setCompanyName(data?.company_name || activeAccount?.name || '');
+        setSdrName(data?.sdr_name || '');
+        setWhatsappProvider(((data as any)?.whatsapp_provider || 'evolution') as 'evolution' | 'meta_cloud');
+        setEvolutionApiUrl((data as any)?.evolution_api_url || '');
+        setEvolutionApiKey((data as any)?.evolution_api_key || '');
+        setEvolutionInstanceName((data as any)?.evolution_instance_name || '');
+        setWhatsappAccessToken((data as any)?.whatsapp_access_token || '');
+        setWhatsappPhoneNumberId((data as any)?.whatsapp_phone_number_id || '');
+        setWhatsappBusinessAccountId((data as any)?.whatsapp_business_account_id || '');
+        setWhatsappVerifyToken((data as any)?.whatsapp_verify_token || '');
+        setSystemPrompt(data?.system_prompt_override || DEFAULT_NINA_PROMPT);
+        setAiModelMode(data?.ai_model_mode || 'flash');
+        setElevenLabsApiKey(data?.elevenlabs_api_key || '');
+        setElevenLabsVoiceId(data?.elevenlabs_voice_id || '33B4UnXyTNbgLmdEDh5P');
+        setElevenLabsModel(data?.elevenlabs_model || 'eleven_turbo_v2_5');
+        setAudioResponseEnabled(data?.audio_response_enabled || false);
+        setElevenLabsStability(data?.elevenlabs_stability || 0.75);
+        setElevenLabsSimilarityBoost(data?.elevenlabs_similarity_boost || 0.8);
+        setElevenLabsSpeed(data?.elevenlabs_speed || 1.0);
+        setTimezone(data?.timezone || 'America/Sao_Paulo');
+        setBusinessHoursStart(data?.business_hours_start?.substring(0, 5) || '09:00');
+        setBusinessHoursEnd(data?.business_hours_end?.substring(0, 5) || '18:00');
+        setBusinessDays(data?.business_days || [1, 2, 3, 4, 5]);
+
         if (data) {
-          // Identity
-          setCompanyName(data.company_name || '');
-          setSdrName(data.sdr_name || '');
-          
-          // WhatsApp
-          setWhatsappProvider(((data as any).whatsapp_provider || 'evolution') as 'evolution' | 'meta_cloud');
-          setEvolutionApiUrl((data as any).evolution_api_url || '');
-          setEvolutionApiKey((data as any).evolution_api_key || '');
-          setEvolutionInstanceName((data as any).evolution_instance_name || '');
-          setWhatsappAccessToken((data as any).whatsapp_access_token || '');
-          setWhatsappPhoneNumberId((data as any).whatsapp_phone_number_id || '');
-          setWhatsappBusinessAccountId((data as any).whatsapp_business_account_id || '');
-          setWhatsappVerifyToken((data as any).whatsapp_verify_token || '');
-          
-          // Agent - usar prompt padrão se vazio
-          setSystemPrompt(data.system_prompt_override || DEFAULT_NINA_PROMPT);
-          setAiModelMode(data.ai_model_mode || 'flash');
-          
-          // ElevenLabs
-          setElevenLabsApiKey(data.elevenlabs_api_key || '');
-          setElevenLabsVoiceId(data.elevenlabs_voice_id || '33B4UnXyTNbgLmdEDh5P');
-          setElevenLabsModel(data.elevenlabs_model || 'eleven_turbo_v2_5');
-          setAudioResponseEnabled(data.audio_response_enabled || false);
-          setElevenLabsStability(data.elevenlabs_stability || 0.75);
-          setElevenLabsSimilarityBoost(data.elevenlabs_similarity_boost || 0.8);
-          setElevenLabsSpeed(data.elevenlabs_speed || 1.0);
-          
-          // Business Hours
-          setTimezone(data.timezone || 'America/Sao_Paulo');
-          setBusinessHoursStart(data.business_hours_start?.substring(0, 5) || '09:00');
-          setBusinessHoursEnd(data.business_hours_end?.substring(0, 5) || '18:00');
-          setBusinessDays(data.business_days || [1, 2, 3, 4, 5]);
+          console.log('[OnboardingWizard] Loaded settings for active account:', activeAccountId);
         }
       } catch (error) {
         console.error('[OnboardingWizard] Error:', error);
@@ -292,7 +302,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
       initializeAndLoad();
       setActiveStep(0);
     }
-  }, [isOpen]);
+  }, [isOpen, activeAccountId]);
 
   // Validate current step data before saving
   const validateStepData = useCallback((stepIndex: number): { valid: boolean; issues: string[] } => {
@@ -386,12 +396,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
     });
     
     try {
+      const accountId = requireActiveAccountId();
+
       // Step 1: Check if settings exist
       console.log('[OnboardingWizard] Step 1: Checking for existing settings...');
-      // Single-tenant: busca configuração global (user_id pode ser NULL)
       const { data: existing, error: fetchError } = await supabase
         .from('nina_settings')
         .select('id, user_id, company_name, whatsapp_phone_number_id')
+        .eq('account_id', accountId)
         .limit(1)
         .maybeSingle();
 
@@ -467,7 +479,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         result = await supabase
           .from('nina_settings')
           .update(settings)
-          .eq('id', existing.id)  // Single-tenant: usa ID do registro existente
+          .eq('id', existing.id)
+          .eq('account_id', accountId)
           .select()
           .single();
       } else {
@@ -476,7 +489,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
           .from('nina_settings')
           .insert({
             ...settings,
-            account_id: requireActiveAccountId(),
+            account_id: accountId,
             user_id: null,
           })
           .select()
@@ -512,6 +525,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         .from('nina_settings')
         .select('company_name, sdr_name, evolution_api_url, evolution_api_key, evolution_instance_name, system_prompt_override, is_active')
         .eq('id', result.data.id)
+        .eq('account_id', accountId)
         .maybeSingle();
 
       if (verifyError) {
@@ -557,7 +571,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
     whatsappAccessToken, whatsappPhoneNumberId, whatsappBusinessAccountId, whatsappVerifyToken,
     systemPrompt, aiModelMode, elevenLabsApiKey, elevenLabsVoiceId, elevenLabsModel,
     audioResponseEnabled, elevenLabsStability, elevenLabsSimilarityBoost, elevenLabsSpeed,
-    timezone, businessHoursStart, businessHoursEnd, businessDays, refetch
+    timezone, businessHoursStart, businessHoursEnd, businessDays, refetch, activeAccountId
   ]);
 
   const handleNext = async () => {
