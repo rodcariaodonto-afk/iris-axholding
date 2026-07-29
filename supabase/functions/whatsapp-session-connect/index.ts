@@ -72,9 +72,10 @@ Deno.serve(async (req) => {
     if (!settings?.evolution_api_url || !settings?.evolution_api_key) {
       return json({ error: "Evolution server not configured for this account" }, 400);
     }
-    const baseUrl = settings.evolution_api_url.replace(/\/$/, "");
+    const baseUrl = settings.evolution_api_url.replace(/\/+$/, "");
     const apiKey = settings.evolution_api_key;
     const instanceName = session.evolution_instance_name || `iris-${session.id.slice(0, 8)}`;
+    const encodedInstanceName = encodeURIComponent(instanceName);
 
     // 1) Tenta criar instância (se já existe, segue)
     const createResp = await fetch(`${baseUrl}/instance/create`, {
@@ -94,7 +95,7 @@ Deno.serve(async (req) => {
       instanceId = data?.instance?.instanceId ?? null;
     } else {
       // Connect existing
-      const connResp = await fetch(`${baseUrl}/instance/connect/${instanceName}`, {
+      const connResp = await fetch(`${baseUrl}/instance/connect/${encodedInstanceName}`, {
         headers: { apikey: apiKey },
       });
       if (connResp.ok) {
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
     let resolvedPhoneNumber = session.phone_number ?? null;
 
     try {
-      const stateResp = await fetch(`${baseUrl}/instance/connectionState/${instanceName}`, {
+      const stateResp = await fetch(`${baseUrl}/instance/connectionState/${encodedInstanceName}`, {
         headers: { apikey: apiKey },
       });
       if (stateResp.ok) {
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
         if (["open", "connected"].includes(state)) {
           resolvedStatus = "connected";
           qrCode = null;
-          const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${instanceName}`, {
+          const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${encodedInstanceName}`, {
             headers: { apikey: apiKey },
           });
           if (prof.ok) {
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
     ];
     try {
       // Evolution v2 payload
-      let wr = await fetch(`${baseUrl}/webhook/set/${instanceName}`, {
+      let wr = await fetch(`${baseUrl}/webhook/set/${encodedInstanceName}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: apiKey },
         body: JSON.stringify({
@@ -172,7 +173,7 @@ Deno.serve(async (req) => {
       });
       if (!wr.ok) {
         // Fallback Evolution v1 payload
-        wr = await fetch(`${baseUrl}/webhook/set/${instanceName}`, {
+        wr = await fetch(`${baseUrl}/webhook/set/${encodedInstanceName}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: apiKey },
           body: JSON.stringify({

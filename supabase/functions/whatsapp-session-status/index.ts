@@ -39,16 +39,61 @@ Deno.serve(async (req) => {
       return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "no_credentials" });
     }
 
-    const baseUrl = settings.evolution_api_url.replace(/\/$/, "");
+    const baseUrl = settings.evolution_api_url.replace(/\/+$/, "");
+    const instanceName = session.evolution_instance_name;
+    if (!instanceName) {
+      await supabase.from("whatsapp_sessions").update({
+        status: "disconnected",
+        error_message: null,
+      }).eq("id", session_id);
+
+      return json({
+        ok: true,
+        status: "disconnected",
+        live: false,
+        evolution_state: "not_created",
+        reachable: true,
+        reason: "missing_instance_name",
+      });
+    }
+
+    const encodedInstanceName = encodeURIComponent(instanceName);
     let r: Response;
+    let responseText = "";
     try {
-      r = await fetch(`${baseUrl}/instance/connectionState/${session.evolution_instance_name}`, {
+      r = await fetch(`${baseUrl}/instance/connectionState/${encodedInstanceName}`, {
         headers: { apikey: settings.evolution_api_key },
       });
     } catch (_e) {
       return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed" });
     }
     if (!r.ok) {
+      try {
+        responseText = await r.text();
+      } catch (_e) {
+        responseText = "";
+      }
+
+      const lower = responseText.toLowerCase();
+      const instanceMissing = r.status === 404 || lower.includes("not found") || lower.includes("não encontrado") || lower.includes("instance");
+
+      if (instanceMissing) {
+        await supabase.from("whatsapp_sessions").update({
+          status: "disconnected",
+          error_message: null,
+          qr_code: null,
+        }).eq("id", session_id);
+
+        return json({
+          ok: true,
+          status: "disconnected",
+          live: false,
+          evolution_state: "not_created",
+          reachable: true,
+          reason: "instance_not_found",
+        });
+      }
+
       return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: `http_${r.status}` });
     }
     const data = await r.json();
@@ -60,7 +105,7 @@ Deno.serve(async (req) => {
     if (live) {
       newStatus = "connected";
       // Try fetch profile
-      const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${session.evolution_instance_name}`, {
+      const prof = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${encodedInstanceName}`, {
         headers: { apikey: settings.evolution_api_key },
       });
       if (prof.ok) {
