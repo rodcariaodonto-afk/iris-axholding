@@ -59,7 +59,17 @@ const MODEL_OPTIONS = [
   { id: 'eleven_multilingual_v2', name: 'Multilingual v2' },
 ];
 
-const normalizeEvolutionUrl = (value: string | null | undefined) => value?.trim().replace(/\/+$/, '') || null;
+const normalizeEvolutionUrl = (value: string | null | undefined) => {
+  const trimmed = value?.trim().replace(/\/+$/, '') || null;
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? trimmed : null;
+  } catch {
+    return null;
+  }
+};
 
 const normalizeEvolutionInstanceName = (value: string | null | undefined, accountId: string, companyName?: string | null) => {
   const source = value?.trim() || `${companyName || 'iris'}-${accountId.slice(0, 8)}`;
@@ -284,6 +294,11 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
       const normalizedEvolutionInstanceName = settings.whatsapp_provider === 'evolution'
         ? normalizeEvolutionInstanceName(settings.evolution_instance_name, activeAccountId, companyName)
         : null;
+
+      if (settings.whatsapp_provider === 'evolution' && settings.evolution_api_url && !normalizedEvolutionApiUrl) {
+        toast.error('URL da Evolution API inválida. Use uma URL começando com http:// ou https://');
+        return;
+      }
 
       const payload = {
         whatsapp_provider: settings.whatsapp_provider,

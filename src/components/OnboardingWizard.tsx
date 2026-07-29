@@ -59,7 +59,17 @@ const backdropVariants = {
   exit: { opacity: 0 },
 };
 
-const normalizeEvolutionUrl = (value: string | null | undefined) => value?.trim().replace(/\/+$/, '') || null;
+const normalizeEvolutionUrl = (value: string | null | undefined) => {
+  const trimmed = value?.trim().replace(/\/+$/, '') || null;
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? trimmed : null;
+  } catch {
+    return null;
+  }
+};
 
 const normalizeEvolutionInstanceName = (value: string | null | undefined, accountId: string, companyName?: string | null) => {
   const source = value?.trim() || `${companyName || 'iris'}-${accountId.slice(0, 8)}`;
@@ -93,6 +103,10 @@ async function syncWhatsAppConnection(params: {
     const evolutionApiUrl = normalizeEvolutionUrl(params.evolutionApiUrl);
     const evolutionApiKey = params.evolutionApiKey?.trim() || null;
     const evolutionInstanceName = normalizeEvolutionInstanceName(params.evolutionInstanceName, params.accountId, params.companyName);
+
+    if (params.evolutionApiUrl && !evolutionApiUrl) {
+      throw new Error('URL da Evolution API inválida. Use uma URL começando com http:// ou https://');
+    }
 
     if (evolutionApiUrl && evolutionApiKey) {
       const { error: accountSettingsError } = await (supabase as any)
@@ -471,6 +485,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         console.log('[OnboardingWizard] Step 1 (WhatsApp) provider:', whatsappProvider);
         if (whatsappProvider === 'evolution') {
           if (!evolutionApiUrl?.trim()) issues.push('URL do servidor está vazia');
+          else if (!normalizeEvolutionUrl(evolutionApiUrl)) issues.push('URL do servidor inválida');
           if (!evolutionApiKey?.trim()) issues.push('API Key está vazia');
         } else {
           if (!whatsappPhoneNumberId?.trim()) issues.push('Phone Number ID está vazio');
