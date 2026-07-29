@@ -477,15 +477,16 @@ const Team: React.FC = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Email Corporativo</label>
+                        <label className="text-sm font-medium text-slate-300">E-mail</label>
                         <input 
                             required
                             type="email" 
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:ring-1 focus:ring-slate-600 outline-none transition-all"
-                            placeholder="colaborador@empresa.com"
+                            placeholder="nome@email.com"
                             value={formData.email}
                             onChange={(e) => setFormData({...formData, email: e.target.value})}
                         />
+                        <p className="text-xs text-slate-500">Qualquer provedor é aceito (Gmail, Outlook, corporativo...).</p>
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">Nível de Acesso</label>
