@@ -1,79 +1,49 @@
-## Diagnóstico confirmado
+## Problema
 
-Sim, entendi. A interface está trocando o **nome/workspace ativo**, mas várias telas continuam buscando dados sem filtrar pela **conta ativa**.
+A sessão "teste" da conta **DRM REPRESENTAÇÕES** aparece como "Servidor Evolution inacessível" porque no banco (`whatsapp_account_settings`) a linha da DRM está com:
 
-O que confirmei:
+- `evolution_api_url = NULL`
+- `evolution_api_key = NULL`
 
-- A conta **DRM REPRESENTAÇÕES** tem no banco: `0 contatos`, `0 conversas`, `0 deals` e `6 etapas de pipeline`.
-- A conta **AXHolding Internal** tem: `25 contatos`, `28 conversas`, `25 deals` e `6 etapas`.
-- Mesmo assim, no print da DRM aparecem cards/deals da AXHolding. Isso bate com o código lido em `src/services/api.ts`:
-  - `fetchPipeline()` busca `deals` sem `.eq('account_id', activeAccountId)`.
-  - `fetchPipelineStages()` busca `pipeline_stages` sem `.eq('account_id', activeAccountId)`.
-  - a busca de conversas relacionadas ao deal também não filtra por `account_id`.
-- Também encontrei outros pontos do `api.ts` e `Contacts.tsx` com queries sem filtro explícito por conta, o que é perigoso para Super Admin porque ele enxerga mais de uma conta por permissão.
+Ou seja, os campos "URL" e "API Key" do bloco **Servidor Evolution** ainda não foram salvos para essa conta (o `https://sua-evolution.com` que aparece na tela é só placeholder; os pontinhos no campo API Key são só a máscara do input vazio). Sem URL e chave, `whatsapp-session-connect` e `whatsapp-session-status` tentam falar com uma URL nula → resposta "inacessível".
 
-## Correção proposta
+Como você confirmou que a **DRM tem servidor Evolution próprio**, o plano é preencher as credenciais deles e conectar.
 
-### 1. Blindar todas as buscas principais por `account_id`
-Aplicar filtro explícito com `requireActiveAccountId()` nas telas/serviços principais:
+## Passo a passo
 
-- Dashboard
-- Pipeline
-- Etapas do pipeline
-- Chat ao vivo/conversas
-- Contatos
-- Agendamentos
-- Relatórios já parecem parcialmente corrigidos, mas vou revisar os pontos restantes
-- Equipe/configurações quando houver consulta multi-tenant
+### 1. Coletar as credenciais da DRM
+Você precisa de dois valores fornecidos pela DRM (ou pelo provedor Evolution deles):
+- **URL do servidor Evolution** (algo como `https://xxxxxxx.cloudfy.live` — sem `/` no final, sem `/manager`, sem `/instance/...`)
+- **API Key global** do servidor (chave `apikey` que a Evolution aceita no header)
 
-Regra: **toda query de tabela com `account_id` deve filtrar pela conta ativa**, mesmo que o RLS já exista.
+### 2. Validar antes de salvar (eu faço)
+Assim que você me passar URL + API Key (aqui no chat), eu:
+1. Faço um `GET {url}/instance/fetchInstances` com o header `apikey` para confirmar que a URL responde e a chave é válida.
+2. Se falhar, te digo exatamente o motivo (DNS, 401, 404, etc.) antes de gravar qualquer coisa.
 
-### 2. Corrigir especificamente o Pipeline
-Em `src/services/api.ts`:
+### 3. Gravar em `whatsapp_account_settings` da DRM
+Depois de validado, gravo os dois campos na linha da conta DRM (`upsert` por `account_id`). O front já lê essa tabela filtrada por `activeAccountId`, então vai aparecer preenchido pra eles.
 
-- `fetchPipeline()`:
-  - usar `const accountId = requireActiveAccountId()`.
-  - filtrar `deals.eq('account_id', accountId)`.
-  - filtrar conversas dos contatos também com `.eq('account_id', accountId)`.
-- `fetchPipelineStages()`:
-  - filtrar `.eq('account_id', accountId)`.
-- `createPipelineStage()`:
-  - calcular posição apenas dentro da conta ativa.
-- `updatePipelineStage()`, `deletePipelineStage()`, `reorderPipelineStages()`:
-  - garantir que updates/deletes só atinjam registros da conta ativa.
+### 4. Reconectar a sessão "teste"
+- Se o `evolution_instance_name` atual (`drmapresentacoes`) já existir no servidor deles, o backend faz `connect` e retorna QR / conecta direto.
+- Se não existir, o backend cria a instância e retorna QR.
+- Configuro o webhook do Evolution apontando para `whatsapp-webhook` (o `whatsapp-session-connect` já faz isso automaticamente).
 
-### 3. Corrigir Contatos
-Em `src/components/Contacts.tsx`:
+### 5. Confirmar
+Você clica em **Conectar** → escaneia o QR (se aparecer) → clica em **Verificar conexão real** e o badge deve virar verde ("Conexão real: online").
 
-- Listagem/exportação/importação precisam usar `account_id` da conta ativa.
-- Exportação hoje lê contatos sem filtro explícito; vou corrigir para não exportar contatos de outra conta quando for Super Admin.
+## Alternativa se você não quiser me passar a chave no chat
 
-### 4. Corrigir módulos opcionais por conta
-Além do vazamento de dados, corrigir o que você reportou antes:
+Se preferir não colar a API Key aqui: eu não preciso gravar nada pelo backend. Basta você:
+1. Preencher **URL** e **API Key** no bloco "Servidor Evolution" da tela (logado como DRM ou via impersonação).
+2. Clicar **Salvar**.
+3. Clicar **Conectar** na sessão "teste".
 
-- **Campanhas**: `useOutboundCampaignsModuleAvailable()` deve consultar `accounts` filtrando por `activeAccountId`, não `limit(1)`.
-- **Coworking**: botão de ativação não pode aparecer em conta cliente se `coworking_module_available` não estiver liberado no Super Admin.
-- **Follow-up**: criar gate real baseado em `settings.followup_enabled` da conta ativa e esconder opções/atalhos quando desligado.
+Se depois disso ainda der "inacessível", me avisa que eu pego os logs da `whatsapp-session-status` pra ver a resposta exata do servidor deles (timeout, 401, DNS, CORS de origem etc.).
 
-### 5. Resetar estado visual quando trocar de conta
-Em telas como Pipeline/Chat/Contatos, ao mudar de conta ativa:
+## Detalhes técnicos
 
-- limpar estado local imediatamente;
-- mostrar loading;
-- buscar novamente com o novo `account_id`.
-
-Isso evita a sensação de “mudou o nome, mas os dados ficaram da AXHolding”.
-
-### 6. Validação pós-correção
-Depois de implementar:
-
-- Entrar como Super Admin na AXHolding e confirmar que dados da AXHolding aparecem normalmente.
-- Acessar DRM via botão **Acessar** e confirmar:
-  - Pipeline vazio ou apenas dados da DRM;
-  - Chat sem conversas da AXHolding;
-  - Contatos sem contatos da AXHolding;
-  - Campanhas/Coworking/Follow-up ocultos/desativados se os toggles estiverem off.
-
-## Resultado esperado
-
-Quando você acessar a conta do cliente pelo Super Admin, a aplicação deve se comportar como se estivesse realmente dentro do workspace daquele cliente: **nome, dados, módulos, pipeline, chat, contatos, agenda e configurações todos isolados pela conta ativa**.
+- Tabela alterada: `public.whatsapp_account_settings` (linha `account_id = <DRM>`), campos `evolution_api_url`, `evolution_api_key`.
+- Nenhuma migration necessária.
+- Nenhuma edge function alterada — o fluxo atual (`whatsapp-session-connect`, `whatsapp-session-status`) já funciona quando as credenciais existem (é o mesmo que roda para a AXHolding hoje).
+- Nenhum arquivo do frontend alterado.
