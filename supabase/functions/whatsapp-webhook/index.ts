@@ -128,21 +128,64 @@ async function handleEvolutionWebhook(
   supabaseServiceKey: string
 ) {
   const event = body.event;
+  const normalizedEvent = String(event ?? '').toLowerCase();
   const instanceName = body.instance;
 
   console.log('[Webhook:Evolution] Event:', event, 'Instance:', instanceName);
 
   // Handle connection status events
-  if (event === 'connection.update') {
+  if (normalizedEvent === 'connection.update') {
     console.log('[Webhook:Evolution] Connection update:', body.data?.state);
+    const state = String(body.data?.state ?? '').toLowerCase();
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (['open', 'connected'].includes(state)) {
+      updates.status = 'connected';
+      updates.qr_code = null;
+      updates.error_message = null;
+      updates.last_connected_at = new Date().toISOString();
+    } else if (state === 'connecting') {
+      updates.status = 'connecting';
+      updates.error_message = null;
+    } else if (['close', 'closed', 'disconnected'].includes(state)) {
+      updates.status = 'disconnected';
+      updates.error_message = body.data?.reason ?? body.data?.statusReason ?? null;
+    }
+    if (Object.keys(updates).length > 1) {
+      await supabase
+        .from('whatsapp_sessions')
+        .update(updates)
+        .ilike('evolution_instance_name', instanceName);
+    }
     return new Response(JSON.stringify({ status: 'connection_update' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
+  if (normalizedEvent === 'qrcode.updated') {
+    const qrCode = extractEvolutionQrCode(body);
+    if (qrCode) {
+      await supabase
+        .from('whatsapp_sessions')
+        .update({
+          status: 'qr_pending',
+          qr_code: qrCode,
+          error_message: null,
+          updated_at: new Date().toISOString(),
+        })
+        .ilike('evolution_instance_name', instanceName);
+      console.log('[Webhook:Evolution] QR code updated for instance:', instanceName);
+    } else {
+      console.warn('[Webhook:Evolution] qrcode.updated without readable QR payload for instance:', instanceName);
+    }
+    return new Response(JSON.stringify({ status: 'qr_updated' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   // Handle message status updates
-  if (event === 'messages.update') {
+  if (normalizedEvent === 'messages.update') {
     const data = body.data;
     if (data?.key?.id && data?.update?.status) {
       const statusMap: Record<number, string> = {
@@ -170,7 +213,7 @@ async function handleEvolutionWebhook(
   }
 
   // Only process incoming messages
-  if (event !== 'messages.upsert') {
+  if (normalizedEvent !== 'messages.upsert') {
     console.log('[Webhook:Evolution] Ignoring event:', event);
     return new Response(JSON.stringify({ status: 'ignored' }), {
       status: 200,
