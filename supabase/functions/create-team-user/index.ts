@@ -154,11 +154,13 @@ Deno.serve(async (req) => {
       userId = created.user?.id ?? null;
     }
 
-    // 2) Upsert do team_member
+    // 2) Upsert do team_member (escopado por conta — o mesmo email pode existir
+    // em outras contas sem conflito)
     const { data: existingMember } = await admin
       .from("team_members")
       .select("id")
-      .eq("email", email)
+      .eq("account_id", account_id)
+      .ilike("email", email)
       .maybeSingle();
 
     let memberRow;
