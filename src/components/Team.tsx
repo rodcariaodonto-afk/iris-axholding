@@ -106,8 +106,21 @@ const Team: React.FC = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Erros HTTP das edge functions escondem o corpo — extrai a mensagem real
+        let detail = error.message;
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const parsed = await ctx.json();
+            if (parsed?.error) detail = parsed.error;
+            if (parsed?.message) detail = parsed.message;
+          }
+        } catch { /* mantém a mensagem padrão */ }
+        throw new Error(detail);
+      }
       if (data?.error) throw new Error(data.error);
+
 
       setShowModal(false);
       setFormData({ name: '', email: '', role: 'agent', team_id: '', function_id: '', weight: 1, password: '' });
