@@ -121,6 +121,30 @@ serve(async (req) => {
 // =============================================
 // Evolution API Handler
 // =============================================
+function extractEvolutionQrCode(body: any): string | null {
+  const candidates = [
+    body?.data?.qrcode?.base64,
+    body?.data?.qrcode?.code,
+    body?.data?.qr?.base64,
+    body?.data?.qr?.code,
+    body?.data?.base64,
+    body?.data?.code,
+    body?.qrcode?.base64,
+    body?.qrcode?.code,
+    body?.base64,
+    body?.code,
+  ];
+
+  const value = candidates.find((item) => typeof item === 'string' && item.trim().length > 0);
+  if (!value) return null;
+  const qr = value.trim();
+  if (qr.startsWith('data:image')) return qr;
+  if (qr.startsWith('/9j/') || qr.startsWith('iVBOR') || qr.startsWith('R0lGOD')) {
+    return `data:image/png;base64,${qr}`;
+  }
+  return qr;
+}
+
 async function handleEvolutionWebhook(
   supabase: any, 
   body: any, 
