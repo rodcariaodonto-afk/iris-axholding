@@ -59,6 +59,171 @@ const backdropVariants = {
   exit: { opacity: 0 },
 };
 
+const normalizeEvolutionUrl = (value: string | null | undefined) => {
+  const trimmed = value?.trim().replace(/\/+$/, '') || null;
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? trimmed : null;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeEvolutionInstanceName = (value: string | null | undefined, accountId: string, companyName?: string | null) => {
+  const source = value?.trim() || `${companyName || 'iris'}-${accountId.slice(0, 8)}`;
+  const normalized = source
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return normalized || `iris-${accountId.slice(0, 8)}`;
+};
+
+async function syncWhatsAppConnection(params: {
+  accountId: string;
+  provider: 'evolution' | 'meta_cloud';
+  companyName?: string | null;
+  sdrName?: string | null;
+  evolutionApiUrl?: string | null;
+  evolutionApiKey?: string | null;
+  evolutionInstanceName?: string | null;
+  whatsappAccessToken?: string | null;
+  whatsappPhoneNumberId?: string | null;
+  whatsappBusinessAccountId?: string | null;
+  whatsappVerifyToken?: string | null;
+}) {
+  const sessionName = params.sdrName?.trim() || 'WhatsApp';
+
+  if (params.provider === 'evolution') {
+    const evolutionApiUrl = normalizeEvolutionUrl(params.evolutionApiUrl);
+    const evolutionApiKey = params.evolutionApiKey?.trim() || null;
+    const evolutionInstanceName = normalizeEvolutionInstanceName(params.evolutionInstanceName, params.accountId, params.companyName);
+
+    if (params.evolutionApiUrl && !evolutionApiUrl) {
+      throw new Error('URL da Evolution API inválida. Use uma URL começando com http:// ou https://');
+    }
+
+    if (evolutionApiUrl && evolutionApiKey) {
+      const { error: accountSettingsError } = await (supabase as any)
+        .from('whatsapp_account_settings')
+        .upsert({
+          account_id: params.accountId,
+          evolution_api_url: evolutionApiUrl,
+          evolution_api_key: evolutionApiKey,
+          max_sessions: 3,
+        }, { onConflict: 'account_id' });
+
+      if (accountSettingsError) throw accountSettingsError;
+    }
+
+    if (evolutionApiUrl && evolutionApiKey && evolutionInstanceName) {
+      const { data: existingSession, error: existingSessionError } = await (supabase as any)
+        .from('whatsapp_sessions')
+        .select('id')
+        .eq('account_id', params.accountId)
+        .eq('provider', 'evolution')
+        .eq('evolution_instance_name', evolutionInstanceName)
+        .maybeSingle();
+
+      if (existingSessionError) throw existingSessionError;
+
+      if (existingSession?.id) {
+        const { error: updateSessionError } = await (supabase as any)
+          .from('whatsapp_sessions')
+          .update({
+            session_name: sessionName,
+            is_default: true,
+            error_message: null,
+          })
+          .eq('id', existingSession.id)
+          .eq('account_id', params.accountId);
+
+        if (updateSessionError) throw updateSessionError;
+      } else {
+        const { error: insertSessionError } = await (supabase as any)
+          .from('whatsapp_sessions')
+          .insert({
+            account_id: params.accountId,
+            provider: 'evolution',
+            session_name: sessionName,
+            status: 'disconnected',
+            is_default: true,
+            evolution_instance_name: evolutionInstanceName,
+          });
+
+        if (insertSessionError) throw insertSessionError;
+      }
+
+      await (supabase as any)
+        .from('whatsapp_sessions')
+        .update({ is_default: false })
+        .eq('account_id', params.accountId)
+        .neq('evolution_instance_name', evolutionInstanceName);
+    }
+
+    return evolutionInstanceName;
+  }
+
+  const phoneNumberId = params.whatsappPhoneNumberId?.trim() || null;
+  const accessToken = params.whatsappAccessToken?.trim() || null;
+
+  if (phoneNumberId && accessToken) {
+    const { data: existingSession, error: existingSessionError } = await (supabase as any)
+      .from('whatsapp_sessions')
+      .select('id')
+      .eq('account_id', params.accountId)
+      .eq('provider', 'meta_cloud')
+      .eq('whatsapp_phone_number_id', phoneNumberId)
+      .maybeSingle();
+
+    if (existingSessionError) throw existingSessionError;
+
+    const sessionPayload = {
+      session_name: sessionName,
+      is_default: true,
+      whatsapp_access_token: accessToken,
+      whatsapp_phone_number_id: phoneNumberId,
+      whatsapp_business_account_id: params.whatsappBusinessAccountId?.trim() || null,
+      whatsapp_verify_token: params.whatsappVerifyToken?.trim() || `iris-${crypto.randomUUID().slice(0, 8)}`,
+      error_message: null,
+    };
+
+    if (existingSession?.id) {
+      const { error: updateSessionError } = await (supabase as any)
+        .from('whatsapp_sessions')
+        .update(sessionPayload)
+        .eq('id', existingSession.id)
+        .eq('account_id', params.accountId);
+
+      if (updateSessionError) throw updateSessionError;
+    } else {
+      const { error: insertSessionError } = await (supabase as any)
+        .from('whatsapp_sessions')
+        .insert({
+          account_id: params.accountId,
+          provider: 'meta_cloud',
+          status: 'disconnected',
+          ...sessionPayload,
+        });
+
+      if (insertSessionError) throw insertSessionError;
+    }
+
+    await (supabase as any)
+      .from('whatsapp_sessions')
+      .update({ is_default: false })
+      .eq('account_id', params.accountId)
+      .neq('whatsapp_phone_number_id', phoneNumberId);
+  }
+
+  return null;
+}
+
 // Animated checkmark SVG component with draw effect
 const AnimatedCheckmark = () => (
   <motion.svg 
@@ -320,8 +485,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         console.log('[OnboardingWizard] Step 1 (WhatsApp) provider:', whatsappProvider);
         if (whatsappProvider === 'evolution') {
           if (!evolutionApiUrl?.trim()) issues.push('URL do servidor está vazia');
+          else if (!normalizeEvolutionUrl(evolutionApiUrl)) issues.push('URL do servidor inválida');
           if (!evolutionApiKey?.trim()) issues.push('API Key está vazia');
-          if (!evolutionInstanceName?.trim()) issues.push('Nome da instância está vazio');
         } else {
           if (!whatsappPhoneNumberId?.trim()) issues.push('Phone Number ID está vazio');
           if (!whatsappAccessToken?.trim()) issues.push('Access Token está vazio');
@@ -420,6 +585,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         whatsapp_phone_number_id: existing.whatsapp_phone_number_id ? '***' : null
       } : 'NONE');
 
+      const normalizedEvolutionApiUrl = whatsappProvider === 'evolution' ? normalizeEvolutionUrl(evolutionApiUrl) : null;
+      const normalizedEvolutionInstanceName = whatsappProvider === 'evolution'
+        ? normalizeEvolutionInstanceName(evolutionInstanceName, accountId, companyName)
+        : null;
+
       // Step 2: Build settings object with explicit values
       const settings = {
         // Identity - trim whitespace
@@ -428,9 +598,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         
         // WhatsApp - provider-aware
         whatsapp_provider: whatsappProvider,
-        evolution_api_url: whatsappProvider === 'evolution' ? (evolutionApiUrl?.trim() || null) : null,
+        evolution_api_url: normalizedEvolutionApiUrl,
         evolution_api_key: whatsappProvider === 'evolution' ? (evolutionApiKey?.trim() || null) : null,
-        evolution_instance_name: whatsappProvider === 'evolution' ? (evolutionInstanceName?.trim() || null) : null,
+        evolution_instance_name: normalizedEvolutionInstanceName,
         whatsapp_access_token: whatsappProvider === 'meta_cloud' ? (whatsappAccessToken?.trim() || null) : null,
         whatsapp_phone_number_id: whatsappProvider === 'meta_cloud' ? (whatsappPhoneNumberId?.trim() || null) : null,
         whatsapp_business_account_id: whatsappProvider === 'meta_cloud' ? (whatsappBusinessAccountId?.trim() || null) : null,
@@ -507,6 +677,24 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         console.error('[OnboardingWizard] ❌ No data returned - possible RLS issue');
         toast.error('Erro: configurações não foram salvas (RLS)');
         return false;
+      }
+
+      await syncWhatsAppConnection({
+        accountId,
+        provider: whatsappProvider,
+        companyName,
+        sdrName,
+        evolutionApiUrl: settings.evolution_api_url,
+        evolutionApiKey: settings.evolution_api_key,
+        evolutionInstanceName: settings.evolution_instance_name,
+        whatsappAccessToken: settings.whatsapp_access_token,
+        whatsappPhoneNumberId: settings.whatsapp_phone_number_id,
+        whatsappBusinessAccountId: settings.whatsapp_business_account_id,
+        whatsappVerifyToken: settings.whatsapp_verify_token,
+      });
+
+      if (normalizedEvolutionInstanceName && normalizedEvolutionInstanceName !== evolutionInstanceName) {
+        setEvolutionInstanceName(normalizedEvolutionInstanceName);
       }
 
       console.log('[OnboardingWizard] Step 4: Save result:', {

@@ -141,6 +141,7 @@ export default function WhatsAppSessions() {
           toast.success("Conexão real confirmada (online)");
           if (data?.requeued > 0) toast.success(`${data.requeued} mensagem(ns) reenfileirada(s) para reenvio`);
         }
+        else if (data?.reason === "instance_not_found" || data?.reason === "missing_instance_name") toast.warning("Instância ainda não criada na Evolution. Clique em Conectar para gerar o QR.");
         else if (data?.reachable === false) toast.warning("Servidor Evolution inacessível");
         else toast.warning("WhatsApp não está conectado de verdade");
       } else if (data?.live && data?.requeued > 0) {
@@ -281,6 +282,13 @@ function LiveIndicator({ liveCheck }: { liveCheck?: LiveCheck }) {
     return (
       <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.reason || undefined}>
         <AlertCircle className="w-3 h-3" /> Servidor Evolution inacessível
+      </Badge>
+    );
+  }
+  if (liveCheck.reason === "instance_not_found" || liveCheck.reason === "missing_instance_name" || liveCheck.evolution_state === "not_created") {
+    return (
+      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.reason || undefined}>
+        <AlertCircle className="w-3 h-3" /> Instância ainda não criada
       </Badge>
     );
   }
