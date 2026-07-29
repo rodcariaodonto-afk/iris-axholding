@@ -734,13 +734,13 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
             <div>
               <label className="text-xs font-medium text-slate-400 mb-1.5 block">
-                Nome da Instância <span className="text-red-400">*</span>
+                Nome da Instância <span className="text-slate-500">(opcional)</span>
               </label>
               <input
                 type="text"
                 value={settings.evolution_instance_name || ''}
                 onChange={(e) => setSettings({ ...settings, evolution_instance_name: e.target.value })}
-                placeholder="minha-instancia"
+                placeholder="deixe vazio para gerar automaticamente"
                 className="h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
               />
             </div>

@@ -472,7 +472,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         if (whatsappProvider === 'evolution') {
           if (!evolutionApiUrl?.trim()) issues.push('URL do servidor está vazia');
           if (!evolutionApiKey?.trim()) issues.push('API Key está vazia');
-          if (!evolutionInstanceName?.trim()) issues.push('Nome da instância está vazio');
         } else {
           if (!whatsappPhoneNumberId?.trim()) issues.push('Phone Number ID está vazio');
           if (!whatsappAccessToken?.trim()) issues.push('Access Token está vazio');
