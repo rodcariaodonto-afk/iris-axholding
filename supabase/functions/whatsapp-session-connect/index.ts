@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     let instanceId: string | null = null;
     if (createResp.ok) {
       const data = await createResp.json();
-      qrCode = data?.qrcode?.base64 ?? data?.qrcode?.code ?? null;
+      qrCode = extractEvolutionQrCode(data);
       instanceId = data?.instance?.instanceId ?? null;
     } else {
       // Connect existing
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       });
       if (connResp.ok) {
         const data = await connResp.json();
-        qrCode = data?.base64 ?? data?.code ?? null;
+        qrCode = extractEvolutionQrCode(data);
       } else {
         const err = await connResp.text();
         await supabase.from("whatsapp_sessions").update({
@@ -204,4 +204,23 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function extractEvolutionQrCode(data: any): string | null {
+  const candidates = [
+    data?.qrcode?.base64,
+    data?.qrcode?.code,
+    data?.qr?.base64,
+    data?.qr?.code,
+    data?.base64,
+    data?.code,
+  ];
+  const value = candidates.find((item) => typeof item === "string" && item.trim().length > 0);
+  if (!value) return null;
+  const qr = value.trim();
+  if (qr.startsWith("data:image")) return qr;
+  if (qr.startsWith("/9j/") || qr.startsWith("iVBOR") || qr.startsWith("R0lGOD")) {
+    return `data:image/png;base64,${qr}`;
+  }
+  return qr;
 }
