@@ -59,6 +59,21 @@ const MODEL_OPTIONS = [
   { id: 'eleven_multilingual_v2', name: 'Multilingual v2' },
 ];
 
+const normalizeEvolutionUrl = (value: string | null | undefined) => value?.trim().replace(/\/+$/, '') || null;
+
+const normalizeEvolutionInstanceName = (value: string | null | undefined, accountId: string, companyName?: string | null) => {
+  const source = value?.trim() || `${companyName || 'iris'}-${accountId.slice(0, 8)}`;
+  const normalized = source
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return normalized || `iris-${accountId.slice(0, 8)}`;
+};
+
 export interface ApiSettingsRef {
   save: () => Promise<void>;
   cancel: () => void;
@@ -265,11 +280,16 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
     setSaving(true);
     try {
+      const normalizedEvolutionApiUrl = settings.whatsapp_provider === 'evolution' ? normalizeEvolutionUrl(settings.evolution_api_url) : null;
+      const normalizedEvolutionInstanceName = settings.whatsapp_provider === 'evolution'
+        ? normalizeEvolutionInstanceName(settings.evolution_instance_name, activeAccountId, companyName)
+        : null;
+
       const payload = {
         whatsapp_provider: settings.whatsapp_provider,
-        evolution_api_url: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_url : null,
+        evolution_api_url: normalizedEvolutionApiUrl,
         evolution_api_key: settings.whatsapp_provider === 'evolution' ? settings.evolution_api_key : null,
-        evolution_instance_name: settings.whatsapp_provider === 'evolution' ? settings.evolution_instance_name : null,
+        evolution_instance_name: normalizedEvolutionInstanceName,
         whatsapp_access_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_access_token : null,
         whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
         whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
@@ -304,6 +324,54 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
 
       if (error) throw error;
       if (data?.id) setSettings(prev => ({ ...prev, id: data.id }));
+
+      if (settings.whatsapp_provider === 'evolution' && normalizedEvolutionApiUrl && payload.evolution_api_key && normalizedEvolutionInstanceName) {
+        const { error: accountSettingsError } = await (supabase as any)
+          .from('whatsapp_account_settings')
+          .upsert({
+            account_id: activeAccountId,
+            evolution_api_url: normalizedEvolutionApiUrl,
+            evolution_api_key: payload.evolution_api_key,
+            max_sessions: 3,
+          }, { onConflict: 'account_id' });
+
+        if (accountSettingsError) throw accountSettingsError;
+
+        const { data: existingSession, error: existingSessionError } = await (supabase as any)
+          .from('whatsapp_sessions')
+          .select('id')
+          .eq('account_id', activeAccountId)
+          .eq('provider', 'evolution')
+          .eq('evolution_instance_name', normalizedEvolutionInstanceName)
+          .maybeSingle();
+
+        if (existingSessionError) throw existingSessionError;
+
+        if (existingSession?.id) {
+          const { error: updateSessionError } = await (supabase as any)
+            .from('whatsapp_sessions')
+            .update({ session_name: companyName || 'WhatsApp', is_default: true, error_message: null })
+            .eq('id', existingSession.id)
+            .eq('account_id', activeAccountId);
+          if (updateSessionError) throw updateSessionError;
+        } else {
+          const { error: insertSessionError } = await (supabase as any)
+            .from('whatsapp_sessions')
+            .insert({
+              account_id: activeAccountId,
+              provider: 'evolution',
+              session_name: companyName || 'WhatsApp',
+              status: 'disconnected',
+              is_default: true,
+              evolution_instance_name: normalizedEvolutionInstanceName,
+            });
+          if (insertSessionError) throw insertSessionError;
+        }
+      }
+
+      if (normalizedEvolutionInstanceName && normalizedEvolutionInstanceName !== settings.evolution_instance_name) {
+        setSettings(prev => ({ ...prev, evolution_instance_name: normalizedEvolutionInstanceName }));
+      }
       toast.success('Configurações de APIs salvas com sucesso!');
     } catch (error) {
       console.error('Error saving settings:', error);
