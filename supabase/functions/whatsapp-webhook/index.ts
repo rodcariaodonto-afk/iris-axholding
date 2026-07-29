@@ -172,6 +172,7 @@ async function handleEvolutionWebhook(
       updates.error_message = null;
     } else if (['close', 'closed', 'disconnected'].includes(state)) {
       updates.status = 'disconnected';
+      updates.qr_code = null;
       updates.error_message = body.data?.reason ?? body.data?.statusReason ?? null;
     }
     if (Object.keys(updates).length > 1) {
