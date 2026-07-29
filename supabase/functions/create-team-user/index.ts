@@ -257,9 +257,22 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("[create-team-user] error", e);
+    const raw = (e as Error)?.message || "";
+    let message = "Erro interno do servidor";
+    let status = 500;
+    if (/team_members_account_email_key|duplicate key/i.test(raw)) {
+      message = "Este e-mail já está cadastrado nesta conta.";
+      status = 409;
+    } else if (/invalid.*email|email.*invalid/i.test(raw)) {
+      message = "E-mail inválido. Verifique o endereço digitado.";
+      status = 400;
+    } else if (/password/i.test(raw)) {
+      message = "Senha inválida ou muito fraca. Tente novamente.";
+      status = 400;
+    }
     return new Response(
-      JSON.stringify({ error: "Erro interno do servidor" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: message }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
