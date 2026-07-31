@@ -127,16 +127,23 @@ serve(async (req) => {
         results.push({ component: 'agent_prompt', status: 'warning', message: 'Prompt do agente não personalizado' });
       }
 
-      // ElevenLabs
-      if (settings.elevenlabs_api_key) {
+      // ElevenLabs (opcional — nunca bloqueia o onboarding)
+      const elKey = (settings.elevenlabs_api_key || '').trim();
+      if (elKey.length >= 20) {
         try {
           const elResponse = await fetch('https://api.elevenlabs.io/v1/user', {
-            headers: { 'xi-api-key': settings.elevenlabs_api_key },
+            headers: { 'xi-api-key': elKey },
           });
-          results.push({ component: 'elevenlabs', status: elResponse.ok ? 'ok' : 'error', message: elResponse.ok ? 'ElevenLabs conectado' : 'API Key inválida' });
+          results.push({
+            component: 'elevenlabs',
+            status: elResponse.ok ? 'ok' : 'warning',
+            message: elResponse.ok ? 'ElevenLabs conectado' : 'Chave ElevenLabs inválida (áudio desativado)',
+          });
         } catch (e) {
           results.push({ component: 'elevenlabs', status: 'warning', message: 'Não foi possível validar ElevenLabs' });
         }
+      } else if (elKey.length > 0) {
+        results.push({ component: 'elevenlabs', status: 'warning', message: 'Chave ElevenLabs inválida (áudio desativado)' });
       } else {
         results.push({ component: 'elevenlabs', status: 'warning', message: 'ElevenLabs não configurado (opcional)' });
       }

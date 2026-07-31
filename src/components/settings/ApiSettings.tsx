@@ -309,7 +309,9 @@ const ApiSettings = forwardRef<ApiSettingsRef>((props, ref) => {
         whatsapp_phone_number_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_phone_number_id : null,
         whatsapp_business_account_id: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_business_account_id : null,
         whatsapp_verify_token: settings.whatsapp_provider === 'meta_cloud' ? settings.whatsapp_verify_token : null,
-        elevenlabs_api_key: settings.elevenlabs_api_key,
+        elevenlabs_api_key: (settings.elevenlabs_api_key?.trim()?.length || 0) >= 20
+          ? settings.elevenlabs_api_key!.trim()
+          : null,
         elevenlabs_voice_id: settings.elevenlabs_voice_id,
         elevenlabs_model: settings.elevenlabs_model,
         elevenlabs_stability: settings.elevenlabs_stability,
