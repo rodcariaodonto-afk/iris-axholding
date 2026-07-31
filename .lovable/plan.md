@@ -1,25 +1,32 @@
-## Diagnóstico (verificado)
+## Diagnóstico (confirmado no banco)
 
-Não existe nenhuma validação de "e-mail corporativo" no frontend nem na edge function — o rótulo "Email Corporativo" é só texto. O erro vem do banco:
+A conta **DRM REPRESENTAÇÕES** (empresa "Alliance Jiu Jitsu Gravataí Centro", SDR "Kako") tem uma chave ElevenLabs salva com apenas **9 caracteres** — ou seja, um valor inválido/incompleto.
 
-- `public.team_members` tem a constraint **`team_members_email_key: UNIQUE (email)` global** (não por conta). Se aquele Gmail já foi usado em qualquer outra conta (ex.: contas antigas/testes), o cadastro quebra.
-- Em `supabase/functions/create-team-user/index.ts` a busca de membro existente é feita **sem filtro por `account_id`** (`.eq("email", email).maybeSingle()`), então ela pode encontrar/alterar um registro de outra conta — vazamento multi-tenant além do erro.
-- O `catch` da função devolve sempre `"Erro interno do servidor"`, por isso a tela mostra um erro genérico sem dizer a causa real.
+O que acontece hoje:
+- A validação testa a chave na API da ElevenLabs, recebe erro e marca o item como **erro** (vermelho).
+- Como existe pelo menos um item em "erro", o resultado geral vira "❌ Configurações obrigatórias pendentes" e o onboarding trava em 75%.
+- Isso está errado: ElevenLabs é **opcional** (áudio). Quando a chave está vazia, o próprio código já classifica como "aviso"; só quando está preenchida-mas-inválida ele vira "erro" e bloqueia.
 
-## O que fazer
+O WhatsApp aparece como aviso porque a conta tem 1 sessão criada mas ainda não conectada — isso é esperado até escanear o QR e não bloqueia.
 
-1. **Migração no banco**
-   - Remover `team_members_email_key` (UNIQUE global).
-   - Criar `UNIQUE (account_id, email)` — mesmo padrão já aplicado em `contacts (account_id, phone_number)`.
+## O que será feito
 
-2. **Corrigir `create-team-user`**
-   - Buscar membro existente com `.eq("account_id", account_id).eq("email", email)`.
-   - Se o e-mail já existir em outra conta, criar um novo `team_members` na conta atual reaproveitando o mesmo `user_id` do auth (o mesmo usuário pode pertencer a mais de uma empresa).
-   - Retornar mensagens de erro claras (ex.: "Este e-mail já é membro desta conta") em vez do 500 genérico, sem expor dados internos.
+1. **Limpar a chave inválida da DRM** (migração/atualização pontual): zerar `elevenlabs_api_key` da conta quando o valor for claramente inválido (menos de 20 caracteres). Isso já destrava a tela imediatamente.
 
-3. **UI (`src/components/Team.tsx`)**
-   - Trocar o rótulo "Email Corporativo" por "E-mail" e o placeholder para algo neutro (`nome@email.com`), deixando explícito que qualquer provedor é aceito.
+2. **Tornar ElevenLabs não-bloqueante** na função `validate-setup`:
+   - Chave ausente → aviso "ElevenLabs não configurado (opcional)".
+   - Chave presente e válida → OK.
+   - Chave presente e inválida/erro de rede → **aviso** com a mensagem "Chave ElevenLabs inválida (áudio desativado)", nunca "erro".
+
+3. **Mesma regra na função `health-check`**, para o card de status e o onboarding ficarem coerentes.
+
+4. **Validação no formulário** (passo ElevenLabs do onboarding e Configurações): não permitir salvar uma chave obviamente inválida (muito curta), avisando na hora em vez de gravar lixo no banco.
 
 ## Detalhes técnicos
 
-Nenhuma mudança em RLS/GRANTs é necessária. A migração precisa ser verificada antes: se já houver e-mails duplicados entre contas, o índice composto ainda passa (duplicidade só é bloqueada dentro da mesma conta).
+- `supabase/functions/validate-setup/index.ts`: bloco ElevenLabs passa a usar `status: 'warning'` em qualquer falha; deploy da função.
+- `supabase/functions/health-check/index.ts`: mesmo ajuste de severidade; deploy.
+- `src/components/onboarding/StepElevenLabs.tsx` e `src/components/settings/AgentSettings.tsx` (campo da chave): rejeitar valores com menos de 20 caracteres antes de salvar.
+- SQL: `UPDATE nina_settings SET elevenlabs_api_key = NULL WHERE elevenlabs_api_key IS NOT NULL AND length(elevenlabs_api_key) < 20;`
+
+Depois disso, o onboarding da DRM deve fechar em 100% assim que o WhatsApp for conectado (ou ficar em aviso, sem bloquear).
