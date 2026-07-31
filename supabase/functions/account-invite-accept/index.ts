@@ -85,10 +85,14 @@ Deno.serve(async (req) => {
       if (planRow?.plan) {
         const { data: planLimits } = await admin
           .from("account_plans").select("max_users").eq("code", planRow.plan).maybeSingle();
-        const { count: activeMembers } = await admin
-          .from("account_members").select("id", { count: "exact", head: true })
+        // Não contar sessões de suporte (impersonation) no limite do plano
+        const { data: memberRows } = await admin
+          .from("account_members").select("id, permissions")
           .eq("account_id", invite.account_id).eq("status", "active");
-        if (planLimits && (activeMembers ?? 0) >= (planLimits.max_users ?? 0)) {
+        const activeMembers = (memberRows || []).filter(
+          (m: any) => m?.permissions?.impersonation !== true,
+        ).length;
+        if (planLimits && activeMembers >= (planLimits.max_users ?? 0)) {
           return new Response(JSON.stringify({
             error: "limit_reached",
             message: `Limite de usuários do plano ${planRow.plan} atingido (${activeMembers}/${planLimits.max_users}).`,
