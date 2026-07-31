@@ -610,8 +610,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         system_prompt_override: systemPrompt?.trim() || DEFAULT_NINA_PROMPT,
         ai_model_mode: aiModelMode || 'flash',
         
-        // ElevenLabs
-        elevenlabs_api_key: elevenLabsApiKey?.trim() || null,
+        // ElevenLabs (chaves obviamente inválidas viram null para não travar a validação)
+        elevenlabs_api_key: (elevenLabsApiKey?.trim()?.length || 0) >= 20 ? elevenLabsApiKey.trim() : null,
         elevenlabs_voice_id: elevenLabsVoiceId || '33B4UnXyTNbgLmdEDh5P',
         elevenlabs_model: elevenLabsModel || 'eleven_turbo_v2_5',
         audio_response_enabled: Boolean(audioResponseEnabled),
