@@ -1,32 +1,27 @@
-## Diagnóstico (confirmado no banco)
+# Restaurar o recebimento da Iris da RR Holding
 
-A conta **DRM REPRESENTAÇÕES** (empresa "Alliance Jiu Jitsu Gravataí Centro", SDR "Kako") tem uma chave ElevenLabs salva com apenas **9 caracteres** — ou seja, um valor inválido/incompleto.
+## Diagnóstico confirmado
 
-O que acontece hoje:
-- A validação testa a chave na API da ElevenLabs, recebe erro e marca o item como **erro** (vermelho).
-- Como existe pelo menos um item em "erro", o resultado geral vira "❌ Configurações obrigatórias pendentes" e o onboarding trava em 75%.
-- Isso está errado: ElevenLabs é **opcional** (áudio). Quando a chave está vazia, o próprio código já classifica como "aviso"; só quando está preenchida-mas-inválida ele vira "erro" e bloqueia.
+- A conta **R R HOLDING LTDA** está ativa, com Iris e resposta automática habilitadas.
+- A última mensagem de cliente registrada foi em **06/08/2026 às 17:00 (Brasília)**; não entrou nenhuma mensagem nova depois disso.
+- Não há chamadas recentes no webhook nem itens novos nas filas de processamento.
+- A sessão WhatsApp da conta foi **excluída em 07/08/2026 às 15:42 (Brasília)**. Atualmente não existe nenhuma linha em `whatsapp_sessions` vinculada à RR Holding.
+- A configuração antiga ainda referencia a instância Evolution exclusiva `rrholding`, mas sem a sessão cadastrada o sistema perde o vínculo operacional necessário para receber e rotear corretamente as mensagens.
 
-O WhatsApp aparece como aviso porque a conta tem 1 sessão criada mas ainda não conectada — isso é esperado até escanear o QR e não bloqueia.
+## Correção
 
-## O que será feito
+1. Recriar a sessão WhatsApp da RR Holding vinculada exclusivamente à instância `rrholding`, sem criar ou compartilhar instância com outra conta.
+2. Consultar o estado real da instância no servidor Evolution:
+   - Se estiver conectada, sincronizar número, status e horário da conexão.
+   - Se a sessão externa tiver expirado, gerar um novo QR Code para reconexão.
+3. Reconfigurar o webhook da instância para o endpoint `whatsapp-webhook`, incluindo o evento de novas mensagens.
+4. Fazer um teste ponta a ponta com uma mensagem nova e confirmar:
+   - chegada no webhook;
+   - criação da mensagem na conta RR Holding;
+   - entrada e conclusão na fila da Iris;
+   - envio da resposta pelo WhatsApp.
+5. Confirmar que nenhum dado ou sessão de outra conta foi associado à RR Holding.
 
-1. **Limpar a chave inválida da DRM** (migração/atualização pontual): zerar `elevenlabs_api_key` da conta quando o valor for claramente inválido (menos de 20 caracteres). Isso já destrava a tela imediatamente.
+## Resultado esperado
 
-2. **Tornar ElevenLabs não-bloqueante** na função `validate-setup`:
-   - Chave ausente → aviso "ElevenLabs não configurado (opcional)".
-   - Chave presente e válida → OK.
-   - Chave presente e inválida/erro de rede → **aviso** com a mensagem "Chave ElevenLabs inválida (áudio desativado)", nunca "erro".
-
-3. **Mesma regra na função `health-check`**, para o card de status e o onboarding ficarem coerentes.
-
-4. **Validação no formulário** (passo ElevenLabs do onboarding e Configurações): não permitir salvar uma chave obviamente inválida (muito curta), avisando na hora em vez de gravar lixo no banco.
-
-## Detalhes técnicos
-
-- `supabase/functions/validate-setup/index.ts`: bloco ElevenLabs passa a usar `status: 'warning'` em qualquer falha; deploy da função.
-- `supabase/functions/health-check/index.ts`: mesmo ajuste de severidade; deploy.
-- `src/components/onboarding/StepElevenLabs.tsx` e `src/components/settings/AgentSettings.tsx` (campo da chave): rejeitar valores com menos de 20 caracteres antes de salvar.
-- SQL: `UPDATE nina_settings SET elevenlabs_api_key = NULL WHERE elevenlabs_api_key IS NOT NULL AND length(elevenlabs_api_key) < 20;`
-
-Depois disso, o onboarding da DRM deve fechar em 100% assim que o WhatsApp for conectado (ou ficar em aviso, sem bloquear).
+A instância volta a aparecer nas configurações da RR Holding e novas mensagens recebidas entram no chat da conta e são respondidas pela Iris quando a conversa estiver no modo IA.
