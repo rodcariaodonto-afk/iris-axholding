@@ -303,6 +303,21 @@ async function handleEvolutionWebhook(
     sessionAccountId = sessionAccountId || ownerSettings?.account_id || null;
   }
 
+  // Never process an Evolution message without a tenant/session mapping.
+  // Continuing here could match a contact from another account and create
+  // unscoped records, besides making the real tenant's inbox appear empty.
+  if (!sessionId || !sessionAccountId) {
+    console.error('[Webhook:Evolution] Unmapped instance — message rejected:', {
+      instance: instanceName,
+      messageId,
+      remoteJid,
+    });
+    return new Response(JSON.stringify({ status: 'unmapped_instance' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   // Get or create contact
   let contactQuery = supabase
     .from('contacts')
