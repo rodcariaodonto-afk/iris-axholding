@@ -126,15 +126,83 @@ Deno.serve(async (req) => {
     // Reenfileira automaticamente mensagens que falharam por desconexão
     // (e travadas em "processing") assim que a conexão real volta a ficar online.
     let requeued = 0;
+    let webhookRepaired = false;
     if (live) {
       requeued = await requeueDisconnectedMessages(session.account_id, session_id);
+      // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
+      // deixando a instância "conectada" porém sem entregar mensagens ao sistema.
+      webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
     }
 
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
+
+const WEBHOOK_EVENTS = [
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "SEND_MESSAGE",
+];
+
+/**
+ * Garante que a instância Evolution esteja com o webhook correto apontando para
+ * o `whatsapp-webhook` deste projeto, com o evento de novas mensagens habilitado.
+ * Retorna true quando precisou reaplicar a configuração.
+ */
+async function ensureWebhook(baseUrl: string, apiKey: string, encodedInstanceName: string): Promise<boolean> {
+  const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-webhook`;
+  try {
+    let needsFix = true;
+    try {
+      const r = await fetch(`${baseUrl}/webhook/find/${encodedInstanceName}`, {
+        headers: { apikey: apiKey },
+      });
+      if (r.ok) {
+        const cfg = await r.json();
+        const events: string[] = (cfg?.events ?? []).map((e: string) => String(e).toUpperCase());
+        needsFix = !(cfg?.enabled === true && cfg?.url === webhookUrl && events.includes("MESSAGES_UPSERT"));
+      }
+    } catch (_e) {
+      // Sem leitura confiável, reaplica por segurança.
+    }
+
+    if (!needsFix) return false;
+
+    console.warn("[status] Webhook divergente/ausente — reaplicando:", webhookUrl);
+    let wr = await fetch(`${baseUrl}/webhook/set/${encodedInstanceName}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: apiKey },
+      body: JSON.stringify({
+        webhook: { enabled: true, url: webhookUrl, byEvents: false, base64: true, events: WEBHOOK_EVENTS },
+      }),
+    });
+    if (!wr.ok) {
+      wr = await fetch(`${baseUrl}/webhook/set/${encodedInstanceName}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: apiKey },
+        body: JSON.stringify({
+          url: webhookUrl,
+          webhook_by_events: false,
+          webhook_base64: true,
+          enabled: true,
+          events: WEBHOOK_EVENTS,
+        }),
+      });
+    }
+    if (!wr.ok) {
+      console.error("[status] Falha ao reaplicar webhook:", await wr.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("[status] Erro no auto-reparo do webhook:", e);
+    return false;
+  }
+}
 
 async function requeueDisconnectedMessages(accountId: string, sessionId: string): Promise<number> {
   try {
