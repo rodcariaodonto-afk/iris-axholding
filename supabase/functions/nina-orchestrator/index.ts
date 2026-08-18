@@ -1098,16 +1098,35 @@ async function processQueueItem(
   tools.push(sendFileTool);
   console.log('[Nina] Added send_file tool (media library)');
 
+  // Anexos operacionais mínimos — o prompt do cliente é a instrução principal.
+  // Só é acrescentado o que for estritamente operacional e, no caso da agenda,
+  // apenas quando o recurso está habilitado para a conta.
+  const operationalNotes: string[] = [
+    'Responda sempre em Português do Brasil, independentemente do idioma da mensagem recebida.',
+  ];
+  if (settings?.ai_scheduling_enabled !== false) {
+    operationalNotes.push(
+      'Agendamento: se o cliente confirmar uma data e horário específicos, ou aceitar outro horário após conflito, chame create_appointment na mesma resposta e só confirme após a ferramenta retornar sucesso.'
+    );
+  }
+  const systemContent =
+    processedPrompt +
+    '\n\n<observacoes_operacionais>\n' +
+    '(Regras técnicas do sistema. Em caso de conflito, as instruções acima definidas pela empresa prevalecem.)\n- ' +
+    operationalNotes.join('\n- ') +
+    '\n</observacoes_operacionais>';
+
   // Build request body
   const requestBody: any = {
     model: aiSettings.model,
     messages: [
-      { role: 'system', content: processedPrompt + '\n\nIMPORTANTE: SEMPRE responda em Português Brasileiro, independente do idioma da mensagem recebida. NUNCA responda em espanhol ou outro idioma.\n\nREGRA CRÍTICA DE AGENDAMENTO: se o cliente confirmar uma data e horário específicos, ou aceitar outro horário após conflito, você DEVE chamar create_appointment na mesma resposta. Nunca diga “vou agendar”, “vou confirmar a agenda” ou “só um momento” sem executar a ferramenta. Só confirme agendamento depois que a ferramenta retornar sucesso.' },
+      { role: 'system', content: systemContent },
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
     max_tokens: 1000
   };
+
 
   // Only add tools if we have any
   if (tools.length > 0) {
