@@ -189,7 +189,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Buscar settings com fallback por conta → user_id → global → any; sessão só complementa credenciais do WhatsApp
+        // Settings SEMPRE pela conta da conversa; a sessão só complementa credenciais do WhatsApp
         let settings = null;
 
         if (conversation.account_id) {
@@ -201,6 +201,8 @@ serve(async (req) => {
           settings = accountSettings;
           if (settings) console.log('[Nina] Found settings for account:', conversation.account_id);
         }
+
+
 
         if (!settings && conversation.user_id) {
           const { data: userSettings } = await supabase
