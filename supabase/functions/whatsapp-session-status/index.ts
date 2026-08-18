@@ -11,14 +11,18 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    const token = authHeader.replace("Bearer ", "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const isServiceCall = Boolean(serviceRoleKey && token === serviceRoleKey);
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } },
+      isServiceCall ? serviceRoleKey! : Deno.env.get("SUPABASE_ANON_KEY")!,
+      isServiceCall ? undefined : { global: { headers: { Authorization: authHeader } } },
     );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: cErr } = await supabase.auth.getClaims(token);
-    if (cErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
+    if (!isServiceCall) {
+      const { data: claims, error: cErr } = await supabase.auth.getClaims(token);
+      if (cErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
+    }
 
     const { session_id } = await req.json();
     if (!session_id) return json({ error: "session_id required" }, 400);
