@@ -33,16 +33,24 @@ const MediaLibrary: React.FC = () => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [activeAccountId]);
 
   const fetchItems = async () => {
+    if (!activeAccountId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const { data } = await supabase
       .from('media_library')
       .select('*')
+      .eq('account_id', activeAccountId)
       .order('created_at', { ascending: false });
     setItems((data as unknown as MediaItem[]) || []);
     setLoading(false);
   };
+
 
   const handleUpload = async () => {
     if (!selectedFile || !formName) return;
