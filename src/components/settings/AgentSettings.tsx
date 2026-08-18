@@ -322,7 +322,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                 className="text-slate-400 hover:text-white hover:bg-slate-700"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Restaurar Padrão
+                Modelo em branco
               </Button>
               <Button
                 variant="ghost"

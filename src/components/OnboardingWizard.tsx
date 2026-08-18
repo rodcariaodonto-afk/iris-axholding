@@ -17,7 +17,7 @@ import { requireActiveAccountId } from '@/lib/activeAccount';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './settings/PromptGeneratorSheet';
-import { BLANK_AGENT_PROMPT_TEMPLATE } from '@/prompts/default-nina-prompt';
+
 
 interface OnboardingWizardProps {
   isOpen: boolean;
