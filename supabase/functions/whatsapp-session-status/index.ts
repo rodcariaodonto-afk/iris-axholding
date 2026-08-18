@@ -14,9 +14,11 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const isServiceCall = Boolean(serviceRoleKey && token === serviceRoleKey);
+    const clientKey = isServiceCall && serviceRoleKey ? serviceRoleKey : Deno.env.get("SUPABASE_ANON_KEY");
+    if (!clientKey) return json({ error: "Server configuration error" }, 500);
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      isServiceCall ? serviceRoleKey! : Deno.env.get("SUPABASE_ANON_KEY")!,
+      clientKey,
       isServiceCall ? undefined : { global: { headers: { Authorization: authHeader } } },
     );
     if (!isServiceCall) {
