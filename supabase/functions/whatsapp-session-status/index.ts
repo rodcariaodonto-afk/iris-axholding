@@ -94,7 +94,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: `http_${r.status}` });
+      const errorMessage = r.status === 401
+        ? "Evolution: credencial do servidor não autorizada (401)"
+        : `Evolution: servidor respondeu HTTP ${r.status}`;
+      await supabase.from("whatsapp_sessions").update({
+        status: "error",
+        error_message: errorMessage,
+      }).eq("id", session_id).eq("account_id", session.account_id);
+      return json({ ok: true, status: "error", live: false, evolution_state: null, reachable: false, reason: `http_${r.status}` });
     }
     const data = await r.json();
     const state = data?.instance?.state ?? data?.state;
@@ -102,6 +109,8 @@ Deno.serve(async (req) => {
     let phoneNumber: string | null = session.phone_number;
     const normalizedState = String(state ?? "").toLowerCase();
     const live = ["open", "connected"].includes(normalizedState);
+    let reconnectAttempted = false;
+    let qrCode: string | null = null;
     if (live) {
       newStatus = "connected";
       // Try fetch profile
@@ -114,14 +123,31 @@ Deno.serve(async (req) => {
         phoneNumber = inst?.ownerJid?.split("@")[0] ?? inst?.number ?? phoneNumber;
       }
     } else if (normalizedState === "connecting") newStatus = "connecting";
-    else if (["close", "closed", "disconnected"].includes(normalizedState)) newStatus = "disconnected";
+    else if (["close", "closed", "disconnected"].includes(normalizedState)) {
+      reconnectAttempted = true;
+      try {
+        const reconnectResp = await fetch(`${baseUrl}/instance/connect/${encodedInstanceName}`, {
+          headers: { apikey: settings.evolution_api_key },
+        });
+        if (reconnectResp.ok) {
+          const reconnectData = await reconnectResp.json();
+          qrCode = extractEvolutionQrCode(reconnectData);
+          newStatus = qrCode ? "qr_pending" : "connecting";
+        } else {
+          newStatus = "disconnected";
+        }
+      } catch (_e) {
+        newStatus = "disconnected";
+      }
+    }
 
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
       phone_number: phoneNumber,
       last_connected_at: newStatus === "connected" ? new Date().toISOString() : session.last_connected_at,
-      qr_code: newStatus === "connected" ? null : session.qr_code,
-    }).eq("id", session_id);
+      qr_code: newStatus === "connected" ? null : (qrCode ?? session.qr_code),
+      error_message: live ? null : session.error_message,
+    }).eq("id", session_id).eq("account_id", session.account_id);
 
     // Reenfileira automaticamente mensagens que falharam por desconexão
     // (e travadas em "processing") assim que a conexão real volta a ficar online.
@@ -134,7 +160,18 @@ Deno.serve(async (req) => {
       webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
     }
 
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired });
+    console.log(JSON.stringify({
+      event: "evolution_session_check",
+      account_id: session.account_id,
+      session_id,
+      instance: instanceName,
+      state: normalizedState || null,
+      live,
+      reconnect_attempted: reconnectAttempted,
+      webhook_repaired: webhookRepaired,
+      requeued,
+    }));
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, qr_pending: Boolean(qrCode) });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
@@ -255,4 +292,23 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function extractEvolutionQrCode(data: any): string | null {
+  const candidates = [
+    data?.qrcode?.base64,
+    data?.qrcode?.code,
+    data?.qr?.base64,
+    data?.qr?.code,
+    data?.base64,
+    data?.code,
+  ];
+  const value = candidates.find((item) => typeof item === "string" && item.trim().length > 0);
+  if (!value) return null;
+  const qr = value.trim();
+  if (qr.startsWith("data:image")) return qr;
+  if (qr.startsWith("/9j/") || qr.startsWith("iVBOR") || qr.startsWith("R0lGOD")) {
+    return `data:image/png;base64,${qr}`;
+  }
+  return qr;
 }
