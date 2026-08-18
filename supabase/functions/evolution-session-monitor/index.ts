@@ -11,12 +11,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ error: "Method not allowed" }, 405);
 
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const authHeader = req.headers.get("Authorization");
-  const allowedTokens = [serviceRoleKey, anonKey].filter((token): token is string => Boolean(token));
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!serviceRoleKey || !supabaseUrl || !bearerToken || !allowedTokens.includes(bearerToken)) {
+  if (!serviceRoleKey || !supabaseUrl || !bearerToken || !isProjectToken(bearerToken, supabaseUrl)) {
     return response({ error: "Unauthorized" }, 401);
   }
 
@@ -91,4 +89,17 @@ function response(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function isProjectToken(token: string, supabaseUrl: string): boolean {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return false;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(normalized));
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    return payload?.ref === projectRef && ["anon", "service_role"].includes(payload?.role);
+  } catch (_error) {
+    return false;
+  }
 }
