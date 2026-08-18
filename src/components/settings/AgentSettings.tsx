@@ -4,7 +4,7 @@ import { Button } from '../Button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './PromptGeneratorSheet';
-import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
+import { BLANK_AGENT_PROMPT_TEMPLATE } from '@/prompts/default-nina-prompt';
 import { useAuth } from '@/hooks/useAuth';
 import { getActiveAccountId } from '@/lib/activeAccount';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -209,8 +209,8 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   };
 
   const handleRestoreDefault = () => {
-    setSettings(prev => ({ ...prev, system_prompt_override: DEFAULT_NINA_PROMPT }));
-    toast.success('Prompt restaurado para o padrão');
+    setSettings(prev => ({ ...prev, system_prompt_override: BLANK_AGENT_PROMPT_TEMPLATE }));
+    toast.success('Modelo em branco carregado. Personalize com os dados da sua empresa.');
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,7 +269,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
 # ================================================
 
 `;
-    const content = header + DEFAULT_NINA_PROMPT;
+    const content = header + BLANK_AGENT_PROMPT_TEMPLATE;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
