@@ -11,9 +11,12 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ error: "Method not allowed" }, 405);
 
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const authHeader = req.headers.get("Authorization");
-  if (!serviceRoleKey || !supabaseUrl || authHeader !== `Bearer ${serviceRoleKey}`) {
+  const allowedTokens = [serviceRoleKey, anonKey].filter((token): token is string => Boolean(token));
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!serviceRoleKey || !supabaseUrl || !bearerToken || !allowedTokens.includes(bearerToken)) {
     return response({ error: "Unauthorized" }, 401);
   }
 
