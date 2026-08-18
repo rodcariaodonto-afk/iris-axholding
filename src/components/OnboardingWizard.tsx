@@ -17,7 +17,7 @@ import { requireActiveAccountId } from '@/lib/activeAccount';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { toast } from 'sonner';
 import PromptGeneratorSheet from './settings/PromptGeneratorSheet';
-import { DEFAULT_NINA_PROMPT } from '@/prompts/default-nina-prompt';
+
 
 interface OnboardingWizardProps {
   isOpen: boolean;
@@ -439,7 +439,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         setWhatsappPhoneNumberId((data as any)?.whatsapp_phone_number_id || '');
         setWhatsappBusinessAccountId((data as any)?.whatsapp_business_account_id || '');
         setWhatsappVerifyToken((data as any)?.whatsapp_verify_token || '');
-        setSystemPrompt(data?.system_prompt_override || DEFAULT_NINA_PROMPT);
+        setSystemPrompt(data?.system_prompt_override || '');
         setAiModelMode(data?.ai_model_mode || 'flash');
         setElevenLabsApiKey(data?.elevenlabs_api_key || '');
         setElevenLabsVoiceId(data?.elevenlabs_voice_id || '33B4UnXyTNbgLmdEDh5P');
@@ -607,7 +607,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
         whatsapp_verify_token: whatsappProvider === 'meta_cloud' ? (whatsappVerifyToken?.trim() || null) : null,
         
         // Agent - use default prompt if empty
-        system_prompt_override: systemPrompt?.trim() || DEFAULT_NINA_PROMPT,
+        system_prompt_override: systemPrompt?.trim() || null,
         ai_model_mode: aiModelMode || 'flash',
         
         // ElevenLabs (chaves obviamente inválidas viram null para não travar a validação)
