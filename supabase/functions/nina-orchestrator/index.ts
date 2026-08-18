@@ -204,15 +204,6 @@ serve(async (req) => {
 
 
 
-        if (!settings && conversation.user_id) {
-          const { data: userSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .eq('user_id', conversation.user_id)
-            .maybeSingle();
-          settings = userSettings;
-          if (settings) console.log('[Nina] Found settings for user:', conversation.user_id);
-        }
 
         if (conversation.session_id) {
           const { data: waSession } = await supabase
