@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Input } from '@/components/ui/input';
 import { getActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
+
 import { toast } from 'sonner';
 
 interface MediaItem {
@@ -21,6 +23,8 @@ interface MediaItem {
 
 const MediaLibrary: React.FC = () => {
   const { isAdmin } = useCompanySettings();
+  const { activeAccountId } = useActiveAccount();
+
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
