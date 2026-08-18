@@ -865,16 +865,22 @@ async function sendFileFromLibrary(
 ): Promise<any> {
   console.log('[Nina] Searching media library for:', args.search_query);
 
+  // ISOLAMENTO POR CONTA: sem conta, nenhum arquivo é buscado.
+  if (!accountId) {
+    console.error('[Nina] sendFileFromLibrary called without accountId — aborting');
+    return { error: 'account_not_resolved' };
+  }
+
   // Search by name, description and tags using ilike (scoped to account)
   const query = args.search_query.toLowerCase();
-  let mediaQuery = supabase
+  const { data: files } = await supabase
     .from('media_library')
     .select('*')
+    .eq('account_id', accountId)
     .eq('is_active', true)
     .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
     .limit(5);
-  if (accountId) mediaQuery = mediaQuery.eq('account_id', accountId);
-  const { data: files } = await mediaQuery;
+
 
   if (!files || files.length === 0) {
     console.log('[Nina] No files found in media library for:', args.search_query);
