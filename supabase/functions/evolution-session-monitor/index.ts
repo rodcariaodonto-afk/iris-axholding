@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   const { data: sessions, error: sessionsError } = await admin
     .from("whatsapp_sessions")
-    .select("id, account_id, evolution_instance_name")
+    .select("id, account_id, evolution_instance_name, error_message")
     .eq("provider", "evolution")
     .in("account_id", accountIds)
     .not("evolution_instance_name", "is", null)
@@ -41,8 +41,15 @@ Deno.serve(async (req) => {
 
   if (sessionsError) return response({ error: "Failed to load Evolution sessions" }, 500);
 
+  // Sessões com credencial rejeitada pelo servidor Evolution do cliente (401)
+  // dependem de nova chave/URL e não devem gerar ruído a cada 5 minutos.
+  const monitorable = (sessions ?? []).filter(
+    (session) => !String(session.error_message ?? "").trim().startsWith("401"),
+  );
+
   const results: Array<Record<string, unknown>> = [];
-  for (const session of sessions ?? []) {
+  for (const session of monitorable) {
+
     try {
       const statusResp = await fetch(`${supabaseUrl}/functions/v1/whatsapp-session-status`, {
         method: "POST",
