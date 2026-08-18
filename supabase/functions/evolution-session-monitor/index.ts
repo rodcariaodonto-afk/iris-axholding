@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
   const summary = {
     ok: true,
     checked: results.length,
+    skipped_unauthorized: (sessions ?? []).length - monitorable.length,
     online: results.filter((item) => item.live === true).length,
     repaired: results.filter((item) => item.webhook_repaired === true).length,
     reconnect_attempts: results.filter((item) => item.reconnect_attempted === true).length,
