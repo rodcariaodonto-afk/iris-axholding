@@ -246,34 +246,38 @@ serve(async (req) => {
             console.log('[Nina] Found settings from WhatsApp session:', conversation.session_id);
           }
         }
-        
-        // 2. Se não encontrou, tentar buscar global (user_id is null)
-        if (!settings) {
-          console.log('[Nina] No user-specific settings, trying global...');
-          const { data: globalSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .is('user_id', null)
-            .maybeSingle();
-          settings = globalSettings;
-          if (settings) {
-            console.log('[Nina] Found global settings (user_id is null)');
-          }
+
+        // ISOLAMENTO POR CONTA: nunca usar settings de outra conta.
+        // Sem account_id resolvido, a IA não responde.
+        if (!conversation.account_id) {
+          console.error('[Nina] Conversation without account_id — refusing to process:', item.conversation_id);
+          await supabase
+            .from('nina_processing_queue')
+            .update({
+              status: 'failed',
+              processed_at: new Date().toISOString(),
+              error_message: 'account_not_resolved'
+            })
+            .eq('id', item.id);
+          continue;
         }
-        
-        // 3. Último fallback: buscar qualquer settings existente
-        if (!settings) {
-          console.log('[Nina] No global settings, fetching any available...');
-          const { data: anySettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
-          settings = anySettings;
-          if (settings) {
-            console.log('[Nina] Using fallback settings from:', settings.id);
-          }
+
+        if (settings && settings.account_id && settings.account_id !== conversation.account_id) {
+          console.error('[Nina] Settings from another account — refusing to process:', {
+            conversation_account: conversation.account_id,
+            settings_account: settings.account_id,
+          });
+          await supabase
+            .from('nina_processing_queue')
+            .update({
+              status: 'failed',
+              processed_at: new Date().toISOString(),
+              error_message: 'account_mismatch'
+            })
+            .eq('id', item.id);
+          continue;
         }
+
 
         // Use default settings if nothing found
         const effectiveSettings = settings || {

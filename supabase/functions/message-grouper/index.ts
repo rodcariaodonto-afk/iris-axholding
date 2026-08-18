@@ -111,22 +111,12 @@ serve(async (req) => {
           settings = accountNinaSettings;
         }
 
-        const { data: ownerSettings } = !settings ? await supabase
-          .from('nina_settings')
-          .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
-          .eq('whatsapp_phone_number_id', phoneNumberId)
-          .maybeSingle() : { data: null };
-
-        // If no settings found by phone_number_id, try global settings
-        settings = settings || ownerSettings;
-        if (!settings) {
-          const { data: globalSettings } = await supabase
-            .from('nina_settings')
-            .select('user_id, whatsapp_access_token, whatsapp_provider, evolution_api_url, evolution_api_key, evolution_instance_name')
-            .limit(1)
-            .maybeSingle();
-          settings = globalSettings;
+        // ISOLAMENTO POR CONTA: sem conta resolvida, não usar settings de terceiros.
+        if (!settings && !accountId) {
+          console.error('[MessageGrouper] Group without account_id — skipping:', groupKey);
+          continue;
         }
+
 
         const messageIds = messages.map(m => m.message_id).filter(Boolean);
         
