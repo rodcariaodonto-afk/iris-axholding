@@ -189,7 +189,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Buscar settings com fallback por conta → user_id → global → any; sessão só complementa credenciais do WhatsApp
+        // Settings SEMPRE pela conta da conversa; a sessão só complementa credenciais do WhatsApp
         let settings = null;
 
         if (conversation.account_id) {
@@ -202,15 +202,8 @@ serve(async (req) => {
           if (settings) console.log('[Nina] Found settings for account:', conversation.account_id);
         }
 
-        if (!settings && conversation.user_id) {
-          const { data: userSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .eq('user_id', conversation.user_id)
-            .maybeSingle();
-          settings = userSettings;
-          if (settings) console.log('[Nina] Found settings for user:', conversation.user_id);
-        }
+
+
 
         if (conversation.session_id) {
           const { data: waSession } = await supabase
@@ -246,34 +239,38 @@ serve(async (req) => {
             console.log('[Nina] Found settings from WhatsApp session:', conversation.session_id);
           }
         }
-        
-        // 2. Se não encontrou, tentar buscar global (user_id is null)
-        if (!settings) {
-          console.log('[Nina] No user-specific settings, trying global...');
-          const { data: globalSettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .is('user_id', null)
-            .maybeSingle();
-          settings = globalSettings;
-          if (settings) {
-            console.log('[Nina] Found global settings (user_id is null)');
-          }
+
+        // ISOLAMENTO POR CONTA: nunca usar settings de outra conta.
+        // Sem account_id resolvido, a IA não responde.
+        if (!conversation.account_id) {
+          console.error('[Nina] Conversation without account_id — refusing to process:', item.conversation_id);
+          await supabase
+            .from('nina_processing_queue')
+            .update({
+              status: 'failed',
+              processed_at: new Date().toISOString(),
+              error_message: 'account_not_resolved'
+            })
+            .eq('id', item.id);
+          continue;
         }
-        
-        // 3. Último fallback: buscar qualquer settings existente
-        if (!settings) {
-          console.log('[Nina] No global settings, fetching any available...');
-          const { data: anySettings } = await supabase
-            .from('nina_settings')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
-          settings = anySettings;
-          if (settings) {
-            console.log('[Nina] Using fallback settings from:', settings.id);
-          }
+
+        if (settings && settings.account_id && settings.account_id !== conversation.account_id) {
+          console.error('[Nina] Settings from another account — refusing to process:', {
+            conversation_account: conversation.account_id,
+            settings_account: settings.account_id,
+          });
+          await supabase
+            .from('nina_processing_queue')
+            .update({
+              status: 'failed',
+              processed_at: new Date().toISOString(),
+              error_message: 'account_mismatch'
+            })
+            .eq('id', item.id);
+          continue;
         }
+
 
         // Use default settings if nothing found
         const effectiveSettings = settings || {
@@ -861,16 +858,22 @@ async function sendFileFromLibrary(
 ): Promise<any> {
   console.log('[Nina] Searching media library for:', args.search_query);
 
+  // ISOLAMENTO POR CONTA: sem conta, nenhum arquivo é buscado.
+  if (!accountId) {
+    console.error('[Nina] sendFileFromLibrary called without accountId — aborting');
+    return { error: 'account_not_resolved' };
+  }
+
   // Search by name, description and tags using ilike (scoped to account)
   const query = args.search_query.toLowerCase();
-  let mediaQuery = supabase
+  const { data: files } = await supabase
     .from('media_library')
     .select('*')
+    .eq('account_id', accountId)
     .eq('is_active', true)
     .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
     .limit(5);
-  if (accountId) mediaQuery = mediaQuery.eq('account_id', accountId);
-  const { data: files } = await mediaQuery;
+
 
   if (!files || files.length === 0) {
     console.log('[Nina] No files found in media library for:', args.search_query);

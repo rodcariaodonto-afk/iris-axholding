@@ -161,20 +161,19 @@ async function getSettings(supabase: any, userId: string | null, accountId: stri
   
   if (accountId) {
     const { data } = await supabase.from('nina_settings').select(selectFields).eq('account_id', accountId).maybeSingle();
-    if (data) return data;
+    return data || null;
   }
-  
+
   if (userId) {
     const { data } = await supabase.from('nina_settings').select(selectFields).eq('user_id', userId).maybeSingle();
     if (data) return data;
   }
 
-  const { data: global } = await supabase.from('nina_settings').select(selectFields).is('user_id', null).maybeSingle();
-  if (global) return global;
-
-  const { data: any } = await supabase.from('nina_settings').select(selectFields).limit(1).maybeSingle();
-  return any;
+  // ISOLAMENTO POR CONTA: sem conta/usuário resolvido não usamos credenciais de outro cliente.
+  console.error('[Sender] No account/user resolved for queue item — refusing cross-account settings');
+  return null;
 }
+
 
 // =============================================
 // Evolution API Sender

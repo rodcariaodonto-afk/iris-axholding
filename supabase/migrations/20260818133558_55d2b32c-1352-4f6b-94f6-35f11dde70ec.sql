@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_account_consistency() FROM PUBLIC, anon, authenticated;

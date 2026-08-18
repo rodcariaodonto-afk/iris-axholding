@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { Input } from '@/components/ui/input';
 import { getActiveAccountId } from '@/lib/activeAccount';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
+
 import { toast } from 'sonner';
 
 interface MediaItem {
@@ -21,6 +23,8 @@ interface MediaItem {
 
 const MediaLibrary: React.FC = () => {
   const { isAdmin } = useCompanySettings();
+  const { activeAccountId } = useActiveAccount();
+
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -33,16 +37,24 @@ const MediaLibrary: React.FC = () => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [activeAccountId]);
 
   const fetchItems = async () => {
+    if (!activeAccountId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const { data } = await supabase
       .from('media_library')
       .select('*')
+      .eq('account_id', activeAccountId)
       .order('created_at', { ascending: false });
     setItems((data as unknown as MediaItem[]) || []);
     setLoading(false);
   };
+
 
   const handleUpload = async () => {
     if (!selectedFile || !formName) return;
