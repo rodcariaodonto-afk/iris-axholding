@@ -27,6 +27,9 @@ interface LiveCheck {
   live: boolean | null;
   reachable: boolean | null;
   evolution_state: string | null;
+  health?: string | null;
+  health_reason?: string | null;
+  restart_attempted?: boolean;
   reason?: string | null;
   checkedAt: number | null;
 }
