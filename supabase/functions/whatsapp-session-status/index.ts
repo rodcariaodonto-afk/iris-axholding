@@ -280,6 +280,66 @@ async function ensureWebhook(baseUrl: string, apiKey: string, encodedInstanceNam
   }
 }
 
+/**
+ * Instância pode reportar `open` e mesmo assim estar morta (socket zumbi no
+ * servidor Evolution): não entrega nenhum evento e recusa envios. Aqui olhamos
+ * os sinais de vida reais — último evento recebido e falhas recentes de envio.
+ */
+async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean; reason: string | null }> {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const { count: failures } = await admin
+      .from("send_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", session.account_id)
+      .eq("status", "failed")
+      .gte("updated_at", since);
+
+    if ((failures ?? 0) >= 3) {
+      return { degraded: true, reason: `${failures} falhas de envio nas últimas 2h` };
+    }
+
+    // Silêncio prolongado em horário comercial (Brasília) é sinal de socket morto.
+    const nowUtc = new Date();
+    const brasiliaHour = (nowUtc.getUTCHours() + 24 - 3) % 24;
+    const inBusinessHours = brasiliaHour >= 8 && brasiliaHour < 20;
+    if (!inBusinessHours) return { degraded: false, reason: null };
+
+    const lastSignals = [session.last_inbound_event_at, session.last_recovery_at, session.last_connected_at]
+      .filter(Boolean)
+      .map((value: string) => Date.parse(value));
+    const lastSignal = lastSignals.length > 0 ? Math.max(...lastSignals) : 0;
+    const silentHours = (Date.now() - lastSignal) / (60 * 60 * 1000);
+    if (lastSignal > 0 && silentHours >= 6) {
+      return { degraded: true, reason: `sem eventos da Evolution há ${Math.floor(silentHours)}h` };
+    }
+    return { degraded: false, reason: null };
+  } catch (_e) {
+    return { degraded: false, reason: null };
+  }
+}
+
+/** Restart mantém a autenticação (diferente de logout) e revive o socket. */
+async function restartInstance(baseUrl: string, apiKey: string, encodedInstanceName: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${baseUrl}/instance/restart/${encodedInstanceName}`, {
+      method: "POST",
+      headers: { apikey: apiKey },
+      signal: AbortSignal.timeout(25000),
+    });
+    console.warn("[status] Restart da instância solicitado:", encodedInstanceName, r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("[status] Falha ao reiniciar instância:", e);
+    return false;
+  }
+}
+
 async function requeueDisconnectedMessages(accountId: string, sessionId: string): Promise<number> {
   try {
     const admin = createClient(
