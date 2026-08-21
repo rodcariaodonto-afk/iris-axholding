@@ -157,6 +157,23 @@ async function handleEvolutionWebhook(
 
   console.log('[Webhook:Evolution] Event:', event, 'Instance:', instanceName);
 
+  // Sinal de vida da instância: qualquer evento recebido prova que o servidor
+  // Evolution ainda entrega eventos desta instância para o sistema.
+  if (instanceName) {
+    try {
+      await supabase
+        .from('whatsapp_sessions')
+        .update({
+          last_inbound_event_at: new Date().toISOString(),
+          health: 'healthy',
+          health_reason: null,
+        })
+        .ilike('evolution_instance_name', instanceName);
+    } catch (_e) {
+      // sinal de saúde é best-effort; nunca deve bloquear o webhook
+    }
+  }
+
   // Handle connection status events
   if (normalizedEvent === 'connection.update') {
     console.log('[Webhook:Evolution] Connection update:', body.data?.state);
