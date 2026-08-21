@@ -67,11 +67,18 @@ Deno.serve(async (req) => {
     let r: Response;
     let responseText = "";
     try {
+      // Timeout explícito: quando a Evolution trava, o fetch fica pendurado e a
+      // checagem nunca conclui (o problema fica invisível no painel).
       r = await fetch(`${baseUrl}/instance/connectionState/${encodedInstanceName}`, {
         headers: { apikey: settings.evolution_api_key },
+        signal: AbortSignal.timeout(20000),
       });
     } catch (_e) {
-      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed" });
+      await supabase.from("whatsapp_sessions").update({
+        health: "unreachable",
+        health_reason: "servidor Evolution não respondeu à checagem de estado",
+      }).eq("id", session_id).eq("account_id", session.account_id);
+      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed", health: "unreachable" });
     }
     if (!r.ok) {
       try {
