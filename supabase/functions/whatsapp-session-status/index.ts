@@ -310,10 +310,23 @@ async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean
     const inBusinessHours = brasiliaHour >= 8 && brasiliaHour < 20;
     if (!inBusinessHours) return { degraded: false, reason: null };
 
-    const lastSignals = [session.last_inbound_event_at, session.last_recovery_at, session.last_connected_at]
-      .filter(Boolean)
-      .map((value: string) => Date.parse(value));
-    const lastSignal = lastSignals.length > 0 ? Math.max(...lastSignals) : 0;
+    // Importante: `last_connected_at` é reescrito a cada checagem, então NÃO serve
+    // como sinal de vida. Só contam eventos reais vindos da Evolution.
+    let lastEvent = session.last_inbound_event_at ? Date.parse(session.last_inbound_event_at) : 0;
+    if (!lastEvent) {
+      // Sessões anteriores à coluna de saúde: usa a última mensagem recebida de cliente.
+      const { data: lastMsg } = await admin
+        .from("messages")
+        .select("created_at")
+        .eq("account_id", session.account_id)
+        .eq("from_type", "user")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      lastEvent = lastMsg?.created_at ? Date.parse(lastMsg.created_at) : 0;
+    }
+    const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+    const lastSignal = Math.max(lastEvent, lastRecovery);
     const silentHours = (Date.now() - lastSignal) / (60 * 60 * 1000);
     if (lastSignal > 0 && silentHours >= 6) {
       return { degraded: true, reason: `sem eventos da Evolution há ${Math.floor(silentHours)}h` };
