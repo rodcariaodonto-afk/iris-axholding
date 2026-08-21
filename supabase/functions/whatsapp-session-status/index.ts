@@ -147,24 +147,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Reenfileira automaticamente mensagens que falharam por desconexão
+    // (e travadas em "processing") assim que a conexão real volta a ficar online.
+    let requeued = 0;
+    let webhookRepaired = false;
+    let health = live ? "healthy" : "offline";
+    let healthReason: string | null = live ? null : (normalizedState || "not_open");
+    let restartAttempted = false;
+    if (live) {
+      requeued = await requeueDisconnectedMessages(session.account_id, session_id);
+      // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
+      // deixando a instância "conectada" porém sem entregar mensagens ao sistema.
+      webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+
+      // Detecção de instância "zumbi": estado `open` porém sem entregar nenhum
+      // evento e/ou recusando envios. Nesse caso o restart é a única recuperação.
+      const diagnosis = await diagnoseSilentInstance(session);
+      if (diagnosis.degraded) {
+        health = "degraded";
+        healthReason = diagnosis.reason;
+        const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+        const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
+        if (canRestart) {
+          restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
+          if (restartAttempted) {
+            health = "recovering";
+            await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+          }
+        }
+      }
+    }
+
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
       phone_number: phoneNumber,
       last_connected_at: newStatus === "connected" ? new Date().toISOString() : session.last_connected_at,
       qr_code: newStatus === "connected" ? null : (qrCode ?? session.qr_code),
       error_message: live ? null : session.error_message,
+      health,
+      health_reason: healthReason,
+      ...(restartAttempted ? { last_recovery_at: new Date().toISOString() } : {}),
     }).eq("id", session_id).eq("account_id", session.account_id);
-
-    // Reenfileira automaticamente mensagens que falharam por desconexão
-    // (e travadas em "processing") assim que a conexão real volta a ficar online.
-    let requeued = 0;
-    let webhookRepaired = false;
-    if (live) {
-      requeued = await requeueDisconnectedMessages(session.account_id, session_id);
-      // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
-      // deixando a instância "conectada" porém sem entregar mensagens ao sistema.
-      webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
-    }
 
     console.log(JSON.stringify({
       event: "evolution_session_check",
@@ -173,11 +196,14 @@ Deno.serve(async (req) => {
       instance: instanceName,
       state: normalizedState || null,
       live,
+      health,
+      health_reason: healthReason,
+      restart_attempted: restartAttempted,
       reconnect_attempted: reconnectAttempted,
       webhook_repaired: webhookRepaired,
       requeued,
     }));
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, qr_pending: Boolean(qrCode) });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, qr_pending: Boolean(qrCode) });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
