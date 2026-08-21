@@ -2538,9 +2538,13 @@ export type Database = {
           error_message: string | null
           evolution_instance_id: string | null
           evolution_instance_name: string | null
+          health: string
+          health_reason: string | null
           id: string
           is_default: boolean
           last_connected_at: string | null
+          last_inbound_event_at: string | null
+          last_recovery_at: string | null
           metadata: Json
           owner_user_id: string | null
           phone_number: string | null
@@ -2561,9 +2565,13 @@ export type Database = {
           error_message?: string | null
           evolution_instance_id?: string | null
           evolution_instance_name?: string | null
+          health?: string
+          health_reason?: string | null
           id?: string
           is_default?: boolean
           last_connected_at?: string | null
+          last_inbound_event_at?: string | null
+          last_recovery_at?: string | null
           metadata?: Json
           owner_user_id?: string | null
           phone_number?: string | null
@@ -2584,9 +2592,13 @@ export type Database = {
           error_message?: string | null
           evolution_instance_id?: string | null
           evolution_instance_name?: string | null
+          health?: string
+          health_reason?: string | null
           id?: string
           is_default?: boolean
           last_connected_at?: string | null
+          last_inbound_event_at?: string | null
+          last_recovery_at?: string | null
           metadata?: Json
           owner_user_id?: string | null
           phone_number?: string | null
