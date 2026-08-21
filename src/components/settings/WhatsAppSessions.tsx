@@ -296,6 +296,14 @@ function LiveIndicator({ liveCheck }: { liveCheck?: LiveCheck }) {
     );
   }
   if (liveCheck.live === true) {
+    if (liveCheck.health === "degraded" || liveCheck.health === "recovering") {
+      return (
+        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.health_reason || undefined}>
+          <AlertCircle className="w-3 h-3" />
+          {liveCheck.health === "recovering" ? "Recuperando instância…" : "Conectada, mas sem tráfego"}
+        </Badge>
+      );
+    }
     return (
       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1 text-[10px]">
         <CheckCircle2 className="w-3 h-3" /> Conexão real: online
