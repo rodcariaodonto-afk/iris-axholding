@@ -67,11 +67,18 @@ Deno.serve(async (req) => {
     let r: Response;
     let responseText = "";
     try {
+      // Timeout explícito: quando a Evolution trava, o fetch fica pendurado e a
+      // checagem nunca conclui (o problema fica invisível no painel).
       r = await fetch(`${baseUrl}/instance/connectionState/${encodedInstanceName}`, {
         headers: { apikey: settings.evolution_api_key },
+        signal: AbortSignal.timeout(20000),
       });
     } catch (_e) {
-      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed" });
+      await supabase.from("whatsapp_sessions").update({
+        health: "unreachable",
+        health_reason: "servidor Evolution não respondeu à checagem de estado",
+      }).eq("id", session_id).eq("account_id", session.account_id);
+      return json({ ok: true, status: session.status, live: false, evolution_state: null, reachable: false, reason: "fetch_failed", health: "unreachable" });
     }
     if (!r.ok) {
       try {
@@ -147,24 +154,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Reenfileira automaticamente mensagens que falharam por desconexão
+    // (e travadas em "processing") assim que a conexão real volta a ficar online.
+    let requeued = 0;
+    let webhookRepaired = false;
+    let health = live ? "healthy" : "offline";
+    let healthReason: string | null = live ? null : (normalizedState || "not_open");
+    let restartAttempted = false;
+    if (live) {
+      requeued = await requeueDisconnectedMessages(session.account_id, session_id);
+      // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
+      // deixando a instância "conectada" porém sem entregar mensagens ao sistema.
+      webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+
+      // Detecção de instância "zumbi": estado `open` porém sem entregar nenhum
+      // evento e/ou recusando envios. Nesse caso o restart é a única recuperação.
+      const diagnosis = await diagnoseSilentInstance(session);
+      if (diagnosis.degraded) {
+        health = "degraded";
+        healthReason = diagnosis.reason;
+        const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+        const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
+        if (canRestart) {
+          restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
+          if (restartAttempted) {
+            health = "recovering";
+            await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+          }
+        }
+      }
+    }
+
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
       phone_number: phoneNumber,
       last_connected_at: newStatus === "connected" ? new Date().toISOString() : session.last_connected_at,
       qr_code: newStatus === "connected" ? null : (qrCode ?? session.qr_code),
       error_message: live ? null : session.error_message,
+      health,
+      health_reason: healthReason,
+      ...(restartAttempted ? { last_recovery_at: new Date().toISOString() } : {}),
     }).eq("id", session_id).eq("account_id", session.account_id);
-
-    // Reenfileira automaticamente mensagens que falharam por desconexão
-    // (e travadas em "processing") assim que a conexão real volta a ficar online.
-    let requeued = 0;
-    let webhookRepaired = false;
-    if (live) {
-      requeued = await requeueDisconnectedMessages(session.account_id, session_id);
-      // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
-      // deixando a instância "conectada" porém sem entregar mensagens ao sistema.
-      webhookRepaired = await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
-    }
 
     console.log(JSON.stringify({
       event: "evolution_session_check",
@@ -173,11 +203,14 @@ Deno.serve(async (req) => {
       instance: instanceName,
       state: normalizedState || null,
       live,
+      health,
+      health_reason: healthReason,
+      restart_attempted: restartAttempted,
       reconnect_attempted: reconnectAttempted,
       webhook_repaired: webhookRepaired,
       requeued,
     }));
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, qr_pending: Boolean(qrCode) });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, qr_pending: Boolean(qrCode) });
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
@@ -243,6 +276,79 @@ async function ensureWebhook(baseUrl: string, apiKey: string, encodedInstanceNam
     return true;
   } catch (e) {
     console.error("[status] Erro no auto-reparo do webhook:", e);
+    return false;
+  }
+}
+
+/**
+ * Instância pode reportar `open` e mesmo assim estar morta (socket zumbi no
+ * servidor Evolution): não entrega nenhum evento e recusa envios. Aqui olhamos
+ * os sinais de vida reais — último evento recebido e falhas recentes de envio.
+ */
+async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean; reason: string | null }> {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const { count: failures } = await admin
+      .from("send_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", session.account_id)
+      .eq("status", "failed")
+      .gte("updated_at", since);
+
+    if ((failures ?? 0) >= 3) {
+      return { degraded: true, reason: `${failures} falhas de envio nas últimas 2h` };
+    }
+
+    // Silêncio prolongado em horário comercial (Brasília) é sinal de socket morto.
+    const nowUtc = new Date();
+    const brasiliaHour = (nowUtc.getUTCHours() + 24 - 3) % 24;
+    const inBusinessHours = brasiliaHour >= 8 && brasiliaHour < 20;
+    if (!inBusinessHours) return { degraded: false, reason: null };
+
+    // Importante: `last_connected_at` é reescrito a cada checagem, então NÃO serve
+    // como sinal de vida. Só contam eventos reais vindos da Evolution.
+    let lastEvent = session.last_inbound_event_at ? Date.parse(session.last_inbound_event_at) : 0;
+    if (!lastEvent) {
+      // Sessões anteriores à coluna de saúde: usa a última mensagem recebida de cliente.
+      const { data: lastMsg } = await admin
+        .from("messages")
+        .select("created_at")
+        .eq("account_id", session.account_id)
+        .eq("from_type", "user")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      lastEvent = lastMsg?.created_at ? Date.parse(lastMsg.created_at) : 0;
+    }
+    const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+    const lastSignal = Math.max(lastEvent, lastRecovery);
+    const silentHours = (Date.now() - lastSignal) / (60 * 60 * 1000);
+    if (lastSignal > 0 && silentHours >= 6) {
+      return { degraded: true, reason: `sem eventos da Evolution há ${Math.floor(silentHours)}h` };
+    }
+    return { degraded: false, reason: null };
+  } catch (_e) {
+    return { degraded: false, reason: null };
+  }
+}
+
+/** Restart mantém a autenticação (diferente de logout) e revive o socket. */
+async function restartInstance(baseUrl: string, apiKey: string, encodedInstanceName: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${baseUrl}/instance/restart/${encodedInstanceName}`, {
+      method: "POST",
+      headers: { apikey: apiKey },
+      signal: AbortSignal.timeout(25000),
+    });
+    console.warn("[status] Restart da instância solicitado:", encodedInstanceName, r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("[status] Falha ao reiniciar instância:", e);
     return false;
   }
 }

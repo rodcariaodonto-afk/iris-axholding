@@ -254,12 +254,24 @@ async function sendMessageEvolution(supabase: any, settings: any, queueItem: any
     body: JSON.stringify(body)
   });
 
-  const responseData = await response.json();
+  const rawBody = await response.text();
+  let responseData: any = {};
+  try {
+    responseData = rawBody ? JSON.parse(rawBody) : {};
+  } catch (_e) {
+    responseData = {};
+  }
 
   if (!response.ok) {
-    console.error('[Sender:Evolution] API error:', responseData);
-    throw new Error(responseData.message || responseData.error || 'Evolution API error');
+    console.error('[Sender:Evolution] API error:', response.status, rawBody);
+    // Propaga o corpo real devolvido pela Evolution: sem isso o erro gravado
+    // na fila fica genérico ("Internal Server Error") e impede o diagnóstico.
+    const detail = typeof responseData?.response?.message !== 'undefined'
+      ? JSON.stringify(responseData.response.message)
+      : (responseData?.message || responseData?.error || rawBody || 'Evolution API error');
+    throw new Error(`Evolution HTTP ${response.status}: ${String(detail).slice(0, 500)}`);
   }
+
 
   const whatsappMessageId = responseData.key?.id || responseData.id || null;
   console.log('[Sender:Evolution] Sent, ID:', whatsappMessageId);
