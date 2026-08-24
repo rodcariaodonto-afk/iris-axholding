@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.cancel_ai_work_on_takeover() FROM anon, authenticated, PUBLIC;
