@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isWithinBusinessHours } from "../_shared/business-hours.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,19 +15,10 @@ serve(async (req) => {
   try {
     console.log('[FollowupDispatcher] Starting...');
 
-    // Horário comercial BRT (UTC-3): 08:00–19:00 = 11:00–22:00 UTC
-    const nowUTC = new Date();
-    const hourUTC = nowUTC.getUTCHours();
-    if (hourUTC < 11 || hourUTC >= 22) {
-      console.log('[FollowupDispatcher] Outside business hours, skipping.');
-      return new Response(JSON.stringify({ skipped: true, reason: 'outside_business_hours' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 
     // 1. Buscar contas com follow-up habilitado
     const { data: accounts, error: accountsError } = await supabase
