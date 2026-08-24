@@ -306,6 +306,25 @@ serve(async (req) => {
           continue;
         }
 
+        // HORÁRIO DE ATENDIMENTO DA CONTA: fora da janela a IA não responde agora.
+        // O item volta para 'pending' agendado para a próxima abertura — o claim
+        // (claim_nina_processing_batch) ignora scheduled_for no futuro, então a
+        // resposta sai automaticamente quando o atendimento reabrir.
+        if (!isWithinBusinessHours(effectiveSettings)) {
+          const reopenAt = nextOpeningAt(effectiveSettings);
+          console.log('[Nina] Outside business hours for account', conversation.account_id, '— deferring to', reopenAt?.toISOString());
+          await supabase
+            .from('nina_processing_queue')
+            .update({
+              status: 'pending',
+              scheduled_for: (reopenAt ?? new Date(Date.now() + 60 * 60 * 1000)).toISOString(),
+              error_message: 'deferred_outside_business_hours',
+            })
+            .eq('id', item.id);
+          continue;
+        }
+
+
         // Use default prompt if not configured
         const systemPrompt = effectiveSettings.system_prompt_override || getDefaultSystemPrompt();
         
