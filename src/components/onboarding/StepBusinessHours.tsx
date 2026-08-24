@@ -175,6 +175,14 @@ export const StepBusinessHours: React.FC<StepBusinessHoursProps> = ({
               </Select>
             </div>
           </div>
+          {businessHoursEnd <= businessHoursStart && (
+            <p className="text-xs text-amber-400 leading-relaxed">
+              Atenção: o fim ({businessHoursEnd}) é igual ou anterior ao início ({businessHoursStart}),
+              o que configura atendimento durante a madrugada. Se quis atender durante o dia,
+              inverta os campos.
+            </p>
+          )}
+
         </motion.div>
 
         {/* Business Days */}

@@ -763,12 +763,30 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ isOpen, onCl
   ]);
 
   const handleNext = async () => {
+    // Validação da etapa de horário de atendimento (índice 4)
+    if (activeStep === 4) {
+      const start = (businessHoursStart || '').slice(0, 5);
+      const end = (businessHoursEnd || '').slice(0, 5);
+      if (!start || !end) {
+        toast.error('Informe o horário de início e de fim do atendimento.');
+        return;
+      }
+      if (start === end) {
+        toast.error('O horário de fim deve ser diferente do horário de início.');
+        return;
+      }
+      if (!businessDays || businessDays.length === 0) {
+        toast.error('Selecione ao menos um dia da semana de atendimento.');
+        return;
+      }
+    }
     await saveSettings();
     if (activeStep < steps.length - 1) {
       setDirection(1);
       setActiveStep(activeStep + 1);
     }
   };
+
 
   const handleSkip = async () => {
     await saveSettings();

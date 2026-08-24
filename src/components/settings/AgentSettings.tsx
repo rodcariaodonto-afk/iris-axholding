@@ -14,6 +14,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 interface AgentSettingsState {
   id?: string;
@@ -57,6 +68,8 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [overnightConfirmOpen, setOvernightConfirmOpen] = useState(false);
+
   const [settings, setSettings] = useState<AgentSettingsState>({
     system_prompt_override: null,
     is_active: true,
@@ -141,7 +154,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: { allowOvernight?: boolean }) => {
     const accountId = getActiveAccountId();
     if (!accountId) {
       toast.error('Nenhuma conta ativa selecionada. Recarregue a página.');
@@ -153,7 +166,26 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
       return;
     }
 
+    const start = (settings.business_hours_start || '').slice(0, 5);
+    const end = (settings.business_hours_end || '').slice(0, 5);
+
+    if (!start || !end) {
+      toast.error('Informe o horário de início e de fim do atendimento.');
+      return;
+    }
+
+    if (start === end) {
+      toast.error('O horário de fim deve ser diferente do horário de início.');
+      return;
+    }
+
+    if (end < start && !opts?.allowOvernight) {
+      setOvernightConfirmOpen(true);
+      return;
+    }
+
     setSaving(true);
+
 
     try {
       const payload = {
@@ -699,7 +731,33 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
 
       </div>
       </TooltipProvider>
+
+      <AlertDialog open={overnightConfirmOpen} onOpenChange={setOvernightConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar atendimento noturno?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O horário informado configura atendimento durante a madrugada: das{' '}
+              {settings.business_hours_start?.slice(0, 5)} às{' '}
+              {settings.business_hours_end?.slice(0, 5)} do dia seguinte. Se quis atender durante o
+              dia, cancele e inverta os campos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setOvernightConfirmOpen(false);
+                handleSave({ allowOvernight: true });
+              }}
+            >
+              Sim, é isso mesmo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+
   );
 });
 
