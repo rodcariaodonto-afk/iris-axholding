@@ -511,6 +511,14 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                   ))}
                 </div>
               </div>
+              {settings.business_hours_end <= settings.business_hours_start && (
+                <p className="text-xs text-amber-400 leading-relaxed">
+                  Atenção: o fim ({settings.business_hours_end?.slice(0, 5)}) é anterior ao início
+                  ({settings.business_hours_start?.slice(0, 5)}), então a janela atravessa a
+                  meia-noite. Se quis atender durante o dia, inverta os campos.
+                </p>
+              )}
+
               <p className="text-xs text-slate-500 leading-relaxed">
                 Fora desta janela a IA não responde na hora: as mensagens ficam pendentes e são
                 respondidas automaticamente na próxima abertura. Follow-ups e campanhas também
