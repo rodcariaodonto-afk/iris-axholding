@@ -141,7 +141,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: { allowOvernight?: boolean }) => {
     const accountId = getActiveAccountId();
     if (!accountId) {
       toast.error('Nenhuma conta ativa selecionada. Recarregue a página.');
@@ -153,7 +153,26 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
       return;
     }
 
+    const start = (settings.business_hours_start || '').slice(0, 5);
+    const end = (settings.business_hours_end || '').slice(0, 5);
+
+    if (!start || !end) {
+      toast.error('Informe o horário de início e de fim do atendimento.');
+      return;
+    }
+
+    if (start === end) {
+      toast.error('O horário de fim deve ser diferente do horário de início.');
+      return;
+    }
+
+    if (end < start && !opts?.allowOvernight) {
+      setOvernightConfirmOpen(true);
+      return;
+    }
+
     setSaving(true);
+
 
     try {
       const payload = {
