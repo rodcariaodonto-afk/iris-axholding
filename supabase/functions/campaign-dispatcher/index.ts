@@ -37,12 +37,28 @@ serve(async (req) => {
 
     let totalProcessed = 0;
 
+    // Horário de atendimento por conta (nina_settings) — cada cliente define o seu.
+    const campaignAccountIds = [...new Set(campaigns.map((c: any) => c.account_id))];
+    const { data: ninaSettingsRows } = await supabase
+      .from('nina_settings')
+      .select('account_id, timezone, business_hours_start, business_hours_end, business_days')
+      .in('account_id', campaignAccountIds);
+    const hoursByAccount = new Map<string, any>(
+      (ninaSettingsRows || []).map((r: any) => [r.account_id, r]),
+    );
+
     for (const campaign of campaigns) {
       // Skip if account has module disabled
       if (!campaign.account?.settings?.outbound_campaigns_enabled) {
         console.log(`[Dispatcher] Campaign ${campaign.id}: account module disabled, skipping.`);
         continue;
       }
+
+      if (!isWithinBusinessHours(hoursByAccount.get(campaign.account_id))) {
+        console.log(`[Dispatcher] Campaign ${campaign.id}: outside account business hours, skipping.`);
+        continue;
+      }
+
 
       // Resolve the WhatsApp session to send from. Prefer a connected session,
       // falling back to the default one. Without this the sender uses stale
