@@ -38,13 +38,31 @@ serve(async (req) => {
     let totalProcessed = 0;
     let totalSkipped = 0;
 
+    // Horário de atendimento por conta (nina_settings)
+    const accountIds = accounts.map((a: any) => a.id);
+    const { data: ninaSettingsRows } = await supabase
+      .from('nina_settings')
+      .select('account_id, timezone, business_hours_start, business_hours_end, business_days')
+      .in('account_id', accountIds);
+    const hoursByAccount = new Map<string, any>(
+      (ninaSettingsRows || []).map((r: any) => [r.account_id, r]),
+    );
+
     for (const account of accounts) {
       const settings = account.settings || {};
       const delayMinutes: number = Number(settings.followup_delay_minutes ?? 120);
       const maxAttempts: number = Math.min(Number(settings.followup_max_attempts ?? 2), 2); // máx 2
       const cutoff = new Date(Date.now() - delayMinutes * 60 * 1000).toISOString();
 
+      // Cada cliente define seus dias/horários — nunca uma janela fixa global.
+      if (!isWithinBusinessHours(hoursByAccount.get(account.id))) {
+        console.log(`[FollowupDispatcher] Account ${account.id}: outside business hours, skipping.`);
+        totalSkipped++;
+        continue;
+      }
+
       console.log(`[FollowupDispatcher] Account ${account.id}: delay=${delayMinutes}min, maxAttempts=${maxAttempts}`);
+
 
       // 2. Buscar conversas elegíveis (limit 20 por execução por conta)
       const { data: conversations, error: convError } = await supabase
