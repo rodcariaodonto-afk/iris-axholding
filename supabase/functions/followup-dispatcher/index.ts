@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isWithinBusinessHours } from "../_shared/business-hours.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,19 +15,10 @@ serve(async (req) => {
   try {
     console.log('[FollowupDispatcher] Starting...');
 
-    // Horário comercial BRT (UTC-3): 08:00–19:00 = 11:00–22:00 UTC
-    const nowUTC = new Date();
-    const hourUTC = nowUTC.getUTCHours();
-    if (hourUTC < 11 || hourUTC >= 22) {
-      console.log('[FollowupDispatcher] Outside business hours, skipping.');
-      return new Response(JSON.stringify({ skipped: true, reason: 'outside_business_hours' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 
     // 1. Buscar contas com follow-up habilitado
     const { data: accounts, error: accountsError } = await supabase
@@ -46,13 +38,31 @@ serve(async (req) => {
     let totalProcessed = 0;
     let totalSkipped = 0;
 
+    // Horário de atendimento por conta (nina_settings)
+    const accountIds = accounts.map((a: any) => a.id);
+    const { data: ninaSettingsRows } = await supabase
+      .from('nina_settings')
+      .select('account_id, timezone, business_hours_start, business_hours_end, business_days')
+      .in('account_id', accountIds);
+    const hoursByAccount = new Map<string, any>(
+      (ninaSettingsRows || []).map((r: any) => [r.account_id, r]),
+    );
+
     for (const account of accounts) {
       const settings = account.settings || {};
       const delayMinutes: number = Number(settings.followup_delay_minutes ?? 120);
       const maxAttempts: number = Math.min(Number(settings.followup_max_attempts ?? 2), 2); // máx 2
       const cutoff = new Date(Date.now() - delayMinutes * 60 * 1000).toISOString();
 
+      // Cada cliente define seus dias/horários — nunca uma janela fixa global.
+      if (!isWithinBusinessHours(hoursByAccount.get(account.id))) {
+        console.log(`[FollowupDispatcher] Account ${account.id}: outside business hours, skipping.`);
+        totalSkipped++;
+        continue;
+      }
+
       console.log(`[FollowupDispatcher] Account ${account.id}: delay=${delayMinutes}min, maxAttempts=${maxAttempts}`);
+
 
       // 2. Buscar conversas elegíveis (limit 20 por execução por conta)
       const { data: conversations, error: convError } = await supabase

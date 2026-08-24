@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isWithinBusinessHours } from "../_shared/business-hours.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,19 +15,10 @@ serve(async (req) => {
   try {
     console.log('[Dispatcher] Starting campaign dispatcher...');
 
-    // Business hours check: 08:00–19:00 BRT (UTC-3) = 11:00–22:00 UTC
-    const nowUTC = new Date();
-    const hourUTC = nowUTC.getUTCHours();
-    if (hourUTC < 11 || hourUTC >= 22) {
-      console.log('[Dispatcher] Outside business hours (BRT 08:00–19:00), skipping.');
-      return new Response(JSON.stringify({ skipped: true, reason: 'outside_business_hours' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 
     // Fetch active campaigns, joining accounts to check module flag
     const { data: campaigns, error: campaignsError } = await supabase
@@ -45,12 +37,28 @@ serve(async (req) => {
 
     let totalProcessed = 0;
 
+    // Horário de atendimento por conta (nina_settings) — cada cliente define o seu.
+    const campaignAccountIds = [...new Set(campaigns.map((c: any) => c.account_id))];
+    const { data: ninaSettingsRows } = await supabase
+      .from('nina_settings')
+      .select('account_id, timezone, business_hours_start, business_hours_end, business_days')
+      .in('account_id', campaignAccountIds);
+    const hoursByAccount = new Map<string, any>(
+      (ninaSettingsRows || []).map((r: any) => [r.account_id, r]),
+    );
+
     for (const campaign of campaigns) {
       // Skip if account has module disabled
       if (!campaign.account?.settings?.outbound_campaigns_enabled) {
         console.log(`[Dispatcher] Campaign ${campaign.id}: account module disabled, skipping.`);
         continue;
       }
+
+      if (!isWithinBusinessHours(hoursByAccount.get(campaign.account_id))) {
+        console.log(`[Dispatcher] Campaign ${campaign.id}: outside account business hours, skipping.`);
+        continue;
+      }
+
 
       // Resolve the WhatsApp session to send from. Prefer a connected session,
       // falling back to the default one. Without this the sender uses stale
