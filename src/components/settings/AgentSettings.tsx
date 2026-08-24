@@ -148,7 +148,13 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
       return;
     }
 
+    if (!settings.business_days || settings.business_days.length === 0) {
+      toast.error('Selecione ao menos um dia da semana de atendimento.');
+      return;
+    }
+
     setSaving(true);
+
     try {
       const payload = {
         system_prompt_override: settings.system_prompt_override,
