@@ -505,7 +505,13 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                   ))}
                 </div>
               </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Fora desta janela a IA não responde na hora: as mensagens ficam pendentes e são
+                respondidas automaticamente na próxima abertura. Follow-ups e campanhas também
+                respeitam estes dias e horários. O atendimento humano não é afetado.
+              </p>
             </div>
+
           </div>
         </div>
 
