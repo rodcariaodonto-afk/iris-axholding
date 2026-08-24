@@ -718,7 +718,33 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
 
       </div>
       </TooltipProvider>
+
+      <AlertDialog open={overnightConfirmOpen} onOpenChange={setOvernightConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar atendimento noturno?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O horário informado configura atendimento durante a madrugada: das{' '}
+              {settings.business_hours_start?.slice(0, 5)} às{' '}
+              {settings.business_hours_end?.slice(0, 5)} do dia seguinte. Se quis atender durante o
+              dia, cancele e inverta os campos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setOvernightConfirmOpen(false);
+                handleSave({ allowOvernight: true });
+              }}
+            >
+              Sim, é isso mesmo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+
   );
 });
 
