@@ -65,9 +65,23 @@ serve(async (req) => {
         try {
           // Get settings; prefer the WhatsApp session attached to the outgoing queue item/conversation
           const { data: conversation } = await supabase
-            .from('conversations').select('user_id, account_id, session_id').eq('id', item.conversation_id).single();
+            .from('conversations').select('user_id, account_id, session_id, status').eq('id', item.conversation_id).single();
 
           if (!conversation) throw new Error('Conversation not found');
+
+          // Se o humano assumiu (ou pausou) a conversa, nada da IA pode sair.
+          if (item.from_type === 'nina' && conversation.status !== 'nina') {
+            console.log(`[Sender] Skipping AI message ${item.id} — conversation status is ${conversation.status}`);
+            await supabase
+              .from('send_queue')
+              .update({
+                status: 'failed',
+                error_message: 'conversation_taken_over',
+              })
+              .eq('id', item.id);
+            continue;
+          }
+
 
           const sessionId = item.session_id || conversation.session_id || null;
           const queueItem = {
