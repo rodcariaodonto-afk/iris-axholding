@@ -753,7 +753,17 @@ const ChatInterface: React.FC = () => {
               </div>
             </div>
 
+            {activeChat.status !== 'nina' && (
+              <div className="px-6 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 shrink-0" />
+                {activeChat.status === 'human'
+                  ? `Conversa em atendimento humano — ${sdrName} (IA) está pausada e não responderá até você devolver para a IA.`
+                  : `Conversa pausada — ${sdrName} (IA) não responderá enquanto estiver neste estado.`}
+              </div>
+            )}
+
             {/* Messages Area */}
+
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-0">
               {activeChat.messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500">

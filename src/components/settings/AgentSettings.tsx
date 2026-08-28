@@ -40,6 +40,7 @@ interface AgentSettingsState {
   sdr_name: string | null;
   ai_scheduling_enabled: boolean;
   company_logo_url: string | null;
+  human_takeover_timeout_hours: number;
 }
 
 const DAYS_OF_WEEK = [
@@ -83,6 +84,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     sdr_name: null,
     ai_scheduling_enabled: true,
     company_logo_url: null,
+    human_takeover_timeout_hours: 12,
   });
 
   useImperativeHandle(ref, () => ({
@@ -145,6 +147,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         sdr_name: data.sdr_name,
         ai_scheduling_enabled: data.ai_scheduling_enabled ?? true,
         company_logo_url: (data as any).company_logo_url || null,
+        human_takeover_timeout_hours: (data as any).human_takeover_timeout_hours ?? 12,
       });
     } catch (error) {
       console.error('[AgentSettings] Error loading settings:', error);
@@ -201,6 +204,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         sdr_name: settings.sdr_name,
         ai_scheduling_enabled: settings.ai_scheduling_enabled,
         company_logo_url: settings.company_logo_url,
+        human_takeover_timeout_hours: settings.human_takeover_timeout_hours,
         updated_at: new Date().toISOString(),
       };
 
@@ -680,6 +684,38 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
                 <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
               </label>
             </div>
+
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-950/50 border border-slate-800">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-sm text-slate-300 cursor-help flex items-center gap-1.5">
+                    Retomar IA após atendimento humano (horas)
+                    <Info className="w-3 h-3 text-slate-500" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[220px]">
+                    Quando um humano assume a conversa, a IA fica pausada. Após este tempo sem novas
+                    mensagens, a conversa volta automaticamente para a IA. Use 0 para nunca voltar.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <input
+                type="number"
+                min={0}
+                max={720}
+                value={settings.human_takeover_timeout_hours}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    human_takeover_timeout_hours: Math.max(0, Math.min(720, Number(e.target.value) || 0)),
+                  })
+                }
+                className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              />
+            </div>
+
+
 
             <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-950/50 border border-slate-800">
               <Tooltip>
