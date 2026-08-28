@@ -1804,6 +1804,7 @@ export type Database = {
           evolution_api_key: string | null
           evolution_api_url: string | null
           evolution_instance_name: string | null
+          human_takeover_timeout_hours: number
           id: string
           invite_email_provider: string | null
           invite_email_verified_at: string | null
@@ -1852,6 +1853,7 @@ export type Database = {
           evolution_api_key?: string | null
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
+          human_takeover_timeout_hours?: number
           id?: string
           invite_email_provider?: string | null
           invite_email_verified_at?: string | null
@@ -1900,6 +1902,7 @@ export type Database = {
           evolution_api_key?: string | null
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
+          human_takeover_timeout_hours?: number
           id?: string
           invite_email_provider?: string | null
           invite_email_verified_at?: string | null
@@ -2896,6 +2899,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      release_stale_human_conversations: { Args: never; Returns: number }
       set_active_account: { Args: { _account_id: string }; Returns: undefined }
       update_client_memory: {
         Args: { p_contact_id: string; p_new_memory: Json }
