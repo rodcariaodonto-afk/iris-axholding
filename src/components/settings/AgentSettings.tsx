@@ -689,6 +689,38 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="text-sm text-slate-300 cursor-help flex items-center gap-1.5">
+                    Retomar IA após atendimento humano (horas)
+                    <Info className="w-3 h-3 text-slate-500" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[220px]">
+                    Quando um humano assume a conversa, a IA fica pausada. Após este tempo sem novas
+                    mensagens, a conversa volta automaticamente para a IA. Use 0 para nunca voltar.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <input
+                type="number"
+                min={0}
+                max={720}
+                value={settings.human_takeover_timeout_hours}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    human_takeover_timeout_hours: Math.max(0, Math.min(720, Number(e.target.value) || 0)),
+                  })
+                }
+                className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              />
+            </div>
+
+
+
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-950/50 border border-slate-800">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-sm text-slate-300 cursor-help flex items-center gap-1.5">
                     Quebrar Mensagens
                     <Info className="w-3 h-3 text-slate-500" />
                   </span>
