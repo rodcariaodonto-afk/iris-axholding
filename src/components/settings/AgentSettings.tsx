@@ -40,6 +40,7 @@ interface AgentSettingsState {
   sdr_name: string | null;
   ai_scheduling_enabled: boolean;
   company_logo_url: string | null;
+  human_takeover_timeout_hours: number;
 }
 
 const DAYS_OF_WEEK = [
@@ -83,6 +84,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
     sdr_name: null,
     ai_scheduling_enabled: true,
     company_logo_url: null,
+    human_takeover_timeout_hours: 12,
   });
 
   useImperativeHandle(ref, () => ({
@@ -145,6 +147,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         sdr_name: data.sdr_name,
         ai_scheduling_enabled: data.ai_scheduling_enabled ?? true,
         company_logo_url: (data as any).company_logo_url || null,
+        human_takeover_timeout_hours: (data as any).human_takeover_timeout_hours ?? 12,
       });
     } catch (error) {
       console.error('[AgentSettings] Error loading settings:', error);
@@ -201,6 +204,7 @@ const AgentSettings = forwardRef<AgentSettingsRef, {}>((props, ref) => {
         sdr_name: settings.sdr_name,
         ai_scheduling_enabled: settings.ai_scheduling_enabled,
         company_logo_url: settings.company_logo_url,
+        human_takeover_timeout_hours: settings.human_takeover_timeout_hours,
         updated_at: new Date().toISOString(),
       };
 
