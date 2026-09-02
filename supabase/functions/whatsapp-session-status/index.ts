@@ -161,6 +161,9 @@ Deno.serve(async (req) => {
     let health = live ? "healthy" : "offline";
     let healthReason: string | null = live ? null : (normalizedState || "not_open");
     let restartAttempted = false;
+    let needsReconnect = false;
+    let silentHours = 0;
+
     if (live) {
       requeued = await requeueDisconnectedMessages(session.account_id, session_id);
       // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
@@ -173,17 +176,28 @@ Deno.serve(async (req) => {
       if (diagnosis.degraded) {
         health = "degraded";
         healthReason = diagnosis.reason;
-        const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
-        const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
-        if (canRestart) {
-          restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
-          if (restartAttempted) {
-            health = "recovering";
-            await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+
+        if (diagnosis.recoveryFailed) {
+          // Já reiniciamos depois do último evento real e continua mudo: restart
+          // não resolve. Marca como offline e pede reconexão manual (QR Code).
+          health = "offline";
+          healthReason = `sem eventos há ${Math.floor(diagnosis.silentHours)}h mesmo após reinício automático — reconecte o QR Code`;
+          needsReconnect = true;
+        } else {
+          const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+          const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
+          if (canRestart) {
+            restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
+            if (restartAttempted) {
+              health = "recovering";
+              await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+            }
           }
         }
       }
+      silentHours = diagnosis.silentHours;
     }
+
 
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
@@ -195,6 +209,13 @@ Deno.serve(async (req) => {
       health_reason: healthReason,
       ...(restartAttempted ? { last_recovery_at: new Date().toISOString() } : {}),
     }).eq("id", session_id).eq("account_id", session.account_id);
+
+    // Alerta visível: a sessão parou de receber e o auto-reparo não resolveu.
+    // Só notifica na transição, para não inundar o painel a cada checagem.
+    if (needsReconnect && session.health !== "offline") {
+      await notifySessionDown(session, instanceName, Math.floor(silentHours), healthReason);
+    }
+
 
     console.log(JSON.stringify({
       event: "evolution_session_check",
@@ -208,15 +229,59 @@ Deno.serve(async (req) => {
       restart_attempted: restartAttempted,
       reconnect_attempted: reconnectAttempted,
       webhook_repaired: webhookRepaired,
+      needs_reconnect: needsReconnect,
+      silent_hours: Math.floor(silentHours),
       requeued,
     }));
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, qr_pending: Boolean(qrCode) });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, needs_reconnect: needsReconnect, silent_hours: Math.floor(silentHours), qr_pending: Boolean(qrCode) });
+
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
 });
 
+/**
+ * Cria notificação de governança + registro de auditoria quando a sessão para
+ * de receber eventos e o auto-reparo não resolve. Sem isso a falha fica muda.
+ */
+async function notifySessionDown(
+  session: any,
+  instanceName: string,
+  silentHours: number,
+  reason: string | null,
+) {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const title = `WhatsApp "${session.session_name}" sem receber mensagens há ${silentHours}h`;
+    const body = `A instância ${instanceName} continua sem entregar eventos mesmo após reinício automático. É necessário reconectar lendo o QR Code em Configurações → WhatsApp.`;
+
+    await admin.from("governance_notifications").insert({
+      account_id: session.account_id,
+      type: "whatsapp_session_down",
+      severity: "critical",
+      title,
+      body,
+      link: "/settings",
+    });
+
+    await admin.from("audit_logs").insert({
+      account_id: session.account_id,
+      action: "whatsapp_session.down",
+      resource_type: "whatsapp_session",
+      resource_id: session.id,
+      severity: "critical",
+      metadata: { instance: instanceName, silent_hours: silentHours, reason },
+    });
+  } catch (e) {
+    console.error("[status] Falha ao notificar sessão inativa:", e);
+  }
+}
+
 const WEBHOOK_EVENTS = [
+
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
   "CONNECTION_UPDATE",
@@ -285,7 +350,13 @@ async function ensureWebhook(baseUrl: string, apiKey: string, encodedInstanceNam
  * servidor Evolution): não entrega nenhum evento e recusa envios. Aqui olhamos
  * os sinais de vida reais — último evento recebido e falhas recentes de envio.
  */
-async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean; reason: string | null }> {
+async function diagnoseSilentInstance(session: any): Promise<{
+  degraded: boolean;
+  reason: string | null;
+  silentHours: number;
+  recoveryFailed: boolean;
+}> {
+  const none = { degraded: false, reason: null, silentHours: 0, recoveryFailed: false };
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -300,21 +371,16 @@ async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean
       .eq("status", "failed")
       .gte("updated_at", since);
 
-    if ((failures ?? 0) >= 3) {
-      return { degraded: true, reason: `${failures} falhas de envio nas últimas 2h` };
-    }
-
     // Silêncio prolongado em horário comercial (Brasília) é sinal de socket morto.
     const nowUtc = new Date();
     const brasiliaHour = (nowUtc.getUTCHours() + 24 - 3) % 24;
     const inBusinessHours = brasiliaHour >= 8 && brasiliaHour < 20;
-    if (!inBusinessHours) return { degraded: false, reason: null };
 
-    // Importante: `last_connected_at` é reescrito a cada checagem, então NÃO serve
-    // como sinal de vida. Só contam eventos reais vindos da Evolution.
+    // IMPORTANTE: nem `last_connected_at` nem `last_recovery_at` contam como sinal
+    // de vida. O restart automático gravava `last_recovery_at` e zerava o silêncio,
+    // fazendo a sessão se autodeclarar saudável para sempre sem nunca receber nada.
     let lastEvent = session.last_inbound_event_at ? Date.parse(session.last_inbound_event_at) : 0;
     if (!lastEvent) {
-      // Sessões anteriores à coluna de saúde: usa a última mensagem recebida de cliente.
       const { data: lastMsg } = await admin
         .from("messages")
         .select("created_at")
@@ -325,17 +391,40 @@ async function diagnoseSilentInstance(session: any): Promise<{ degraded: boolean
         .maybeSingle();
       lastEvent = lastMsg?.created_at ? Date.parse(lastMsg.created_at) : 0;
     }
+    const silentHours = lastEvent > 0 ? (Date.now() - lastEvent) / (60 * 60 * 1000) : 0;
+
+    // Recuperação já foi tentada depois do último evento real e, passadas 2h,
+    // a instância continua muda: restart não resolve, precisa reconectar o QR.
     const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
-    const lastSignal = Math.max(lastEvent, lastRecovery);
-    const silentHours = (Date.now() - lastSignal) / (60 * 60 * 1000);
-    if (lastSignal > 0 && silentHours >= 6) {
-      return { degraded: true, reason: `sem eventos da Evolution há ${Math.floor(silentHours)}h` };
+    const recoveryFailed = lastEvent > 0
+      && lastRecovery > lastEvent
+      && (Date.now() - lastRecovery) > 2 * 60 * 60 * 1000;
+
+    if ((failures ?? 0) >= 3) {
+      return {
+        degraded: true,
+        reason: `${failures} falhas de envio nas últimas 2h`,
+        silentHours,
+        recoveryFailed,
+      };
     }
-    return { degraded: false, reason: null };
+
+    if (!inBusinessHours) return { ...none, silentHours, recoveryFailed };
+
+    if (lastEvent > 0 && silentHours >= 6) {
+      return {
+        degraded: true,
+        reason: `sem eventos da Evolution há ${Math.floor(silentHours)}h`,
+        silentHours,
+        recoveryFailed,
+      };
+    }
+    return { ...none, silentHours, recoveryFailed };
   } catch (_e) {
-    return { degraded: false, reason: null };
+    return none;
   }
 }
+
 
 /** Restart mantém a autenticação (diferente de logout) e revive o socket. */
 async function restartInstance(baseUrl: string, apiKey: string, encodedInstanceName: string): Promise<boolean> {

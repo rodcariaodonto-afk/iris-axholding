@@ -30,8 +30,11 @@ interface LiveCheck {
   health?: string | null;
   health_reason?: string | null;
   restart_attempted?: boolean;
+  needs_reconnect?: boolean;
+  silent_hours?: number | null;
   reason?: string | null;
   checkedAt: number | null;
+
 }
 
 interface Session {
@@ -138,7 +141,7 @@ export default function WhatsAppSessions() {
       setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: false, reachable: false, evolution_state: null, reason: data?.error || error?.message, checkedAt: Date.now() } }));
       if (!silent) toast.error("Falha ao verificar conexão");
     } else {
-      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, health: data?.health ?? null, health_reason: data?.health_reason ?? null, restart_attempted: data?.restart_attempted ?? false, reason: data?.reason ?? null, checkedAt: Date.now() } }));
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, health: data?.health ?? null, health_reason: data?.health_reason ?? null, restart_attempted: data?.restart_attempted ?? false, needs_reconnect: data?.needs_reconnect ?? false, silent_hours: data?.silent_hours ?? null, reason: data?.reason ?? null, checkedAt: Date.now() } }));
       if (!silent) {
         if (data?.live) {
           toast.success("Conexão real confirmada (online)");
@@ -296,14 +299,25 @@ function LiveIndicator({ liveCheck }: { liveCheck?: LiveCheck }) {
     );
   }
   if (liveCheck.live === true) {
+    if (liveCheck.needs_reconnect) {
+      return (
+        <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 gap-1 text-[10px]" title={liveCheck.health_reason || undefined}>
+          <AlertCircle className="w-3 h-3" />
+          Sem receber mensagens há {liveCheck.silent_hours ?? 0}h — reconecte o QR Code
+        </Badge>
+      );
+    }
     if (liveCheck.health === "degraded" || liveCheck.health === "recovering") {
       return (
         <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[10px]" title={liveCheck.health_reason || undefined}>
           <AlertCircle className="w-3 h-3" />
-          {liveCheck.health === "recovering" ? "Recuperando instância…" : "Conectada, mas sem tráfego"}
+          {liveCheck.health === "recovering"
+            ? "Recuperando instância…"
+            : `Conectada, mas sem tráfego${liveCheck.silent_hours ? ` há ${liveCheck.silent_hours}h` : ""}`}
         </Badge>
       );
     }
+
     return (
       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1 text-[10px]">
         <CheckCircle2 className="w-3 h-3" /> Conexão real: online
