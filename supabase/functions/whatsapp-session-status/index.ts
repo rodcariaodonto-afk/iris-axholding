@@ -173,17 +173,28 @@ Deno.serve(async (req) => {
       if (diagnosis.degraded) {
         health = "degraded";
         healthReason = diagnosis.reason;
-        const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
-        const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
-        if (canRestart) {
-          restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
-          if (restartAttempted) {
-            health = "recovering";
-            await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+
+        if (diagnosis.recoveryFailed) {
+          // Já reiniciamos depois do último evento real e continua mudo: restart
+          // não resolve. Marca como offline e pede reconexão manual (QR Code).
+          health = "offline";
+          healthReason = `sem eventos há ${Math.floor(diagnosis.silentHours)}h mesmo após reinício automático — reconecte o QR Code`;
+          needsReconnect = true;
+        } else {
+          const lastRecovery = session.last_recovery_at ? Date.parse(session.last_recovery_at) : 0;
+          const canRestart = Date.now() - lastRecovery > 60 * 60 * 1000; // no máx. 1 restart/hora
+          if (canRestart) {
+            restartAttempted = await restartInstance(baseUrl, settings.evolution_api_key, encodedInstanceName);
+            if (restartAttempted) {
+              health = "recovering";
+              await ensureWebhook(baseUrl, settings.evolution_api_key, encodedInstanceName);
+            }
           }
         }
       }
+      silentHours = diagnosis.silentHours;
     }
+
 
     await supabase.from("whatsapp_sessions").update({
       status: newStatus,
