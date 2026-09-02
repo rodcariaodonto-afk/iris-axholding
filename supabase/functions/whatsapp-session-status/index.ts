@@ -240,7 +240,48 @@ Deno.serve(async (req) => {
   }
 });
 
+/**
+ * Cria notificação de governança + registro de auditoria quando a sessão para
+ * de receber eventos e o auto-reparo não resolve. Sem isso a falha fica muda.
+ */
+async function notifySessionDown(
+  session: any,
+  instanceName: string,
+  silentHours: number,
+  reason: string | null,
+) {
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const title = `WhatsApp "${session.session_name}" sem receber mensagens há ${silentHours}h`;
+    const body = `A instância ${instanceName} continua sem entregar eventos mesmo após reinício automático. É necessário reconectar lendo o QR Code em Configurações → WhatsApp.`;
+
+    await admin.from("governance_notifications").insert({
+      account_id: session.account_id,
+      type: "whatsapp_session_down",
+      severity: "critical",
+      title,
+      body,
+      link: "/settings",
+    });
+
+    await admin.from("audit_logs").insert({
+      account_id: session.account_id,
+      action: "whatsapp_session.down",
+      resource_type: "whatsapp_session",
+      resource_id: session.id,
+      severity: "critical",
+      metadata: { instance: instanceName, silent_hours: silentHours, reason },
+    });
+  } catch (e) {
+    console.error("[status] Falha ao notificar sessão inativa:", e);
+  }
+}
+
 const WEBHOOK_EVENTS = [
+
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
   "CONNECTION_UPDATE",
