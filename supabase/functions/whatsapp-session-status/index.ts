@@ -161,6 +161,9 @@ Deno.serve(async (req) => {
     let health = live ? "healthy" : "offline";
     let healthReason: string | null = live ? null : (normalizedState || "not_open");
     let restartAttempted = false;
+    let needsReconnect = false;
+    let silentHours = 0;
+
     if (live) {
       requeued = await requeueDisconnectedMessages(session.account_id, session_id);
       // Auto-reparo: a Evolution perde a configuração de webhook em restarts/reconexões,
