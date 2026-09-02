@@ -30,8 +30,11 @@ interface LiveCheck {
   health?: string | null;
   health_reason?: string | null;
   restart_attempted?: boolean;
+  needs_reconnect?: boolean;
+  silent_hours?: number | null;
   reason?: string | null;
   checkedAt: number | null;
+
 }
 
 interface Session {
