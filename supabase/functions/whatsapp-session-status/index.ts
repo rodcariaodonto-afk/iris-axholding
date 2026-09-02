@@ -210,6 +210,13 @@ Deno.serve(async (req) => {
       ...(restartAttempted ? { last_recovery_at: new Date().toISOString() } : {}),
     }).eq("id", session_id).eq("account_id", session.account_id);
 
+    // Alerta visível: a sessão parou de receber e o auto-reparo não resolveu.
+    // Só notifica na transição, para não inundar o painel a cada checagem.
+    if (needsReconnect && session.health !== "offline") {
+      await notifySessionDown(session, instanceName, Math.floor(silentHours), healthReason);
+    }
+
+
     console.log(JSON.stringify({
       event: "evolution_session_check",
       account_id: session.account_id,
