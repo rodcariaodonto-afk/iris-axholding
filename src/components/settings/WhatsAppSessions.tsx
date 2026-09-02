@@ -141,7 +141,7 @@ export default function WhatsAppSessions() {
       setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: false, reachable: false, evolution_state: null, reason: data?.error || error?.message, checkedAt: Date.now() } }));
       if (!silent) toast.error("Falha ao verificar conexão");
     } else {
-      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, health: data?.health ?? null, health_reason: data?.health_reason ?? null, restart_attempted: data?.restart_attempted ?? false, reason: data?.reason ?? null, checkedAt: Date.now() } }));
+      setLiveChecks(prev => ({ ...prev, [s.id]: { loading: false, live: data?.live ?? null, reachable: data?.reachable ?? null, evolution_state: data?.evolution_state ?? null, health: data?.health ?? null, health_reason: data?.health_reason ?? null, restart_attempted: data?.restart_attempted ?? false, needs_reconnect: data?.needs_reconnect ?? false, silent_hours: data?.silent_hours ?? null, reason: data?.reason ?? null, checkedAt: Date.now() } }));
       if (!silent) {
         if (data?.live) {
           toast.success("Conexão real confirmada (online)");
