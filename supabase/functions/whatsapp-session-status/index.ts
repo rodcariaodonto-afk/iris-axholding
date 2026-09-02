@@ -229,9 +229,12 @@ Deno.serve(async (req) => {
       restart_attempted: restartAttempted,
       reconnect_attempted: reconnectAttempted,
       webhook_repaired: webhookRepaired,
+      needs_reconnect: needsReconnect,
+      silent_hours: Math.floor(silentHours),
       requeued,
     }));
-    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, qr_pending: Boolean(qrCode) });
+    return json({ ok: true, status: newStatus, phone_number: phoneNumber, live, evolution_state: normalizedState || null, reachable: true, requeued, webhook_repaired: webhookRepaired, reconnect_attempted: reconnectAttempted, restart_attempted: restartAttempted, health, health_reason: healthReason, needs_reconnect: needsReconnect, silent_hours: Math.floor(silentHours), qr_pending: Boolean(qrCode) });
+
   } catch (e) {
     return json({ error: 'Erro interno do servidor' }, 500);
   }
