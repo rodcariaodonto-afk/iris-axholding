@@ -1081,7 +1081,15 @@ async function processQueueItem(
       }
     }
     
+    if (role === 'assistant' && typeof content === 'string') content = collapseRepetitions(content);
     conversationHistory.push({ role, content });
+  }
+
+  // Anti-loop: só gera resposta se a última mensagem da conversa for do cliente.
+  const lastHist = conversationHistory[conversationHistory.length - 1];
+  if (!lastHist || lastHist.role !== 'user') {
+    console.log('[Nina] Skipping generation — last message is not from the customer (anti-loop)');
+    return;
   }
 
   // Get client memory
@@ -1492,6 +1500,20 @@ async function queueTextResponse(
   delay: number,
   appointmentCreated?: any
 ) {
+  // Anti-loop: limpar repetições e bloquear resposta idêntica às últimas da IA
+  aiContent = collapseRepetitions(aiContent || '').slice(0, 1500).trim();
+  if (!aiContent) return;
+  const { data: lastAi } = await supabase
+    .from('messages').select('content')
+    .eq('conversation_id', conversation.id).eq('from_type', 'nina')
+    .gte('created_at', new Date(Date.now() - 30 * 60000).toISOString())
+    .order('created_at', { ascending: false }).limit(5);
+  const norm = (t: string) => (t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if ((lastAi || []).some((m: any) => norm(m.content) === norm(aiContent))) {
+    console.log('[Nina] Skipping duplicate AI response (anti-loop)');
+    return;
+  }
+
   // Break message into chunks if enabled
   const messageChunks = settings?.message_breaking_enabled 
     ? breakMessageIntoChunks(aiContent)
@@ -1632,12 +1654,41 @@ function buildEnhancedPrompt(basePrompt: string, contact: any, memory: any, conv
 }
 
 function breakMessageIntoChunks(content: string): string[] {
-  const chunks = content
+  const raw = content
     .split(/\n\n+/)
     .map(chunk => chunk.trim())
     .filter(chunk => chunk.length > 0);
-  
+  // Não cortar no meio da frase: junta pedaços que não terminam em pontuação.
+  const chunks: string[] = [];
+  for (const part of raw) {
+    const prev = chunks[chunks.length - 1];
+    if (prev && !/[.!?…:)\]"'😊🙂😉👍✅🙏]\s*$/u.test(prev)) {
+      chunks[chunks.length - 1] = `${prev} ${part}`;
+    } else {
+      chunks.push(part);
+    }
+  }
   return chunks.length > 0 ? chunks : [content];
+}
+
+// Remove frases/linhas repetidas (degeneração do modelo) mantendo a 1ª ocorrência.
+function collapseRepetitions(text: string): string {
+  if (!text) return text;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of text.split('\n')) {
+    const sentences = line.match(/[^.!?…]+[.!?…]*\s*(\p{Extended_Pictographic}\s*)*/gu) || [line];
+    const kept: string[] = [];
+    for (const s of sentences) {
+      const key = s.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (key.length > 3 && seen.has(key)) continue;
+      if (key) seen.add(key);
+      kept.push(s);
+    }
+    const joined = kept.join('').trimEnd();
+    if (joined || !line.trim()) out.push(joined);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function splitTextForAudio(content: string): string[] {
