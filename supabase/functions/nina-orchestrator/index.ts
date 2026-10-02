@@ -1152,7 +1152,8 @@ async function processQueueItem(
       ...conversationHistory
     ],
     temperature: aiSettings.temperature,
-    max_tokens: 1000
+    // Modelos com raciocínio (Gemini Pro) gastam tokens "pensando"; 1000 cortava a resposta no meio.
+    max_tokens: 6000
   };
 
 
@@ -1677,7 +1678,8 @@ function collapseRepetitions(text: string): string {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const line of text.split('\n')) {
-    const sentences = line.match(/[^.!?…]+[.!?…]*\s*(\p{Extended_Pictographic}\s*)*/gu) || [line];
+    // Só divide frase quando a pontuação é seguida de espaço/fim — preserva links (l.appbarber.com.br).
+    const sentences = line.match(/.+?(?:[.!?…]+(?=\s|$)|$)\s*(\p{Extended_Pictographic}\s*)*/gu) || [line];
     const kept: string[] = [];
     for (const s of sentences) {
       const key = s.toLowerCase().replace(/\s+/g, ' ').trim();
