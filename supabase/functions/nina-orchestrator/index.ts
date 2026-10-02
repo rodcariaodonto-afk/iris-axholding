@@ -1189,6 +1189,12 @@ async function processQueueItem(
   const aiData = await aiResponse.json();
   const aiMessage = aiData.choices?.[0]?.message;
   let aiContent = aiMessage?.content || '';
+  if (aiData.choices?.[0]?.finish_reason === 'length' && aiContent) {
+    // Resposta cortada pelo limite: nunca enviar frase/link pela metade.
+    const cut = aiContent.search(/[.!?…](?=\s)[^.!?…]*$/);
+    console.warn('[Nina] AI response truncated by token limit');
+    aiContent = cut > 0 ? aiContent.slice(0, cut + 1) : '';
+  }
   const toolCalls = aiMessage?.tool_calls || [];
 
   console.log('[Nina] AI response received, content length:', aiContent?.length || 0, ', tool_calls:', toolCalls.length);
